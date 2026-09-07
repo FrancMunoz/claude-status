@@ -192,7 +192,7 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
     }
 
     [Fact]
-    public void The_taskbar_widget_window_loads_and_draws_the_Claude_mark()
+    public void The_taskbar_widget_window_loads_and_draws_the_app_mark()
     {
         // An {x:Static} that fails to resolve leaves Data null, and the widget
         // then loads perfectly with nothing drawn where the mark should be. The
