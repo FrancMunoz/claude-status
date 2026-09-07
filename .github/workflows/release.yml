@@ -5,12 +5,17 @@ on:
     branches: [master]
   workflow_dispatch:
 
-# The whole release is one job on one runner, deliberately.
+# Two jobs, and only because macOS packages cannot be built anywhere else.
 #
-# Splitting "decide the version" from "build it" would mean passing the version
-# between jobs and re-checking out, and a tag pushed by one workflow does not
-# trigger another (GitHub blocks that to prevent recursion), so the obvious
-# two-workflow shape silently never fires. One job avoids both problems.
+# Tagging and publishing still happen exactly once, in the second job, for the
+# reason the first version of this workflow was one job: a tag pushed by one
+# workflow does not trigger another (GitHub blocks that to prevent recursion),
+# so a second workflow reacting to the release would silently never fire.
+#
+# vpk builds a macOS .app and .pkg only on macOS - it shells out to pkgbuild -
+# and a Windows Setup.exe only on Windows. So the macOS artifacts are built
+# first and handed to the Windows job as a workflow artifact, which uploads
+# everything under one tag.
 permissions:
   contents: write
 
@@ -24,10 +29,76 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Builds the macOS installer, if this push is going to release at all.
+  #
+  # The version has to be known before anything can be packed, and it is
+  # semantic-release that decides it from the commit history. Asking it in
+  # --dry-run mode gives the same answer the real run will reach in the next job,
+  # from the same commits and the same config, without tagging anything.
+  macos:
+    runs-on: macos-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Empty output when there is no release due, which is the common case on a
+      # push that only changed docs. Every later step is skipped, and the Windows
+      # job reaches the same conclusion on its own.
+      - name: Decide the version
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          npx --yes \
+            -p semantic-release@24 \
+            -p @semantic-release/exec@6 \
+            -p @semantic-release/github@11 \
+            semantic-release --dry-run | tee semantic-release.log || true
+          version=$(grep -oE 'The next release version is [0-9]+\.[0-9]+\.[0-9]+[^ ]*' semantic-release.log | tail -1 | awk '{print $NF}')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ -z "$version" ]; then
+            echo "No release due; skipping the macOS package."
+          else
+            echo "Packaging macOS for $version."
+          fi
+
+      - name: Restore tools
+        if: steps.version.outputs.version != ''
+        run: dotnet tool restore
+
+      - name: Pack
+        if: steps.version.outputs.version != ''
+        run: pwsh ./build/pack.ps1 -Version '${{ steps.version.outputs.version }}' -Runtime osx-arm64
+
+      - name: Upload
+        if: steps.version.outputs.version != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: artifacts/releases/
+          if-no-files-found: error
+          retention-days: 1
+
   release:
-    # Windows, because the only artifact today is the win-x64 installer and vpk
-    # builds a Windows Setup.exe natively there.
+    # Windows, because vpk builds the Setup.exe natively here. The macOS
+    # artifacts are carried in from the job above.
     runs-on: windows-latest
+    needs: macos
 
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +131,16 @@ jobs:
       # Velopack package the app links against.
       - name: Restore tools
         run: dotnet tool restore
+
+      # Into the directory pack.ps1 writes to and the github plugin uploads from.
+      # pack.ps1 creates that directory but never empties it, so the macOS files
+      # are still there when the Windows ones land beside them.
+      - name: Download the macOS release
+        if: needs.macos.outputs.version != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-release
+          path: artifacts/releases
 
       # semantic-release decides from the Conventional Commits whether there is a
       # release at all. If there is, its prepare step runs build/pack.ps1 with the

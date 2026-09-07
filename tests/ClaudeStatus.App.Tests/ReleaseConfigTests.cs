@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ClaudeStatus.App.ViewModels;
 
 namespace ClaudeStatus.App.Tests;
@@ -52,6 +53,35 @@ public class ReleaseConfigTests
     }
 
     [Fact]
+    public void Semantic_release_publishes_from_the_branch_the_workflow_runs_on()
+    {
+        // These were master and main for a while, and the effect was total: the
+        // workflow fired on every push, semantic-release read its own config,
+        // decided master was not a release branch, and exited zero having done
+        // nothing. A green tick on a release that never happened.
+        string[] configured = ReleaseConfig()
+            .GetProperty("branches")
+            .EnumerateArray()
+            .Select(branch => branch.GetString()!)
+            .ToArray();
+
+        string workflow = Path.Combine(
+            RepositoryRoot(), ".github", "workflows", "release.yml");
+        Assert.SkipUnless(File.Exists(workflow), "release.yml is not present.");
+
+        // The trigger, as "branches: [name]" under the push event.
+        Match trigger = Regex.Match(
+            File.ReadAllText(workflow),
+            @"branches:\s*\[\s*(?<name>[A-Za-z0-9._/-]+)\s*\]");
+
+        trigger.Success.Should().BeTrue("release.yml must declare the branch it runs on");
+
+        configured.Should().Contain(
+            trigger.Groups["name"].Value,
+            "semantic-release only releases from a branch it is configured for");
+    }
+
+    [Fact]
     public void The_update_feed_files_are_attached_to_the_release()
     {
         // Velopack's GithubSource reads releases.win.json to find out what exists,
@@ -75,6 +105,37 @@ public class ReleaseConfigTests
         assets.Should().Contain(path => path.EndsWith("releases.win.json", StringComparison.Ordinal));
         assets.Should().Contain(path => path.EndsWith(".nupkg", StringComparison.Ordinal));
         assets.Should().Contain(path => path.EndsWith("Setup.exe", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_macOS_release_carries_its_own_feed_as_well_as_its_installer()
+    {
+        // Velopack keeps a feed per platform: a Mac reads releases.osx.json and
+        // never looks at the Windows one. Attaching the .pkg without it produces
+        // exactly the failure the Windows assets were listed to avoid - an app
+        // people can install and then never update - and it is a silent one,
+        // because nothing about a missing feed looks like an error.
+        string[] assets = GitHubAssets();
+
+        assets.Should().Contain(path => path.EndsWith("releases.osx.json", StringComparison.Ordinal));
+        assets.Should().Contain(path => path.EndsWith("Setup.pkg", StringComparison.Ordinal));
+    }
+
+    /// <summary>The asset paths the GitHub plugin is configured to upload.</summary>
+    private static string[] GitHubAssets()
+    {
+        JsonElement github = ReleaseConfig()
+            .GetProperty("plugins")
+            .EnumerateArray()
+            .Single(plugin =>
+                plugin.ValueKind == JsonValueKind.Array
+                && plugin[0].GetString() == "@semantic-release/github");
+
+        return github[1]
+            .GetProperty("assets")
+            .EnumerateArray()
+            .Select(asset => asset.GetProperty("path").GetString()!)
+            .ToArray();
     }
 
     [Fact]

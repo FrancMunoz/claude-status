@@ -525,7 +525,9 @@ public sealed class MacOsStatusItem : INativeStatusItem
         // tag of -1, so every click was routed into the menu handler, decoded to a
         // command that does not exist, and dropped without a sound. Comparing the
         // sender to the button asks the question that was actually meant.
-        if (sender != 0 && sender == Button)
+        nint button = Button;
+
+        if (sender != 0 && sender == button)
         {
             DispatchButtonClick();
             return;

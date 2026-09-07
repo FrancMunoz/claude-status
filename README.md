@@ -29,22 +29,58 @@ run it. It installs per-user, needs no administrator rights, and updates itself.
 A `ClaudeStatus-win-Portable.zip` is also published for anyone who would rather
 not install anything. It does not update itself.
 
-**macOS and Linux** are supported in the code and are not packaged yet. The
-platform layer for both exists behind interfaces, but neither has ever been
-executed — see [`PLAN.md`](PLAN.md).
+**macOS 13+ (Apple Silicon)** — download `ClaudeStatus-osx-Setup.pkg` from the
+[latest release](https://github.com/FrancMunoz/claude-status/releases/latest) and
+open it. It installs to `/Applications`, needs no administrator rights, and
+updates itself.
+
+> macOS will refuse it on the first run: **the installer is not signed or
+> notarised**, so Gatekeeper reports it as coming from an unidentified developer.
+> Right-click the `.pkg` → **Open** → **Open** to run it anyway. Same reason as
+> the Windows warning above — see
+> [why](docs/releasing.md#signing--read-before-the-first-public-release).
+
+A `ClaudeStatus-osx-Portable.zip` is also published. It does not update itself.
+Intel Macs are not packaged yet: the build is `osx-arm64` only.
+
+**Linux** is supported in the code and is not packaged. The platform layer exists
+behind interfaces and CI builds and tests it on every push, but nothing is
+published for it.
 
 ## Using it
 
 The icon shows one metric — session % by default — as a bare number. It turns
-**red** past your threshold (80 % by default), fades when the reading is stale, and
-swaps the number for a shape when there is no number to show: `!` no credential,
-`✕` exhausted, `⊘` never reached the endpoint.
+**red** past your threshold (80 % by default), fades when the reading is out of
+date, and swaps the number for a shape when there is no number to show: `!` no
+credential, `✕` exhausted, `⊘` never reached the endpoint.
+
+### Menu bar — macOS only
+
+macOS does not get an icon at all. It gets a real `NSStatusItem` that writes every
+limit across the menu bar as text, which the system draws in its own font and its
+own colour — so it follows dark and light mode, and the menu bar's own tint over a
+dark desktop picture, with nothing to keep in sync:
+
+<p align="center">
+  <img src="docs/screenshots/macos-menu-bar.png" alt="The menu bar item showing 5h 45% · 7d 5% beside the system icons" width="420">
+</p>
+
+- **Left click** — the details popup, opened directly under the item.
+- **Right click** — the menu.
+
+That split is the reason for the native status item: Avalonia's tray icon hands
+its menu *every* click, so a left click could never mean "show me the details".
+The same layer is why the row can be wider than it is tall.
+
+**Show Fable** in Config adds the weekly Fable limit as a third pair. There is no
+Dock icon — the app is a menu bar utility and quits from its own menu.
 
 ### Taskbar widget — Windows only
 
 On Windows the default indicator is not the icon but a small card in the taskbar
 beside the clock, showing the session and weekly limits at once. Everything in
-this section is Windows-only; macOS and Linux always use the tray icon.
+this section is Windows-only: macOS has the menu bar item above, and Linux uses
+the tray icon.
 
 It uses the same technique as [TrafficMonitor](https://github.com/zhongyang219/TrafficMonitor)
 and, like it, relies on undocumented taskbar internals. If the taskbar cannot be
@@ -139,11 +175,13 @@ dotnet format --verify-no-changes
 dotnet run --project src/ClaudeStatus.App
 ```
 
-To build the installer:
+To build the installer — Windows on Windows, macOS on a Mac, because `vpk` shells
+out to each platform's own packaging tools:
 
 ```pwsh
 dotnet tool restore
-./build/pack.ps1 -Version 0.1.0
+./build/pack.ps1 -Version 0.1.0                      # win-x64, the default
+./build/pack.ps1 -Version 0.1.0 -Runtime osx-arm64   # macOS .app and .pkg
 ```
 
 See [`docs/releasing.md`](docs/releasing.md).
