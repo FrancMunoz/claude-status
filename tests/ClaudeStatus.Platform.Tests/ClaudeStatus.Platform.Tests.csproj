@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <MinVerSkip>true</MinVerSkip>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/ClaudeStatus.Core/ClaudeStatus.Core.csproj" />
+    <ProjectReference Include="../../src/ClaudeStatus.Platform.Windows/ClaudeStatus.Platform.Windows.csproj" />
+    <ProjectReference Include="../../src/ClaudeStatus.Platform.MacOS/ClaudeStatus.Platform.MacOS.csproj" />
+    <ProjectReference Include="../../src/ClaudeStatus.Platform.Linux/ClaudeStatus.Platform.Linux.csproj" />
+    <!-- The DI composition root lives in the App per CLAUDE.md §2, and is the one
+         place that knows which OS it is on, so it is tested from here. -->
+    <ProjectReference Include="../../src/ClaudeStatus.App/ClaudeStatus.App.csproj" />
+  </ItemGroup>
+
+</Project>

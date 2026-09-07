@@ -1,0 +1,625 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>—</value>
+  </data>
+  <data name="Common_NotAvailable" xml:space="preserve">
+    <value>n/d</value>
+  </data>
+  <data name="Tray_Details" xml:space="preserve">
+    <value>Detalls</value>
+  </data>
+  <data name="Tray_Show" xml:space="preserve">
+    <value>Mostra</value>
+  </data>
+  <data name="Tray_Refresh" xml:space="preserve">
+    <value>Actualitza</value>
+  </data>
+  <data name="Tray_Config" xml:space="preserve">
+    <value>Configuració…</value>
+  </data>
+  <data name="Tray_Info" xml:space="preserve">
+    <value>Informació</value>
+  </data>
+  <data name="Tray_Quit" xml:space="preserve">
+    <value>Surt</value>
+  </data>
+  <data name="Tray_Mode_Session" xml:space="preserve">
+    <value>Sessió %</value>
+  </data>
+  <data name="Tray_Mode_Week" xml:space="preserve">
+    <value>Setmana %</value>
+  </data>
+  <data name="Tray_Mode_WeekFable" xml:space="preserve">
+    <value>Setmana (Fable) %</value>
+  </data>
+  <data name="Tray_Mode_Ring" xml:space="preserve">
+    <value>Anell</value>
+  </data>
+  <data name="Tray_Tooltip" xml:space="preserve">
+    <value>ClaudeStatus — {0}</value>
+  </data>
+  <data name="Tray_Tooltip_Stale" xml:space="preserve">
+    <value>ClaudeStatus — {0} (desactualitzat)</value>
+  </data>
+  <data name="Tray_Tooltip_Body" xml:space="preserve">
+    <value>Sessió {0} · Setmana {1} · Fable {2}</value>
+  </data>
+  <data name="Tray_Tooltip_NeedsCredential" xml:space="preserve">
+    <value>ClaudeStatus — sense credencial de Claude. Fes clic per obrir la configuració.</value>
+  </data>
+  <data name="Tray_Tooltip_Unreachable" xml:space="preserve">
+    <value>ClaudeStatus — no es pot contactar amb el servei d'ús</value>
+  </data>
+  <data name="Tray_Tooltip_NoData" xml:space="preserve">
+    <value>ClaudeStatus — encara no hi ha dades</value>
+  </data>
+  <data name="Details_Heading" xml:space="preserve">
+    <value>Ús de Claude</value>
+  </data>
+  <data name="Details_Refresh" xml:space="preserve">
+    <value>Actualitza</value>
+  </data>
+  <data name="Details_Metric_Session" xml:space="preserve">
+    <value>Sessió</value>
+  </data>
+  <data name="Details_Metric_Week" xml:space="preserve">
+    <value>Setmana</value>
+  </data>
+  <data name="Details_Metric_WeekFable" xml:space="preserve">
+    <value>Setmana (Fable)</value>
+  </data>
+  <data name="Details_Status_Waiting" xml:space="preserve">
+    <value>Esperant la primera lectura…</value>
+  </data>
+  <data name="Details_Status_Cooldown" xml:space="preserve">
+    <value>S'ha actualitzat fa poc: torna-ho a provar d'aquí a un moment.</value>
+  </data>
+  <data name="Details_Status_NoCredential" xml:space="preserve">
+    <value>No s'ha trobat cap credencial de Claude. Obre la configuració per afegir-ne una.</value>
+  </data>
+  <data name="Details_Status_Unauthorized" xml:space="preserve">
+    <value>La credencial s'ha rebutjat. Obre el Claude Code per renovar la sessió.</value>
+  </data>
+  <data name="Details_Status_RateLimited" xml:space="preserve">
+    <value>El servei ha limitat les peticions. Es tornarà a provar automàticament.</value>
+  </data>
+  <data name="Details_Status_Unreachable" xml:space="preserve">
+    <value>No s'ha pogut contactar amb el servei d'ús. Es tornarà a provar automàticament.</value>
+  </data>
+  <data name="Details_Status_LastUpdated" xml:space="preserve">
+    <value>Actualitzat fa {0}.</value>
+  </data>
+  <data name="Details_Stale" xml:space="preserve">
+    <value>Es mostren els darrers valors coneguts, de fa {0}.</value>
+  </data>
+  <data name="Bar_Percent" xml:space="preserve">
+    <value>{0:0.#} %</value>
+  </data>
+  <data name="Bar_NoData" xml:space="preserve">
+    <value>sense dades</value>
+  </data>
+  <data name="Reset_Unknown" xml:space="preserve">
+    <value>hora de reinici desconeguda</value>
+  </data>
+  <data name="Reset_Now" xml:space="preserve">
+    <value>reiniciant-se ara</value>
+  </data>
+  <data name="Reset_DaysHours" xml:space="preserve">
+    <value>es reinicia d'aquí a {0} d {1} h</value>
+  </data>
+  <data name="Reset_Days" xml:space="preserve">
+    <value>es reinicia d'aquí a {0} d</value>
+  </data>
+  <data name="Reset_HoursMinutes" xml:space="preserve">
+    <value>es reinicia d'aquí a {0} h {1} min</value>
+  </data>
+  <data name="Reset_Minutes" xml:space="preserve">
+    <value>es reinicia d'aquí a {0} min</value>
+  </data>
+  <data name="Reset_UnderMinute" xml:space="preserve">
+    <value>es reinicia d'aquí a menys d'un minut</value>
+  </data>
+  <data name="Age_Moments" xml:space="preserve">
+    <value>uns instants</value>
+  </data>
+  <data name="Age_Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Age_HoursMinutes" xml:space="preserve">
+    <value>{0} h {1} min</value>
+  </data>
+  <data name="Age_Days" xml:space="preserve">
+    <value>{0} d</value>
+  </data>
+  <data name="Config_Title" xml:space="preserve">
+    <value>ClaudeStatus — Configuració</value>
+  </data>
+  <data name="Config_Section_Source" xml:space="preserve">
+    <value>D'on vénen les dades d'ús</value>
+  </data>
+  <data name="Config_Source_ClaudeCode" xml:space="preserve">
+    <value>Sessió del Claude Code (recomanat)</value>
+  </data>
+  <data name="Config_Source_ClaudeCode_Help" xml:space="preserve">
+    <value>Fa servir la sessió que el Claude Code ja té iniciada. El ClaudeStatus no desa res. Les dades caduquen al cap d'aproximadament una hora des de la darrera renovació del Claude Code.</value>
+  </data>
+  <data name="Config_Source_Manual" xml:space="preserve">
+    <value>Testimoni manual (avançat)</value>
+  </data>
+  <data name="Config_Source_Manual_Help" xml:space="preserve">
+    <value>Per a equips sense Claude Code. El testimoni es desa xifrat.</value>
+  </data>
+  <data name="Config_Token_Placeholder" xml:space="preserve">
+    <value>sk-ant-oat…</value>
+  </data>
+  <data name="Config_SaveToken" xml:space="preserve">
+    <value>Desa el testimoni</value>
+  </data>
+  <data name="Config_ForgetToken" xml:space="preserve">
+    <value>Oblida el testimoni</value>
+  </data>
+  <data name="Config_EncryptionNotice" xml:space="preserve">
+    <value>La teva credencial està xifrada amb una clau lligada al sistema operatiu ({0}). No es pot copiar a un altre equip ni a un altre compte d'usuari.</value>
+  </data>
+  <data name="Config_WeakStoreWarning" xml:space="preserve">
+    <value>No s'ha trobat cap anell de claus del sistema, així que el teu testimoni està protegit per un fitxer xifrat que només pot llegir el teu compte d'usuari. Un altre programa executant-se com tu encara el podria llegir. Instal·lar un anell de claus (gnome-keyring o KWallet) és més segur.</value>
+  </data>
+  <data name="Config_TrayWarning_NoSession" xml:space="preserve">
+    <value>No s'ha detectat cap sessió d'escriptori, així que la icona de la safata no apareixerà.</value>
+  </data>
+  <data name="Config_TrayWarning_Unlikely" xml:space="preserve">
+    <value>Pot ser que aquest escriptori no mostri icones de safata. Al GNOME, instal·la l'extensió AppIndicator.</value>
+  </data>
+  <data name="Config_Threshold" xml:space="preserve">
+    <value>Llindar d'avís: {0:0} %</value>
+  </data>
+  <data name="Config_Threshold_Help" xml:space="preserve">
+    <value>La icona de la safata es torna vermella quan la mètrica mostrada arriba a aquest valor.</value>
+  </data>
+  <data name="Config_Interval" xml:space="preserve">
+    <value>Comprova cada {0:0} segons</value>
+  </data>
+  <data name="Config_Interval_Help" xml:space="preserve">
+    <value>60 segons és el mínim. El servei limita les peticions de manera agressiva i pot quedar bloquejat durant tota una sessió.</value>
+  </data>
+  <data name="Config_Autostart" xml:space="preserve">
+    <value>Inicia en iniciar la sessió</value>
+  </data>
+  <data name="Config_FakeData" xml:space="preserve">
+    <value>Fes servir dades falses (per a desenvolupament)</value>
+  </data>
+  <data name="Config_Section_Language" xml:space="preserve">
+    <value>Idioma</value>
+  </data>
+  <data name="Config_Language_System" xml:space="preserve">
+    <value>Idioma del sistema</value>
+  </data>
+  <data name="Config_Language_Help" xml:space="preserve">
+    <value>Per afegir un idioma, copia un fitxer de {0} i tradueix-ne els valors. Apareixerà aquí després de reiniciar.</value>
+  </data>
+  <data name="Config_Test" xml:space="preserve">
+    <value>Prova la credencial</value>
+  </data>
+  <data name="Config_Save" xml:space="preserve">
+    <value>Desa</value>
+  </data>
+  <data name="Config_SettingsFile" xml:space="preserve">
+    <value>Fitxer de configuració: {0}</value>
+  </data>
+  <data name="Config_Status_TokenRemoved" xml:space="preserve">
+    <value>S'ha eliminat el testimoni desat.</value>
+  </data>
+  <data name="Config_Status_Saved" xml:space="preserve">
+    <value>S'ha desat la configuració.</value>
+  </data>
+  <data name="Info_Title" xml:space="preserve">
+    <value>Quant al ClaudeStatus</value>
+  </data>
+  <data name="Info_Tagline" xml:space="preserve">
+    <value>L'ús de la teva subscripció de Claude, a la safata del sistema.</value>
+  </data>
+  <data name="Info_Version" xml:space="preserve">
+    <value>Versió {0}</value>
+  </data>
+  <data name="Info_RunningOn" xml:space="preserve">
+    <value>S'executa en {0}</value>
+  </data>
+  <data name="Info_DataSource" xml:space="preserve">
+    <value>Origen de les dades: {0}</value>
+  </data>
+  <data name="Info_ConfigFolder" xml:space="preserve">
+    <value>Carpeta de configuració: {0}</value>
+  </data>
+  <data name="Info_LogFile" xml:space="preserve">
+    <value>Fitxer de registre: {0}</value>
+  </data>
+  <data name="Info_UnofficialNotice" xml:space="preserve">
+    <value>Les xifres d'ús vénen d'un servei no documentat d'Anthropic, el mateix que fa servir l'ordre /usage del Claude Code. No és una API publicada i pot canviar o deixar de funcionar sense avís previ. Les xifres poden diferir lleugerament de les que apareixen als paràmetres de claude.ai. Aquest projecte no està afiliat a Anthropic ni compta amb el seu suport.</value>
+  </data>
+  <data name="Info_License" xml:space="preserve">
+    <value>Llicència MIT. Fet amb Avalonia UI.</value>
+  </data>
+  <data name="Credential_None" xml:space="preserve">
+    <value>Sembla un testimoni d'accés vàlid.</value>
+  </data>
+  <data name="Credential_Empty" xml:space="preserve">
+    <value>Introdueix un testimoni.</value>
+  </data>
+  <data name="Credential_WrongPrefix" xml:space="preserve">
+    <value>Això no sembla un testimoni d'accés de Claude. Hauria de començar per "sk-ant-oat".</value>
+  </data>
+  <data name="Credential_TooShort" xml:space="preserve">
+    <value>Aquest testimoni sembla massa curt per estar complet.</value>
+  </data>
+  <data name="Credential_IllegalCharacters" xml:space="preserve">
+    <value>Conté caràcters que un testimoni no té. Comprova si hi ha espais o salts de línia de més.</value>
+  </data>
+  <data name="Credential_RefreshToken" xml:space="preserve">
+    <value>Aquest és un testimoni de renovació ("sk-ant-ort"). El ClaudeStatus necessita el testimoni d'accés ("sk-ant-oat").</value>
+  </data>
+  <data name="Credential_Unknown" xml:space="preserve">
+    <value>No s'ha pogut validar aquest testimoni.</value>
+  </data>
+  <data name="CredentialTest_Success" xml:space="preserve">
+    <value>Funciona. L'ús de la sessió ara mateix és del {0:0.#} %.</value>
+  </data>
+  <data name="CredentialTest_SuccessNoWindow" xml:space="preserve">
+    <value>Funciona, tot i que el servei no ha informat de cap finestra de sessió.</value>
+  </data>
+  <data name="CredentialTest_NoCredential" xml:space="preserve">
+    <value>No s'ha trobat cap credencial. Inicia la sessió amb el Claude Code o enganxa un testimoni a dalt.</value>
+  </data>
+  <data name="CredentialTest_Rejected" xml:space="preserve">
+    <value>La credencial s'ha rebutjat. Si fas servir la sessió del Claude Code, obre el Claude Code per renovar-la.</value>
+  </data>
+  <data name="CredentialTest_RateLimited" xml:space="preserve">
+    <value>S'ha arribat al límit de peticions, així que no s'ha pogut comprovar la credencial. Torna-ho a provar d'aquí a uns minuts.</value>
+  </data>
+  <data name="CredentialTest_ServerError" xml:space="preserve">
+    <value>El servei ha retornat un error de servidor. No és un problema de la teva credencial.</value>
+  </data>
+  <data name="CredentialTest_Unreachable" xml:space="preserve">
+    <value>No s'ha pogut contactar amb el servei. Comprova la teva connexió de xarxa.</value>
+  </data>
+  <data name="CredentialTest_Unreadable" xml:space="preserve">
+    <value>El servei ha respost amb alguna cosa il·legible. Pot ser que hagi canviat.</value>
+  </data>
+  <data name="Store_WindowsDpapi" xml:space="preserve">
+    <value>DPAPI de Windows (usuari actual, entropia per instal·lació)</value>
+  </data>
+  <data name="Store_MacKeychain" xml:space="preserve">
+    <value>Anell de claus de macOS</value>
+  </data>
+  <data name="Store_LinuxSecretService" xml:space="preserve">
+    <value>Secret Service de Linux (anell de claus del sistema)</value>
+  </data>
+  <data name="Store_LinuxEncryptedFile" xml:space="preserve">
+    <value>Fitxer de clau xifrat (no hi ha cap anell de claus del sistema disponible)</value>
+  </data>
+  <data name="Autostart_WindowsRegistry" xml:space="preserve">
+    <value>Clau Run del registre (HKCU)</value>
+  </data>
+  <data name="Autostart_MacLaunchAgent" xml:space="preserve">
+    <value>LaunchAgent (~/Library/LaunchAgents)</value>
+  </data>
+  <data name="Autostart_LinuxXdg" xml:space="preserve">
+    <value>Entrada d'inici automàtic XDG (~/.config/autostart)</value>
+  </data>
+  <data name="Autostart_Error_PathUnknown" xml:space="preserve">
+    <value>No s'ha pogut determinar el camí de l'aplicació, així que no es pot configurar l'inici automàtic.</value>
+  </data>
+  <data name="Autostart_Error_Write" xml:space="preserve">
+    <value>No s'ha pogut escriure l'entrada d'inici automàtic.</value>
+  </data>
+  <data name="Autostart_Error_Remove" xml:space="preserve">
+    <value>No s'ha pogut eliminar l'entrada d'inici automàtic.</value>
+  </data>
+  <data name="Autostart_Error_RunKey" xml:space="preserve">
+    <value>No s'ha pogut obrir la clau Run de Windows.</value>
+  </data>
+  <data name="Autostart_Error_Generic" xml:space="preserve">
+    <value>No s'ha pogut canviar l'inici automàtic.</value>
+  </data>
+  <data name="TokenSource_ClaudeCodeLogin" xml:space="preserve">
+    <value>Sessió del Claude Code</value>
+  </data>
+  <data name="TokenSource_ClaudeCodeKeychain" xml:space="preserve">
+    <value>Sessió del Claude Code (anell de claus de macOS)</value>
+  </data>
+  <data name="TokenSource_ManualToken" xml:space="preserve">
+    <value>Testimoni introduït manualment</value>
+  </data>
+  <data name="Provider_ClaudeSubscription" xml:space="preserve">
+    <value>Ús de la subscripció de Claude (no oficial)</value>
+  </data>
+  <data name="Provider_Fake" xml:space="preserve">
+    <value>Dades d'ús falses ({0})</value>
+  </data>
+  <data name="Config_Tab_Account" xml:space="preserve">
+    <value>Compte</value>
+  </data>
+  <data name="Config_Tab_Display" xml:space="preserve">
+    <value>Aparença</value>
+  </data>
+  <data name="Config_Tab_Behaviour" xml:space="preserve">
+    <value>Comportament</value>
+  </data>
+  <data name="Tray_Report" xml:space="preserve">
+    <value>Informe complet…</value>
+  </data>
+  <data name="Details_MoreButton" xml:space="preserve">
+    <value>Més…</value>
+  </data>
+  <data name="Report_Title" xml:space="preserve">
+    <value>ClaudeStatus — informe complet</value>
+  </data>
+  <data name="Report_Section_Windows" xml:space="preserve">
+    <value>Finestres d'ús</value>
+  </data>
+  <data name="Report_Section_Spend" xml:space="preserve">
+    <value>Despesa de pagament per ús</value>
+  </data>
+  <data name="Report_Section_Credits" xml:space="preserve">
+    <value>Crèdits de prepagament</value>
+  </data>
+  <data name="Report_Field_Kind" xml:space="preserve">
+    <value>Notificat com a</value>
+  </data>
+  <data name="Report_Field_Severity" xml:space="preserve">
+    <value>Gravetat</value>
+  </data>
+  <data name="Report_Field_Active" xml:space="preserve">
+    <value>Consumint ara</value>
+  </data>
+  <data name="Report_Active_Yes" xml:space="preserve">
+    <value>Sí</value>
+  </data>
+  <data name="Report_Active_No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Report_NoResetTime" xml:space="preserve">
+    <value>No s'informa de l'hora de reinici</value>
+  </data>
+  <data name="Report_FetchedAt" xml:space="preserve">
+    <value>Obtingut: {0}</value>
+  </data>
+  <data name="Report_Dollars" xml:space="preserve">
+    <value>{0} usats de {1}, en queden {2}</value>
+  </data>
+  <data name="Report_NoReading" xml:space="preserve">
+    <value>Encara no hi ha cap lectura. La primera consulta no ha acabat.</value>
+  </data>
+  <data name="Report_StaleWarning" xml:space="preserve">
+    <value>Aquests són els darrers valors coneguts. Des de llavors no s'ha aconseguit actualitzar.</value>
+  </data>
+  <data name="Report_Spend_NotReported" xml:space="preserve">
+    <value>El servei no ha informat de res sobre la despesa.</value>
+  </data>
+  <data name="Report_Spend_Off" xml:space="preserve">
+    <value>Desactivat. No se't cobra res més enllà del teu pla.</value>
+  </data>
+  <data name="Report_Spend_On" xml:space="preserve">
+    <value>{0} gastats de {1} ({2}).</value>
+  </data>
+  <data name="Report_Credits_NotReported" xml:space="preserve">
+    <value>El servei no ha informat de res sobre els crèdits.</value>
+  </data>
+  <data name="Report_Credits_NeverUsed" xml:space="preserve">
+    <value>No configurat en aquest compte.</value>
+  </data>
+  <data name="Report_Credits_TurnedOff" xml:space="preserve">
+    <value>Configurat però desactivat ara mateix.</value>
+  </data>
+  <data name="Report_Credits_On" xml:space="preserve">
+    <value>{0} de {1} crèdits usats ({2}).</value>
+  </data>
+  <data name="Report_Credits_LimitReached" xml:space="preserve">
+    <value>S'ha assolit el límit mensual de crèdits.</value>
+  </data>
+  <data name="Report_Disclaimer" xml:space="preserve">
+    <value>Aquestes són les xifres en brut que retorna el servei, incloses les seves pròpies etiquetes. No està documentat, així que un camp pot canviar de significat o desaparèixer sense avís previ.</value>
+  </data>
+  <data name="Report_Scope" xml:space="preserve">
+    <value>Limitat a {0}</value>
+  </data>
+  <data name="Config_Tab_Theme" xml:space="preserve">
+    <value>Tema</value>
+  </data>
+  <data name="Config_Theme" xml:space="preserve">
+    <value>Tema de color</value>
+  </data>
+  <data name="Config_Theme_System" xml:space="preserve">
+    <value>Segueix el sistema</value>
+  </data>
+  <data name="Config_Theme_Help" xml:space="preserve">
+    <value>Per afegir un tema, posa un fitxer JSON a {0} amb name, primary, background, text i alert. Apareixerà aquí després de reiniciar.</value>
+  </data>
+  <data name="Config_Font" xml:space="preserve">
+    <value>Tipus de lletra</value>
+  </data>
+  <data name="Config_Font_System" xml:space="preserve">
+    <value>Predeterminat del sistema</value>
+  </data>
+  <data name="Config_Font_Custom" xml:space="preserve">
+    <value>Personalitzat…</value>
+  </data>
+  <data name="Config_Font_Placeholder" xml:space="preserve">
+    <value>p. ex. JetBrains Mono</value>
+  </data>
+  <data name="Config_Font_Help" xml:space="preserve">
+    <value>Un tipus de lletra que no estigui instal·lat torna al predeterminat del sistema.</value>
+  </data>
+  <data name="Config_Transparency" xml:space="preserve">
+    <value>Transparència del fons de la finestra emergent: {0:0} %</value>
+  </data>
+  <data name="Config_Transparency_Help" xml:space="preserve">
+    <value>0 % és un plafó sòlid; 100 % deixa només el text flotant sobre l'escriptori. Només afecta la finestra emergent petita, mai el seu text. Alguns escriptoris de Linux no permeten la transparència; en aquest cas això no té cap efecte.</value>
+  </data>
+  <data name="Reset_WithWeekly" xml:space="preserve">
+    <value>es reinicia amb el límit setmanal</value>
+  </data>
+  <data name="Details_Empty_Waiting_Title" xml:space="preserve">
+    <value>Llegint el teu ús…</value>
+  </data>
+  <data name="Details_Empty_Waiting_Body" xml:space="preserve">
+    <value>La primera petició està en camí. Sol trigar un o dos segons.</value>
+  </data>
+  <data name="Details_Empty_NoCredential_Title" xml:space="preserve">
+    <value>Encara sense connexió</value>
+  </data>
+  <data name="Details_Empty_NoCredential_Body" xml:space="preserve">
+    <value>ClaudeStatus llegeix la sessió que ja té Claude Code. Inicia-hi la sessió, o afegeix un testimoni a la pestanya Compte de Configuració.</value>
+  </data>
+  <data name="Details_Empty_Unauthorized_Title" xml:space="preserve">
+    <value>Credencial rebutjada</value>
+  </data>
+  <data name="Details_Empty_Unauthorized_Body" xml:space="preserve">
+    <value>Anthropic ha rebutjat la credencial. Obre Claude Code i torna a iniciar la sessió, o substitueix el testimoni a la pestanya Compte de Configuració.</value>
+  </data>
+  <data name="Details_Empty_RateLimited_Title" xml:space="preserve">
+    <value>Ens demanen anar més a poc a poc</value>
+  </data>
+  <data name="Details_Empty_RateLimited_Body" xml:space="preserve">
+    <value>El servei està limitant les peticions. ClaudeStatus s'està contenint i ho tornarà a provar pel seu compte.</value>
+  </data>
+  <data name="Details_Empty_Unreachable_Title" xml:space="preserve">
+    <value>No es pot contactar amb Anthropic</value>
+  </data>
+  <data name="Details_Empty_Unreachable_Body" xml:space="preserve">
+    <value>El servei d'ús no ha respost. Revisa la connexió: ClaudeStatus continua reintentant-ho en segon pla.</value>
+  </data>
+  <data name="Details_Empty_OpenConfig" xml:space="preserve">
+    <value>Obre la Configuració…</value>
+  </data>
+  <data name="Update_Ready" xml:space="preserve">
+    <value>La versió {0} està a punt. S'instal·larà la propera vegada que s'iniciï ClaudeStatus.</value>
+  </data>
+  <data name="Update_Restart" xml:space="preserve">
+    <value>Reinicia ara</value>
+  </data>
+  <data name="Config_AutomaticUpdates" xml:space="preserve">
+    <value>Cerca noves versions automàticament</value>
+  </data>
+  <data name="Config_AutomaticUpdates_Help" xml:space="preserve">
+    <value>Consulta a GitHub si hi ha noves versions cada poques hores i les baixa en segon pla. L'actualització s'instal·la en iniciar ClaudeStatus, mai mentre l'estàs fent servir. En desactivar-ho, la petició deixa de fer-se.</value>
+  </data>
+  <data name="Widget_Session" xml:space="preserve">
+    <value>5h</value>
+  </data>
+  <data name="Widget_Week" xml:space="preserve">
+    <value>7d</value>
+  </data>
+  <data name="Widget_Fable" xml:space="preserve">
+    <value>Fable</value>
+  </data>
+  <data name="Widget_NeedsCredential" xml:space="preserve">
+    <value>Sense credencial</value>
+  </data>
+  <data name="Widget_Offline" xml:space="preserve">
+    <value>Sense connexió</value>
+  </data>
+  <data name="Widget_NoData" xml:space="preserve">
+    <value>Sense dades</value>
+  </data>
+  <data name="Config_Section_Indicator" xml:space="preserve">
+    <value>Indicador</value>
+  </data>
+  <data name="Config_Indicator_Widget" xml:space="preserve">
+    <value>Giny a la barra de tasques</value>
+  </data>
+  <data name="Config_Indicator_Widget_Help" xml:space="preserve">
+    <value>Una targeta petita a la barra de tasques, al costat del rellotge, amb els teus límits a la vista. Depèn de detalls interns de la barra que Microsoft no documenta; si no es pot acoblar, s'usa la icona de la safata.</value>
+  </data>
+  <data name="Config_Indicator_Icon" xml:space="preserve">
+    <value>Icona a la safata</value>
+  </data>
+  <data name="Config_Indicator_Icon_Help" xml:space="preserve">
+    <value>Una mètrica com a nombre a l'àrea de notificació. Canvia la mètrica des del menú de la icona.</value>
+  </data>
+  <data name="Config_Widget_ShowFable" xml:space="preserve">
+    <value>Mostra el límit de Fable al giny</value>
+  </data>
+  <data name="Config_Widget_ShowFable_Help" xml:space="preserve">
+    <value>Desactivat per defecte: la majoria de plans arriben al límit de sessió o setmanal molt abans que al de Fable, i el giny és més estret sense ell. La finestra de detalls sempre en mostra els tres.</value>
+  </data>
+  <data name="Config_Widget_FollowSystem" xml:space="preserve">
+    <value>Integrar a la barra de tasques</value>
+  </data>
+  <data name="Config_Widget_FollowSystem_Help" xml:space="preserve">
+    <value>Sense targeta: fons transparent i el mateix color de text que el rellotge. Desactivat, el giny fa servir els colors del teu tema.</value>
+  </data>
+  <data name="Velocity_Window_Session" xml:space="preserve">
+    <value>de sessió</value>
+  </data>
+  <data name="Velocity_Window_Week" xml:space="preserve">
+    <value>setmanal</value>
+  </data>
+  <data name="Velocity_Alert" xml:space="preserve">
+    <value>L'ús puja ràpid: a aquest ritme el límit {0} s'esgota en uns {1}, molt abans de reiniciar-se en {2}.</value>
+  </data>
+  <data name="Config_VelocityAlerts" xml:space="preserve">
+    <value>Avisa quan l'ús puja massa ràpid</value>
+  </data>
+  <data name="Config_VelocityAlerts_Help" xml:space="preserve">
+    <value>Mostra un avís quan el ritme actual esgotaria una finestra abans de reiniciar-se, perquè una tasca descontrolada no et sorprengui. L'avís es manté als detalls mentre dura.</value>
+  </data>
+</root>

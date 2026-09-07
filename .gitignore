@@ -1,0 +1,94 @@
+## .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+publish/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.binlog
+project.lock.json
+project.fragment.lock.json
+.packages/
+*.nupkg
+*.snupkg
+TestResults/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+BenchmarkDotNet.Artifacts/
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## Visual Studio
+.vs/
+*.psess
+*.vsp
+*.vspx
+
+## VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+## Linux
+*~
+.directory
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+## Velopack / packaging
+Releases/
+build/output/
+
+## Local, machine-specific and NEVER-COMMIT files
+*.local.json
+.env
+.env.*
+secrets.json
+.credentials.json
+*.pfx
+*.p12
+*.snk
+TestResults/
+
+## AI assistant tooling — local to whoever is editing, not part of the project
+##
+## CLAUDE.md and .mcp.json were tracked until 2026-09-05 and are now untracked
+## (`git rm --cached`). They still exist on disk for anyone using Claude Code;
+## they are simply no longer shipped with the repository. The engineering rules
+## that used to live in CLAUDE.md are in docs/manual.md §8, which is the version
+## contributors should read.
+.claude/
+.claude.json
+.claude/settings.local.json
+CLAUDE.md
+.mcp.json
+.cursor/
+.cursorrules
+.aider*
+.github/copilot-instructions.md
+/docs
+PLAN.md

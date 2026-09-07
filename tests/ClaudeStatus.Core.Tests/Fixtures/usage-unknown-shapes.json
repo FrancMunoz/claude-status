@@ -1,0 +1,62 @@
+{
+  "five_hour": {
+    "utilization": 5.5,
+    "resets_at": "2030-01-01T15:00:00.000000+00:00",
+    "locked_reason": null
+  },
+  "seven_day": null,
+  "some_future_bucket_we_have_never_seen": {
+    "utilization": 3.0,
+    "resets_at": null
+  },
+  "a_codenamed_bucket": null,
+  "limits": [
+    {
+      "kind": "session",
+      "group": "session",
+      "percent": 5.5,
+      "severity": "normal",
+      "resets_at": "2030-01-01T15:00:00.000000+00:00",
+      "scope": null,
+      "is_active": true
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 61.25,
+      "severity": "warning",
+      "resets_at": "2030-01-05T22:59:59.000000+00:00",
+      "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null },
+      "is_active": true
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 10,
+      "severity": "normal",
+      "resets_at": "2030-01-05T22:59:59.000000+00:00",
+      "scope": { "model": { "id": "some-model-id", "display_name": "SomeUnreleasedModel" }, "surface": null },
+      "is_active": false
+    },
+    {
+      "kind": "monthly_something_new",
+      "group": "monthly",
+      "percent": 2,
+      "severity": "critical",
+      "resets_at": null,
+      "scope": null,
+      "is_active": false,
+      "an_unknown_field": { "nested": [1, 2, 3] }
+    },
+    {
+      "kind": "weekly_all",
+      "group": "weekly",
+      "percent": 0,
+      "severity": "locked",
+      "resets_at": "2030-01-05T22:59:59.000000+00:00",
+      "scope": null,
+      "is_active": false
+    }
+  ],
+  "member_dashboard_available": true
+}

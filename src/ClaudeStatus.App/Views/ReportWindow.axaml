@@ -1,0 +1,174 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ClaudeStatus.App.ViewModels"
+        xmlns:controls="using:ClaudeStatus.App.Controls"
+        x:Class="ClaudeStatus.App.Views.ReportWindow"
+        x:DataType="vm:ReportViewModel"
+        Title="{Binding L[Report_Title]}"
+        Width="540"
+        Height="660"
+        MinWidth="460"
+        MinHeight="400"
+        WindowStartupLocation="CenterScreen">
+
+    <!--
+        Unlike the details popup, this window is resizable, appears centred, has a
+        taskbar entry and does not close on focus loss. It is for looking things up
+        and comparing them against claude.ai, which means it has to survive being
+        clicked away from.
+
+        It deliberately reuses the popup's visual language - the same bar, the same
+        label style, the same card radius - so that arriving here from "More…" feels
+        like the same document opening further rather than a different program.
+    -->
+
+    <DockPanel>
+
+        <!--
+            The footer sits outside the scroll area, so Refresh stays reachable
+            however far down the report you are.
+        -->
+        <Border DockPanel.Dock="Bottom"
+                Background="{DynamicResource Theme.Background}"
+                BorderBrush="{DynamicResource Theme.Border}"
+                BorderThickness="0,1,0,0"
+                Padding="20,12">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <TextBlock Grid.Column="0"
+                           Classes="caption"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap"
+                           ToolTip.Tip="{Binding LogFileText}"
+                           Text="{Binding LogFileText}" />
+                <Button Grid.Column="1"
+                        Classes="accent"
+                        Content="{Binding L[Details_Refresh]}"
+                        IsEnabled="{Binding CanRefresh}"
+                        Command="{Binding RefreshCommand}" />
+            </Grid>
+        </Border>
+
+        <ScrollViewer Padding="20,20,14,20">
+            <StackPanel Spacing="18">
+
+                <!--
+                    Title block. The three meta lines are what the report is *of* -
+                    when it was taken and from where - so they sit under the title
+                    rather than being scattered through the page.
+                -->
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="heading" Text="{Binding L[Report_Section_Windows]}" />
+                    <TextBlock Classes="caption" Text="{Binding FreshnessText}" />
+                    <TextBlock Classes="caption" Text="{Binding FetchedAtText}" />
+                    <TextBlock Classes="caption" Text="{Binding SourceText}" />
+                </StackPanel>
+
+                <Border Classes="warning" IsVisible="{Binding HasStaleReading}">
+                    <TextBlock Classes="caption" Text="{Binding L[Report_StaleWarning]}" />
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:ReportRowViewModel">
+                            <Border Classes="card" Padding="14,12" Margin="0,0,0,10">
+                                <StackPanel Spacing="10">
+
+                                    <!-- Name and reading, laid out like the popup. -->
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <StackPanel Grid.Column="0"
+                                                    VerticalAlignment="Center"
+                                                    Spacing="3">
+                                            <TextBlock Classes="metric" Text="{Binding Label}" />
+                                            <TextBlock Classes="caption" Text="{Binding ResetText}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Classes="heading"
+                                                   VerticalAlignment="Center"
+                                                   FontFeatures="+tnum"
+                                                   Classes.exceeded="{Binding IsWarning}"
+                                                   Text="{Binding PercentText}" />
+                                    </Grid>
+
+                                    <controls:UsageBar Percent="{Binding Percent}"
+                                                       Classes.exceeded="{Binding IsWarning}" />
+
+                                    <!-- The absolute reset stamp, for comparing against claude.ai. -->
+                                    <TextBlock Classes="caption" Text="{Binding ResetsAtText}" />
+
+                                    <!--
+                                        The endpoint's own fields, verbatim. A label
+                                        column at a fixed width keeps the values in a
+                                        line down the page, which is what makes three
+                                        cards readable as a table without being one.
+                                    -->
+                                    <Grid ColumnDefinitions="140,*"
+                                          RowDefinitions="Auto,Auto,Auto"
+                                          RowSpacing="3">
+                                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                                   Classes="caption" Text="{Binding KindLabel}" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1"
+                                                   Classes="caption" Text="{Binding Kind}" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0"
+                                                   Classes="caption" Text="{Binding SeverityLabel}" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1"
+                                                   Classes="caption"
+                                                   Classes.exceeded="{Binding IsWarning}"
+                                                   Text="{Binding Severity}" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0"
+                                                   Classes="caption" Text="{Binding ActiveLabel}" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1"
+                                                   Classes="caption" Text="{Binding ActiveText}" />
+                                    </Grid>
+
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Classes="caption"
+                                                   IsVisible="{Binding HasScope}"
+                                                   Text="{Binding ScopeModel}" />
+                                        <TextBlock Classes="caption"
+                                                   IsVisible="{Binding HasDollars}"
+                                                   Text="{Binding DollarsText}" />
+                                        <TextBlock Classes="caption"
+                                                   IsVisible="{Binding IsLocked}"
+                                                   Classes.exceeded="{Binding IsLocked}"
+                                                   Text="{Binding LockedReason}" />
+                                    </StackPanel>
+
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Classes="caption"
+                           IsVisible="{Binding !HasReading}"
+                           Text="{Binding L[Report_NoReading]}" />
+
+                <Border Classes="rule" />
+
+                <StackPanel Spacing="5">
+                    <TextBlock Classes="label" Text="{Binding L[Report_Section_Spend]}" />
+                    <TextBlock Classes="caption" Text="{Binding SpendText}" />
+                </StackPanel>
+
+                <StackPanel Spacing="5">
+                    <TextBlock Classes="label" Text="{Binding L[Report_Section_Credits]}" />
+                    <TextBlock Classes="caption" Text="{Binding CreditsText}" />
+                    <Border Classes="warning"
+                            Margin="0,5,0,0"
+                            IsVisible="{Binding CreditsLimitReached}">
+                        <TextBlock Classes="caption" Text="{Binding L[Report_Credits_LimitReached]}" />
+                    </Border>
+                </StackPanel>
+
+                <Border Classes="notice">
+                    <TextBlock Classes="caption" Text="{Binding L[Report_Disclaimer]}" />
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </DockPanel>
+</Window>

@@ -1,0 +1,106 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,md,csproj,props,targets,axaml,xml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+indent_size = 4
+
+# --- Usings ---
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+
+# --- Language style ---
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_prefer_braces = true:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+csharp_style_prefer_primary_constructors = false:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_throw_expression = true:suggestion
+dotnet_style_object_initializer = true:suggestion
+dotnet_style_collection_initializer = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
+dotnet_style_readonly_field = true:warning
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+
+# --- Naming ---
+# Constants and static readonly fields are PascalCase. These rules must come
+# BEFORE the private-field rule - the first matching rule wins.
+dotnet_naming_rule.constants_pascal.severity = warning
+dotnet_naming_rule.constants_pascal.symbols = constant_fields
+dotnet_naming_rule.constants_pascal.style = pascal
+dotnet_naming_symbols.constant_fields.applicable_kinds = field
+dotnet_naming_symbols.constant_fields.applicable_accessibilities = *
+dotnet_naming_symbols.constant_fields.required_modifiers = const
+
+dotnet_naming_rule.static_readonly_pascal.severity = warning
+dotnet_naming_rule.static_readonly_pascal.symbols = static_readonly_fields
+dotnet_naming_rule.static_readonly_pascal.style = pascal
+dotnet_naming_symbols.static_readonly_fields.applicable_kinds = field
+dotnet_naming_symbols.static_readonly_fields.applicable_accessibilities = *
+dotnet_naming_symbols.static_readonly_fields.required_modifiers = static, readonly
+
+dotnet_naming_style.pascal.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+
+dotnet_naming_rule.interfaces_start_with_i.severity = warning
+dotnet_naming_rule.interfaces_start_with_i.symbols = interfaces
+dotnet_naming_rule.interfaces_start_with_i.style = i_pascal
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_style.i_pascal.capitalization = pascal_case
+dotnet_naming_style.i_pascal.required_prefix = I
+
+# --- Analyzer severities we deliberately relax ---
+# CA1848: use LoggerMessage delegates - overkill for a tray app.
+dotnet_diagnostic.CA1848.severity = none
+# CA1873: guard log arguments behind IsEnabled. Same reasoning as CA1848: this app
+# logs a handful of lines a minute, and IsEnabled guards around every call would be
+# pure noise. Kept as a suggestion so a genuinely expensive argument still shows up.
+dotnet_diagnostic.CA1873.severity = suggestion
+# CA1031: catching general exceptions - the poller must never crash the app.
+dotnet_diagnostic.CA1031.severity = suggestion
+# CA1707: underscores in member names (test method names).
+dotnet_diagnostic.CA1707.severity = none
+# CA1716: identifiers clashing with VB keywords (IUsageMonitor.Stop). This is an
+# app, not a library consumed from VB, and the names are fixed by CLAUDE.md §2.
+dotnet_diagnostic.CA1716.severity = none
+
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA2007.severity = none
+# CA1873: deliberately logging a constant to assert redaction.
+dotnet_diagnostic.CA1873.severity = none
+# CA1416: the platform tests deliberately name every platform store so they can
+# assert cross-platform invariants (e.g. which stores are hardened), and guard at
+# run time with Assert.Skip, which the analyzer cannot recognise as a guard.
+# Production code keeps CA1416 enforced - do not move this out of [tests/**].
+dotnet_diagnostic.CA1416.severity = none

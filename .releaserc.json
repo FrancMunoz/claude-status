@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "repositoryUrl is pinned rather than inferred from the git origin because it",
+    "has to match the feed VelopackUpdateService reads (InfoViewModel.ProjectUrl).",
+    "If the two ever disagree, releases publish to one repository and every",
+    "installed copy checks the other - and the only symptom is that updates",
+    "silently never arrive. ReleaseConfigTests asserts they are equal."
+  ],
+  "repositoryUrl": "https://github.com/FrancMunoz/claude-status",
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "pwsh ./build/pack.ps1 -Version ${nextRelease.version}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          { "path": "artifacts/releases/ClaudeStatus-win-Setup.exe", "label": "Windows installer" },
+          { "path": "artifacts/releases/ClaudeStatus-win-Portable.zip", "label": "Windows portable" },
+          { "path": "artifacts/releases/*.nupkg" },
+          { "path": "artifacts/releases/RELEASES" },
+          { "path": "artifacts/releases/releases.win.json" },
+          { "path": "artifacts/releases/assets.win.json" }
+        ],
+        "successComment": false,
+        "failComment": false
+      }
+    ]
+  ]
+}

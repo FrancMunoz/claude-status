@@ -1,0 +1,16 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ClaudeStatus.App.App"
+             RequestedThemeVariant="Default">
+
+    <!--
+      No ViewLocator: this app has three fixed windows and no dynamic view
+      switching, and the template's locator relies on reflection that would not
+      survive the trimmed builds PLAN.md Phase 7 asks for.
+    -->
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://ClaudeStatus/Styles/Shared.axaml" />
+    </Application.Styles>
+</Application>

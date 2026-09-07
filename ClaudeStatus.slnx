@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClaudeStatus.App/ClaudeStatus.App.csproj" />
+    <Project Path="src/ClaudeStatus.Core/ClaudeStatus.Core.csproj" />
+    <Project Path="src/ClaudeStatus.Platform.Linux/ClaudeStatus.Platform.Linux.csproj" />
+    <Project Path="src/ClaudeStatus.Platform.MacOS/ClaudeStatus.Platform.MacOS.csproj" />
+    <Project Path="src/ClaudeStatus.Platform.Windows/ClaudeStatus.Platform.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClaudeStatus.App.Tests/ClaudeStatus.App.Tests.csproj" />
+    <Project Path="tests/ClaudeStatus.Core.Tests/ClaudeStatus.Core.Tests.csproj" />
+    <Project Path="tests/ClaudeStatus.Platform.Tests/ClaudeStatus.Platform.Tests.csproj" />
+  </Folder>
+</Solution>

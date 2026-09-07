@@ -1,0 +1,60 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ClaudeStatus.App.ViewModels"
+        x:Class="ClaudeStatus.App.Views.InfoWindow"
+        x:DataType="vm:InfoViewModel"
+        Title="{Binding L[Info_Title]}"
+        Width="440"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+    <StackPanel Margin="24" Spacing="18">
+
+        <!--
+            The name block. The accent dot is the same one that heads the popup,
+            which is the cheapest way to make four separate windows read as one
+            application.
+        -->
+        <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="9">
+                <Ellipse Width="8"
+                         Height="8"
+                         VerticalAlignment="Center"
+                         Fill="{DynamicResource Theme.Primary}" />
+                <TextBlock Classes="heading"
+                           VerticalAlignment="Center"
+                           Text="{Binding ApplicationName}" />
+            </StackPanel>
+            <TextBlock Text="{Binding Tagline}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!--
+            Everything here is a fact about this install, and every line of it is
+            something a bug report needs. Grouping them into one card says that
+            plainly, and stops the version string floating alone at the top where
+            it reads as decoration.
+        -->
+        <Border Classes="card" Padding="14,12">
+            <StackPanel Spacing="7">
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding VersionText}" />
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding OperatingSystemText}" />
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding DataSourceText}" />
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding ConfigDirectoryText}" />
+                <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding LogFileText}" />
+            </StackPanel>
+        </Border>
+
+        <Border Classes="warning">
+            <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding UnofficialNotice}" />
+        </Border>
+
+        <Border Classes="rule" />
+
+        <StackPanel Spacing="5">
+            <TextBlock Classes="caption" Text="{Binding License}" />
+            <TextBlock Classes="caption" Text="{Binding ProjectUrl}" />
+        </StackPanel>
+
+    </StackPanel>
+</Window>

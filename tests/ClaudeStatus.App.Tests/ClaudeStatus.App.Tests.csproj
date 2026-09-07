@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <MinVerSkip>true</MinVerSkip>
+    <!-- Headless Avalonia needs an STA-ish single-threaded session. -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+    <PackageReference Include="Avalonia.Headless" />
+    <!-- Real rasterisation, so tests can assert on actual pixels. The stub
+         drawing backend renders nothing, which would make a pixel check pass
+         vacuously. -->
+    <PackageReference Include="Avalonia.Skia" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/ClaudeStatus.App/ClaudeStatus.App.csproj" />
+  </ItemGroup>
+
+</Project>

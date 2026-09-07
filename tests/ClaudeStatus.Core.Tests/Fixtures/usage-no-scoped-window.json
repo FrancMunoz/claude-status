@@ -1,0 +1,55 @@
+{
+  "five_hour": {
+    "utilization": 12.0,
+    "resets_at": "2030-01-01T15:00:00.000000+00:00",
+    "limit_dollars": null,
+    "used_dollars": null,
+    "remaining_dollars": null,
+    "locked_reason": null
+  },
+  "seven_day": {
+    "utilization": 40.0,
+    "resets_at": "2030-01-05T22:59:59.000000+00:00",
+    "limit_dollars": null,
+    "used_dollars": null,
+    "remaining_dollars": null,
+    "locked_reason": null
+  },
+  "seven_day_opus": null,
+  "seven_day_sonnet": null,
+  "extra_usage": {
+    "is_enabled": false,
+    "monthly_limit": null,
+    "used_credits": null,
+    "utilization": null,
+    "currency": null,
+    "decimal_places": null,
+    "disabled_reason": null,
+    "user_disabled": true,
+    "spend_limit_reached": false,
+    "credits_ever_enabled": false,
+    "daily": null,
+    "weekly": null
+  },
+  "limits": [
+    {
+      "kind": "session",
+      "group": "session",
+      "percent": 12,
+      "severity": "normal",
+      "resets_at": "2030-01-01T15:00:00.000000+00:00",
+      "scope": null,
+      "is_active": true
+    },
+    {
+      "kind": "weekly_all",
+      "group": "weekly",
+      "percent": 40,
+      "severity": "normal",
+      "resets_at": "2030-01-05T22:59:59.000000+00:00",
+      "scope": null,
+      "is_active": false
+    }
+  ],
+  "member_dashboard_available": false
+}

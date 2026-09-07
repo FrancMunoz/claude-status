@@ -1,0 +1,100 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ClaudeStatus.App.ViewModels"
+        xmlns:controls="using:ClaudeStatus.App.Controls"
+        x:Class="ClaudeStatus.App.Views.TaskbarWidgetWindow"
+        x:DataType="vm:TaskbarWidgetViewModel"
+        Title="ClaudeStatus"
+        SizeToContent="Width"
+        Height="48"
+        CanResize="False"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
+        WindowDecorations="None"
+        WindowStartupLocation="Manual"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+
+    <!--
+        This window is re-parented into the operating system's taskbar by
+        TaskbarWidgetIndicator, so almost every property above is about making it
+        behave like a piece of the taskbar rather than a window: no chrome, no
+        taskbar button of its own, never activated, transparent around the card.
+
+        The card is what carries the colour. It uses the theme's own OSD surface,
+        which is the trick that sidesteps the tray icon's whole contrast problem:
+        the widget never draws text directly on the taskbar, only on a surface
+        whose text colour the theme catalogue has already checked against it.
+    -->
+
+    <Window.Resources>
+        <!-- One template for all three metrics, so they cannot drift apart. -->
+        <DataTemplate x:Key="WidgetMetricTemplate" DataType="vm:UsageBarViewModel">
+            <StackPanel Classes="widgetMetric" Spacing="4" VerticalAlignment="Center">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                    <TextBlock Grid.Column="0"
+                               Classes="widgetLabel"
+                               VerticalAlignment="Center"
+                               Text="{Binding Label}" />
+                    <TextBlock Grid.Column="1"
+                               Classes="widgetValue"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center"
+                               Classes.exceeded="{Binding IsExceeded}"
+                               Classes.unknown="{Binding !IsKnown}"
+                               Text="{Binding PercentText}" />
+                </Grid>
+                <controls:UsageBar Classes="widgetBar"
+                                   Percent="{Binding Percent}"
+                                   Classes.exceeded="{Binding IsExceeded}"
+                                   Classes.unknown="{Binding !IsKnown}" />
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <!--
+        .system drops the card: transparent, borderless, and every colour inside
+        it switches to the Widget.* resources TaskbarInk writes from the taskbar's
+        own appearance. The class is set here, on the root, and the styles reach
+        the metric templates through descendant selectors - their DataContext is
+        a UsageBarViewModel, which knows nothing about this choice.
+    -->
+    <Border Name="Card"
+            Classes="widget"
+            Classes.system="{Binding FollowsSystem}"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Center">
+        <Panel>
+            <StackPanel Orientation="Horizontal"
+                        Spacing="14"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding HasReading}"
+                        Classes.stale="{Binding IsStale}">
+                <ContentControl Content="{Binding Session}"
+                                ContentTemplate="{StaticResource WidgetMetricTemplate}" />
+                <ContentControl Content="{Binding Week}"
+                                ContentTemplate="{StaticResource WidgetMetricTemplate}" />
+                <ContentControl Content="{Binding WeekFable}"
+                                IsVisible="{Binding ShowFable}"
+                                ContentTemplate="{StaticResource WidgetMetricTemplate}" />
+            </StackPanel>
+
+            <!--
+                Nothing to show: the same three states the tray icon draws as
+                shapes, with a word beside each because here there is room for one.
+            -->
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding !HasReading}">
+                <TextBlock Classes="widgetGlyph"
+                           VerticalAlignment="Center"
+                           Text="{Binding AlertGlyph}" />
+                <TextBlock Classes="widgetValue"
+                           VerticalAlignment="Center"
+                           Text="{Binding AlertText}" />
+            </StackPanel>
+        </Panel>
+    </Border>
+</Window>

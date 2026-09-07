@@ -1,0 +1,199 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ClaudeStatus.App.ViewModels"
+        xmlns:controls="using:ClaudeStatus.App.Controls"
+        x:Class="ClaudeStatus.App.Views.DetailsWindow"
+        x:DataType="vm:DetailsViewModel"
+        Title="ClaudeStatus"
+        Width="340"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowDecorations="BorderOnly"
+        WindowStartupLocation="Manual"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+
+    <!--
+        The window itself is transparent and the Border below carries the colour,
+        which is what lets the background be translucent while the text stays
+        fully opaque. Setting Window.Opacity instead would fade the numbers too,
+        and a number you have to squint at is the one thing this window must not
+        produce.
+
+        If the platform refuses transparency - some Linux compositors do - the
+        Border simply paints its colour over an opaque window and the only thing
+        lost is the see-through effect.
+    -->
+
+    <Window.Resources>
+        <!-- One template for all three metrics, so they cannot drift apart. -->
+        <DataTemplate x:Key="UsageBarTemplate" DataType="vm:UsageBarViewModel">
+            <StackPanel Spacing="7">
+
+                <!--
+                    Label and countdown on the left, the number on the right at a
+                    size nothing else in the app uses. Reading down the window you
+                    get three percentages before any of the words - which is the
+                    whole point of a popup you open for two seconds.
+
+                    PercentText arrives pre-formatted from the view model rather
+                    than being composed here from Percent plus a literal "%": the
+                    decimal separator and the space before the sign are both
+                    language-dependent, and splitting them would put a "%" in the
+                    layout that no translation could move.
+                -->
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
+                        <TextBlock Classes="label" Text="{Binding Label}" />
+                        <TextBlock Classes="caption" Text="{Binding ResetText}" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1"
+                               Classes="display"
+                               VerticalAlignment="Center"
+                               Classes.exceeded="{Binding IsExceeded}"
+                               Classes.unknown="{Binding !IsKnown}"
+                               Text="{Binding PercentText}" />
+                </Grid>
+
+                <controls:UsageBar Percent="{Binding Percent}"
+                                   Classes.exceeded="{Binding IsExceeded}"
+                                   Classes.unknown="{Binding !IsKnown}" />
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource Theme.OsdBackground}"
+            BorderBrush="{DynamicResource Theme.OsdBorder}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource Radius.Panel}"
+            Padding="{StaticResource Pad.Panel}">
+        <StackPanel Spacing="16">
+
+            <!--
+                A title bar the OS is not drawing for us. The accent dot is the
+                only place the primary colour appears at full strength in this
+                window, which is what makes a theme change read immediately.
+
+                L is the shared localizer; the indexer re-reads on a language change.
+            -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Ellipse Width="7"
+                         Height="7"
+                         VerticalAlignment="Center"
+                         Fill="{DynamicResource Theme.Primary}" />
+                <TextBlock Classes="heading"
+                           VerticalAlignment="Center"
+                           Text="{Binding L[Details_Heading]}" />
+            </StackPanel>
+
+            <StackPanel Spacing="16" IsVisible="{Binding HasReading}">
+                <ContentControl Content="{Binding Session}"
+                                ContentTemplate="{StaticResource UsageBarTemplate}" />
+                <ContentControl Content="{Binding Week}"
+                                ContentTemplate="{StaticResource UsageBarTemplate}" />
+                <ContentControl Content="{Binding WeekFable}"
+                                ContentTemplate="{StaticResource UsageBarTemplate}" />
+            </StackPanel>
+
+            <!--
+                The cold start. Three empty bars and three dashes said nothing
+                about why there were no numbers, and read as "broken" rather than
+                "not set up yet" - to the one person most likely to be looking,
+                someone who has just installed this. So the bars give way entirely
+                and the popup explains itself instead.
+
+                The button appears only for the two states a user can act on. A
+                network failure and a rate limit resolve themselves, and offering
+                a button that opens a window with nothing relevant in it is worse
+                than offering none.
+            -->
+            <Border Classes="notice" Padding="14,12" IsVisible="{Binding !HasReading}">
+                <StackPanel Spacing="7">
+                    <TextBlock Classes="metric" Text="{Binding EmptyTitle}" />
+                    <TextBlock Classes="caption" Text="{Binding EmptyBody}" />
+                    <Button Classes="accent"
+                            Margin="0,4,0,0"
+                            HorizontalAlignment="Left"
+                            IsVisible="{Binding CanOpenConfig}"
+                            Content="{Binding L[Details_Empty_OpenConfig]}"
+                            Command="{Binding OpenConfigCommand}" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="warning" IsVisible="{Binding HasStaleReading}">
+                <TextBlock Classes="caption" Text="{Binding StaleText}" />
+            </Border>
+
+            <!--
+                Usage is climbing fast enough to run out before the reset. The
+                widget flashes this on its own; here it stays for as long as it
+                is true, so someone who missed the flash still finds out.
+            -->
+            <Border Classes="warning" IsVisible="{Binding HasVelocityAlert}">
+                <TextBlock Classes="caption" Text="{Binding VelocityText}" />
+            </Border>
+
+            <!--
+                A new version is downloaded and will install by itself at the next
+                start. This is an offer of a shortcut, not a demand: a .notice
+                rather than a .warning, because nothing is wrong, and the button is
+                ghost-styled because restarting is not what the user opened this
+                window to do.
+            -->
+            <Border Classes="notice" IsVisible="{Binding HasUpdate}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0"
+                               Classes="caption"
+                               VerticalAlignment="Center"
+                               Text="{Binding UpdateText}" />
+                    <Button Grid.Column="1"
+                            Classes="ghost"
+                            Padding="10,5"
+                            Content="{Binding L[Update_Restart]}"
+                            Command="{Binding ApplyUpdateNowCommand}" />
+                </Grid>
+            </Border>
+
+            <Border Classes="rule" />
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <!--
+                    Hidden during the empty state: it carries the same sentence
+                    the panel above is already showing at full size, and saying it
+                    twice in a 340px window makes the popup look confused.
+                -->
+                <TextBlock Grid.Column="0"
+                           Classes="caption"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding HasReading}"
+                           Text="{Binding StatusText}" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                    <!--
+                        Opens the full report. Ghost-styled on purpose: this window
+                        is a glance, and anyone who wants the detail is choosing to
+                        leave it, so the control that does that should not be the
+                        loudest thing in the footer.
+                    -->
+                    <Button Classes="ghost"
+                            Content="{Binding L[Details_MoreButton]}"
+                            Command="{Binding ShowReportCommand}" />
+                    <!--
+                        Steps aside when the panel above is offering Config. Two
+                        filled accent buttons in one popup is two primary actions,
+                        and in that state Refresh is not the one to take - there
+                        is nothing to refresh until the credential exists.
+                    -->
+                    <Button Content="{Binding L[Details_Refresh]}"
+                            Classes.accent="{Binding !CanOpenConfig}"
+                            Classes.ghost="{Binding CanOpenConfig}"
+                            IsEnabled="{Binding CanRefresh}"
+                            Command="{Binding RefreshCommand}" />
+                </StackPanel>
+            </Grid>
+
+        </StackPanel>
+    </Border>
+</Window>

@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ClaudeStatus.App.ViewModels"
+        xmlns:views="using:ClaudeStatus.App.Views"
+        x:Class="ClaudeStatus.App.Views.TaskbarHoverWindow"
+        x:DataType="vm:TaskbarWidgetViewModel"
+        Title="ClaudeStatus"
+        SizeToContent="WidthAndHeight"
+        CanResize="False"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
+        Topmost="True"
+        WindowDecorations="None"
+        WindowStartupLocation="Manual"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+
+    <!--
+        The hover card, as a window of our own rather than an Avalonia ToolTip.
+        The tooltip service positions relative to the widget window, and that
+        window is a child of the taskbar whose coordinates Avalonia does not
+        model well; the card landed wherever the pointer was and touched the
+        taskbar, and placement settings changed nothing. This window is placed
+        by TaskbarWidgetIndicator from the widget's real screen rectangle, the
+        way the details popup already is.
+    -->
+
+    <Border Classes="hoverCard">
+        <views:TaskbarWidgetTooltip DataContext="{Binding}" />
+    </Border>
+</Window>

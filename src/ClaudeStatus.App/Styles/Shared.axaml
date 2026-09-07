@@ -1,0 +1,411 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:ClaudeStatus.App.Controls">
+
+    <!--
+        The app's design system. Two rules hold everything together:
+
+        1. Every colour is a DynamicResource written by ThemeApplier, never a
+           literal. A StaticResource would resolve once and the theme picker would
+           appear to do nothing until the window was reopened.
+        2. Sizes come from the scale below rather than from whatever looked right
+           in the view being edited at the time. Five type sizes and two radii are
+           what keeps four windows written weeks apart looking like one app.
+    -->
+
+    <Styles.Resources>
+        <!--
+            The type scale: 11 / 12 / 13 / 15 / 26. The jump from 15 to 26 is
+            deliberate - a usage percentage is the one thing this app exists to
+            show, so it gets a size nothing else is allowed to use.
+        -->
+        <x:Double x:Key="Size.Caption">11</x:Double>
+        <x:Double x:Key="Size.Body">12</x:Double>
+        <x:Double x:Key="Size.Strong">13</x:Double>
+        <x:Double x:Key="Size.Heading">15</x:Double>
+        <x:Double x:Key="Size.Display">26</x:Double>
+
+        <!-- Two radii: one for panels, one for the controls inside them. -->
+        <CornerRadius x:Key="Radius.Panel">10</CornerRadius>
+        <CornerRadius x:Key="Radius.Control">6</CornerRadius>
+
+        <Thickness x:Key="Pad.Panel">18</Thickness>
+        <Thickness x:Key="Pad.Card">12,10</Thickness>
+    </Styles.Resources>
+
+    <!-- ==============================================================
+         Typography
+         ============================================================== -->
+
+    <!--
+        A section title. Text colour, not the accent: with several of these
+        stacked, accent-coloured headings compete with the numbers they are
+        supposed to be introducing.
+    -->
+    <Style Selector="TextBlock.heading">
+        <Setter Property="FontSize" Value="{StaticResource Size.Heading}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <!--
+        A field label above the thing it names. Small, muted and letterspaced -
+        the letterspacing is what stops 11px capitals reading as a cramped block,
+        and it is most of why these look considered rather than merely small.
+    -->
+    <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="{StaticResource Size.Caption}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="0.9" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
+    <!--
+        The muted grey is derived from the theme's text colour, not declared, so it
+        tints with the palette and cannot be picked against the wrong background.
+        Opacity stays at 1 because the colour already carries the fade - stacking
+        the two would wash it out on a translucent OSD.
+    -->
+    <Style Selector="TextBlock.caption">
+        <Setter Property="FontSize" Value="{StaticResource Size.Caption}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
+    <Style Selector="TextBlock.metric">
+        <Setter Property="FontSize" Value="{StaticResource Size.Strong}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <Style Selector="TextBlock.metric.exceeded">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Alert}" />
+    </Style>
+
+    <Style Selector="TextBlock.metric.unknown">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
+    <!--
+        The headline percentage.
+
+        "+tnum" asks the font for tabular figures - every digit the same width.
+        Without it a number ticking from 68 % to 71 % visibly shifts, because in
+        most proportional fonts a 1 is narrower than an 8, and a number that
+        twitches every minute looks broken however correct it is. Fonts without
+        the feature ignore it.
+    -->
+    <Style Selector="TextBlock.display">
+        <Setter Property="FontSize" Value="{StaticResource Size.Display}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontFeatures" Value="+tnum" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+        <Setter Property="LineHeight" Value="30" />
+    </Style>
+
+    <!-- The metric whose bar has crossed the threshold. -->
+    <Style Selector="TextBlock.display.exceeded">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Alert}" />
+    </Style>
+
+    <!-- No reading at all. A dash, deliberately quiet - it is not a number. -->
+    <Style Selector="TextBlock.display.unknown">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
+    <!--
+        The source's own severity label when it is not "normal". Applied on top of
+        .caption, so it keeps the small size and only changes the colour and weight.
+    -->
+    <Style Selector="TextBlock.caption.exceeded">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Alert}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- ==============================================================
+         Surfaces
+         ============================================================== -->
+
+    <!-- A warning panel. Used for the weak-store and stale notices. -->
+    <Style Selector="Border.warning">
+        <Setter Property="Background" Value="{DynamicResource Theme.AlertSurface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.AlertBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+        <Setter Property="Padding" Value="{StaticResource Pad.Card}" />
+    </Style>
+
+    <Style Selector="Border.notice">
+        <Setter Property="Background" Value="{DynamicResource Theme.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+        <Setter Property="Padding" Value="{StaticResource Pad.Card}" />
+    </Style>
+
+    <!--
+        A card in the report window. No outline - the surface tint alone separates
+        it from the page, and a dozen bordered boxes stacked vertically turn a
+        report into a spreadsheet.
+    -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource Theme.Surface}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+        <Setter Property="Padding" Value="{StaticResource Pad.Card}" />
+    </Style>
+
+    <!-- A hairline rule. A Border rather than a Separator: exactly one pixel. -->
+    <Style Selector="Border.rule">
+        <Setter Property="Height" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource Theme.Border}" />
+    </Style>
+
+    <!-- ==============================================================
+         Usage bars
+         ============================================================== -->
+
+    <Style Selector="controls|UsageBar">
+        <Setter Property="Height" Value="6" />
+        <Setter Property="Track" Value="{DynamicResource Theme.Track}" />
+        <Setter Property="Fill" Value="{DynamicResource Theme.Primary}" />
+    </Style>
+
+    <Style Selector="controls|UsageBar.exceeded">
+        <Setter Property="Fill" Value="{DynamicResource Theme.Alert}" />
+    </Style>
+
+    <!-- Nothing to draw. The empty track still shows where a reading would go. -->
+    <Style Selector="controls|UsageBar.unknown">
+        <Setter Property="Fill" Value="{x:Null}" />
+    </Style>
+
+    <!-- ==============================================================
+         Controls
+         ============================================================== -->
+
+    <!--
+        Colours come from the Button* brushes ThemeApplier overrides, because a
+        Background set here would be painted over by Fluent's template. What is
+        left - the shape, the padding, the transition - is what a Style can still
+        reach.
+    -->
+    <Style Selector="Button">
+        <Setter Property="FontSize" Value="{StaticResource Size.Body}" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+        <Setter Property="Padding" Value="14,7" />
+    </Style>
+
+    <!--
+        The primary action. Filled with the accent and labelled in OnPrimary - the
+        black-or-white that accent can actually carry.
+
+        Set on the ContentPresenter because that is the element Fluent's template
+        paints; a Background on the Button itself is silently discarded.
+    -->
+    <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Theme.Primary}" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.OnPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.Primary}" />
+    </Style>
+
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight1}" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.OnPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorLight1}" />
+    </Style>
+
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SystemAccentColorDark1}" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.OnPrimary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColorDark1}" />
+    </Style>
+
+    <!--
+        A secondary action that should not look like one. No fill and no outline
+        until the pointer arrives, so it can sit in a footer without competing.
+    -->
+    <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Theme.Surface}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <!--
+        Fluent sizes tab headers for a phone-style pivot - 24px, taller than the
+        window title. In a 480px settings dialog that makes the tab strip the
+        loudest thing on screen and the settings themselves look like a footnote.
+    -->
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="{StaticResource Size.Strong}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Padding" Value="2,8,2,4" />
+        <Setter Property="Margin" Value="0,0,20,0" />
+    </Style>
+
+    <!--
+        Air between the label and the selection underline. Fluent's template puts
+        the pipe at the bottom of the same panel as the header text, so the two
+        touch; TabItem.Padding cannot separate them because it wraps both. A
+        bottom margin on the header alone grows the panel under the text and the
+        pipe follows the panel's edge down. The 4 px taken off Padding above keeps
+        the tab strip the same height it was.
+    -->
+    <Style Selector="TabItem /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+
+    <!-- ==============================================================
+         Window defaults
+         ============================================================== -->
+
+    <!--
+        Plain text and the window surface. Set at the window level rather than on
+        every control, so a theme change repaints everything including controls
+        this file never names.
+    -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource Theme.Background}" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}" />
+    </Style>
+
+    <Style Selector="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Size.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <!--
+        Tooltips carry the theme too. Fluent's default is a grey box that matches
+        neither the popup nor the widget it hangs off; this makes it the same
+        surface as the details popup, so hovering and clicking look related.
+    -->
+    <!--
+        The widget's hover card: the same surface as the details popup, so the
+        two read as one thing. A Border because the card is a window of our own,
+        not a ToolTip - see TaskbarHoverWindow.
+    -->
+    <Style Selector="Border.hoverCard">
+        <Setter Property="Background" Value="{DynamicResource Theme.OsdBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.OsdBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+        <Setter Property="Padding" Value="14,12" />
+    </Style>
+
+    <Style Selector="ToolTip">
+        <Setter Property="Background" Value="{DynamicResource Theme.OsdBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.OsdBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+        <Setter Property="Padding" Value="14,12" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <Style Selector="Separator">
+        <Setter Property="Background" Value="{DynamicResource Theme.Border}" />
+    </Style>
+
+    <!-- ==============================================================
+         Taskbar widget (TaskbarWidgetWindow)
+         ============================================================== -->
+
+    <!--
+        The card. The theme's OSD surface rather than the taskbar's own colour,
+        which is not ours to know: text is only ever drawn on a surface the theme
+        catalogue has already checked it against. It also means the popup's
+        transparency setting applies here too, so the two look like one thing.
+    -->
+    <Style Selector="Border.widget">
+        <Setter Property="Background" Value="{DynamicResource Theme.OsdBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.OsdBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Margin" Value="0,5" />
+    </Style>
+
+    <Style Selector="StackPanel.widgetMetric">
+        <Setter Property="Width" Value="64" />
+    </Style>
+
+    <!-- A stale reading fades exactly as the tray icon does, so the two agree. -->
+    <Style Selector="StackPanel.stale">
+        <Setter Property="Opacity" Value="0.55" />
+    </Style>
+
+    <Style Selector="TextBlock.widgetLabel">
+        <Setter Property="FontSize" Value="{StaticResource Size.Caption}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
+    <!-- Tabular figures for the same reason as .display: a number that twitches looks broken. -->
+    <Style Selector="TextBlock.widgetValue">
+        <Setter Property="FontSize" Value="{StaticResource Size.Body}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontFeatures" Value="+tnum" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <Style Selector="TextBlock.widgetValue.exceeded">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Alert}" />
+    </Style>
+
+    <Style Selector="TextBlock.widgetValue.unknown">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
+    <!-- The "!", "⊘" or "—" when there is nothing to show. -->
+    <Style Selector="TextBlock.widgetGlyph">
+        <Setter Property="FontSize" Value="{StaticResource Size.Heading}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Alert}" />
+    </Style>
+
+    <Style Selector="controls|UsageBar.widgetBar">
+        <Setter Property="Height" Value="3" />
+    </Style>
+
+    <!--
+        The blended variant. No card, and every colour comes from the Widget.*
+        resources TaskbarInk writes from the taskbar's own light/dark appearance -
+        the clock's colour, in effect. Only the alert red stays the theme's: it is
+        a signal, and a signal that changed colour with the taskbar would be one
+        less thing the user could learn to recognise.
+
+        The descendant selectors are more specific than the plain ones above, so
+        .exceeded and .unknown have to be restated here or the ink would win.
+    -->
+    <Style Selector="Border.widget.system">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <Style Selector="Border.widget.system TextBlock.widgetLabel">
+        <Setter Property="Foreground" Value="{DynamicResource Widget.InkMuted}" />
+    </Style>
+
+    <Style Selector="Border.widget.system TextBlock.widgetValue">
+        <Setter Property="Foreground" Value="{DynamicResource Widget.Ink}" />
+    </Style>
+
+    <Style Selector="Border.widget.system TextBlock.widgetValue.exceeded">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Alert}" />
+    </Style>
+
+    <Style Selector="Border.widget.system TextBlock.widgetValue.unknown">
+        <Setter Property="Foreground" Value="{DynamicResource Widget.InkMuted}" />
+    </Style>
+
+    <Style Selector="Border.widget.system controls|UsageBar.widgetBar">
+        <Setter Property="Track" Value="{DynamicResource Widget.Track}" />
+    </Style>
+
+</Styles>

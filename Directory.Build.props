@@ -1,0 +1,52 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>9999</WarningLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!--
+      Globalization is ON, and has to be. Under InvariantGlobalization the runtime
+      refuses every culture but the invariant one: CultureInfo.GetCultureInfo("es")
+      throws, so no satellite resource set can ever be selected and the app is
+      English-only by construction.
+
+      The cost is smaller than it looks. On Windows and macOS the ICU data comes
+      from the operating system, so a published build gains nothing but a flag. On
+      Linux it means libicu must be present, which every desktop distribution has;
+      a headless container without it would need InvariantGlobalization back on,
+      and would then simply be English.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!-- Product metadata. Version comes from git via MinVer - never edit by hand. -->
+  <PropertyGroup>
+    <Product>ClaudeStatus</Product>
+    <Authors>Franc</Authors>
+    <Company>ZeroWorks</Company>
+    <Copyright>Copyright (c) 2026 Franc</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <!-- MinVer: version derived from git tags (v1.2.3). -->
+  <PropertyGroup>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+  </ItemGroup>
+
+</Project>

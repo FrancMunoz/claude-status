@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ClaudeStatus</RootNamespace>
+    <!-- DPAPI (System.Security.Cryptography.ProtectedData) is Windows-only. -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- LibraryImport generates unsafe marshalling stubs (WindowsTaskbarHost). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../ClaudeStatus.Core/ClaudeStatus.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ClaudeStatus.App.ViewModels"
+             x:Class="ClaudeStatus.App.Views.TaskbarWidgetTooltip"
+             x:DataType="vm:TaskbarWidgetViewModel">
+
+    <!--
+        The hover card for the taskbar widget. It replaced a one-line string that
+        wrapped wherever the tooltip felt like it, leaving the last number alone
+        on a second line. This is a small table instead: a title, a status line,
+        and one row per limit - name, percentage, and when it resets.
+
+        All three limits are listed even when the widget itself hides Fable: the
+        hover is where the detail lives, the widget is the glance.
+    -->
+
+    <UserControl.Resources>
+        <!--
+            One Grid per row, but the columns are shared across rows through
+            SharedSizeGroup (the scope is the StackPanel below), so the longest
+            name and the longest reset text set the width for all three and the
+            percentages line up in one column whatever the words around them do.
+        -->
+        <DataTemplate x:Key="TooltipRow" DataType="vm:UsageBarViewModel">
+            <Grid ColumnSpacing="14" Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Name" />
+                    <ColumnDefinition Width="*" MinWidth="56" />
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Reset" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Classes="metric"
+                           VerticalAlignment="Center"
+                           Text="{Binding Label}" />
+                <TextBlock Grid.Column="1"
+                           Classes="metric"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Classes.exceeded="{Binding IsExceeded}"
+                           Classes.unknown="{Binding !IsKnown}"
+                           Text="{Binding PercentText}" />
+                <TextBlock Grid.Column="2"
+                           Classes="caption"
+                           TextAlignment="Right"
+                           VerticalAlignment="Center"
+                           Text="{Binding ResetText}" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <StackPanel Spacing="8" MinWidth="260">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse Width="7"
+                     Height="7"
+                     VerticalAlignment="Center"
+                     Fill="{DynamicResource Theme.Primary}" />
+            <TextBlock Classes="heading"
+                       VerticalAlignment="Center"
+                       Text="{Binding L[Details_Heading]}" />
+        </StackPanel>
+
+        <TextBlock Classes="caption"
+                   Classes.exceeded="{Binding IsStale}"
+                   Text="{Binding StatusText}" />
+
+        <Border Classes="rule" IsVisible="{Binding HasReading}" />
+
+        <StackPanel IsVisible="{Binding HasReading}" Grid.IsSharedSizeScope="True">
+            <ContentControl Content="{Binding TooltipSession}" ContentTemplate="{StaticResource TooltipRow}" />
+            <ContentControl Content="{Binding TooltipWeek}" ContentTemplate="{StaticResource TooltipRow}" />
+            <ContentControl Content="{Binding TooltipWeekFable}" ContentTemplate="{StaticResource TooltipRow}" />
+        </StackPanel>
+
+        <!-- The velocity warning. The card opens by itself to show this. -->
+        <Border Classes="warning" MaxWidth="340" IsVisible="{Binding HasNotice}">
+            <TextBlock Classes="caption" Text="{Binding NoticeText}" />
+        </Border>
+    </StackPanel>
+</UserControl>

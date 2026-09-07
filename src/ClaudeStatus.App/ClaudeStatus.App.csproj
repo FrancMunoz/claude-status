@@ -1,0 +1,147 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationIcon>Assets/avalonia-logo.ico</ApplicationIcon>
+    <AssemblyName>ClaudeStatus</AssemblyName>
+
+    <!--
+      GC settings for a tray app: this process sits idle for days doing almost
+      nothing, so workstation, non-concurrent GC with no retained VM is the right
+      shape - the opposite of a server default. It avoids a background GC thread
+      and the heap reserved for it.
+
+      Measured 2026-09-04: these made NO significant difference to the footprint
+      (~135 MB working set either way). They are kept because they are correct for
+      this workload, not because they were shown to help. Do not assume they are
+      what keeps memory down - see docs/CHANGELOG-dev.md Phase 6.
+    -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+  </PropertyGroup>
+
+  <!--
+    How a release is published. See docs/releasing.md.
+
+    Conditioned on a RuntimeIdentifier because these only make sense for one, and
+    because SelfContained is infectious: set unconditionally, it makes the two test
+    projects that reference this one fail to build with NETSDK1151, since a
+    self-contained executable cannot be referenced by a project that is not one.
+    A plain `dotnet build` therefore sees none of this; `dotnet publish -r win-x64`
+    sees all of it.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <!-- Nobody installing a tray app has the .NET 10 runtime. -->
+    <SelfContained>true</SelfContained>
+
+    <!--
+      Deliberately NOT single-file, which PLAN.md originally asked for.
+
+      Velopack already produces one Setup.exe, so single-file buys nothing at the
+      point of delivery - and it costs the thing that matters afterwards: delta
+      updates diff the published folder file by file, and a single packed blob
+      changes wholesale on every release. A 2 MB delta becomes a 90 MB download.
+    -->
+    <PublishSingleFile>false</PublishSingleFile>
+
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+
+    <!--
+      Satellite assemblies carry the translations, so they must survive trimming.
+      Without this the app is English-only in a release build and perfectly
+      multilingual in every test - the worst shape a bug can have.
+    -->
+    <SatelliteResourceLanguages>en;es;ca;de;fr</SatelliteResourceLanguages>
+
+    <!--
+      Trim warnings do not fail the publish, but only because every one of them
+      comes from Avalonia.DesignerSupport (the IDE's XAML previewer host) and the
+      COM activator - code a shipped tray app never enters. Checked 2026-09-05:
+      ClaudeStatus's own assemblies produce none.
+
+      EnableTrimAnalyzer stays on and runs at BUILD time, where TreatWarningsAsErrors
+      still applies, so the day our own code stops being trim-safe the build breaks.
+      Re-check the publish log if that list of assemblies ever changes.
+    -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <ILLinkTreatWarningsAsErrors>false</ILLinkTreatWarningsAsErrors>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+
+    <!--
+      Our own symbols go inside the assemblies; nothing else's come along.
+
+      SkiaSharp and HarfBuzz ship native .pdb files in their NuGet packages, and
+      the default reference-copying rules drag them into publish: 101 MB of the
+      first 150 MB build was libSkiaSharp.pdb and libHarfBuzzSharp.pdb. vpk would
+      have excluded them from the package anyway, but a publish folder that is
+      two-thirds debug symbols is a trap for anyone who ever zips it by hand.
+    -->
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <!--
+    Drops the native debug symbols SkiaSharp and HarfBuzz ship in their packages.
+
+    They arrive as native runtime assets rather than reference-related files, so
+    AllowedReferenceRelatedFileExtensions does not reach them and the publish
+    folder came out 150 MB, 101 MB of it libSkiaSharp.pdb and libHarfBuzzSharp.pdb.
+
+    Removing every .pdb is safe precisely because DebugType is embedded above:
+    our own symbols are inside the assemblies, so nothing here has a .pdb of its
+    own to lose.
+  -->
+  <Target Name="DropNativeSymbolsFromPublish"
+          AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+          Remove="@(ResolvedFileToPublish)"
+          Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+
+    <!--
+      Installer, updater and the Setup.exe. Windows-only for now; the package is
+      cross-platform, so adding a RID later is a workflow change, not a code one.
+    -->
+    <PackageReference Include="Velopack" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../ClaudeStatus.Core/ClaudeStatus.Core.csproj" />
+    <ProjectReference Include="../ClaudeStatus.Platform.Windows/ClaudeStatus.Platform.Windows.csproj" />
+    <ProjectReference Include="../ClaudeStatus.Platform.MacOS/ClaudeStatus.Platform.MacOS.csproj" />
+    <ProjectReference Include="../ClaudeStatus.Platform.Linux/ClaudeStatus.Platform.Linux.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The formatting helpers are internal but are exactly what the UI tests
+         need to assert: they decide what the user actually reads. -->
+    <InternalsVisibleTo Include="ClaudeStatus.App.Tests" />
+    <InternalsVisibleTo Include="ClaudeStatus.Platform.Tests" />
+  </ItemGroup>
+
+</Project>

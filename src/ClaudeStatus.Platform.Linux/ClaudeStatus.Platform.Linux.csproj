@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>ClaudeStatus</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../ClaudeStatus.Core/ClaudeStatus.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The plist and desktop-entry generators are internal but must be asserted
+         directly: their escaping rules are the failure mode, and they cannot be
+         driven through the public API from a machine of the wrong OS. -->
+    <InternalsVisibleTo Include="ClaudeStatus.Platform.Tests" />
+  </ItemGroup>
+
+</Project>

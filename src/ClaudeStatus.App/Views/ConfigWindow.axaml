@@ -1,0 +1,282 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ClaudeStatus.App.ViewModels"
+        x:Class="ClaudeStatus.App.Views.ConfigWindow"
+        x:DataType="vm:ConfigViewModel"
+        Title="{Binding L[Config_Title]}"
+        Width="480"
+        Height="560"
+        MinWidth="480"
+        MinHeight="420"
+        WindowStartupLocation="CenterScreen">
+
+    <!--
+        Save and the status line sit outside the tabs, in a footer that is always
+        visible. Save applies every tab, so hiding it inside one of them would
+        suggest it only applied to that tab.
+    -->
+    <DockPanel>
+
+        <Border DockPanel.Dock="Bottom"
+                BorderBrush="{DynamicResource Theme.Border}"
+                BorderThickness="0,1,0,0"
+                Padding="20,12">
+            <StackPanel Spacing="8">
+                <TextBlock Classes="caption"
+                           IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Text="{Binding StatusMessage}" />
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <TextBlock Grid.Column="0"
+                               Classes="caption"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap"
+                               ToolTip.Tip="{Binding SettingsFileText}"
+                               Text="{Binding SettingsFileText}" />
+                    <Button Grid.Column="1"
+                            Classes="accent"
+                            Content="{Binding L[Config_Save]}"
+                            Command="{Binding SaveCommand}"
+                            IsEnabled="{Binding !IsBusy}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <TabControl Margin="20,14,20,0" Padding="0,6,0,0">
+
+            <TabItem Header="{Binding L[Config_Tab_Account]}">
+                <ScrollViewer>
+                    <StackPanel Margin="0,8,2,8" Spacing="14">
+
+                        <TextBlock Classes="heading" Text="{Binding L[Config_Section_Source]}" />
+
+                        <StackPanel Spacing="6">
+                            <RadioButton GroupName="source"
+                                         IsChecked="{Binding UseClaudeCodeLogin}"
+                                         Content="{Binding L[Config_Source_ClaudeCode]}" />
+                            <TextBlock Classes="caption"
+                                       Margin="24,0,0,0"
+                                       Text="{Binding L[Config_Source_ClaudeCode_Help]}" />
+
+                            <RadioButton GroupName="source"
+                                         IsChecked="{Binding !UseClaudeCodeLogin}"
+                                         Content="{Binding L[Config_Source_Manual]}" />
+                            <TextBlock Classes="caption"
+                                       Margin="24,0,0,0"
+                                       Text="{Binding L[Config_Source_Manual_Help]}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="8" IsEnabled="{Binding !UseClaudeCodeLogin}">
+                            <TextBox PlaceholderText="{Binding L[Config_Token_Placeholder]}"
+                                     PasswordChar="•"
+                                     Text="{Binding TokenInput}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="{Binding L[Config_SaveToken]}"
+                                        Command="{Binding SaveTokenCommand}" />
+                                <Button Content="{Binding L[Config_ForgetToken]}"
+                                        Command="{Binding ForgetTokenCommand}"
+                                        IsEnabled="{Binding HasStoredCredential}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Content="{Binding L[Config_Test]}"
+                                Command="{Binding TestCommand}"
+                                IsEnabled="{Binding !IsBusy}"
+                                HorizontalAlignment="Left" />
+
+                        <Border Classes="notice">
+                            <TextBlock Classes="caption" Text="{Binding EncryptionNotice}" />
+                        </Border>
+
+                        <Border Classes="warning" IsVisible="{Binding ShowWeakStoreWarning}">
+                            <TextBlock Classes="caption" Text="{Binding WeakStoreWarning}" />
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="{Binding L[Config_Tab_Display]}">
+                <ScrollViewer>
+                    <StackPanel Margin="0,8,2,8" Spacing="18">
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{Binding L[Config_Section_Language]}" />
+                            <!-- Applies as soon as it is picked, so you can see what you chose. -->
+                            <ComboBox ItemsSource="{Binding Languages}"
+                                      SelectedItem="{Binding SelectedLanguage}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate DataType="vm:LanguageOption">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Classes="caption" Text="{Binding LanguageHelp}" />
+                        </StackPanel>
+
+                        <!--
+                            Widget or icon. Hidden where no taskbar can host the
+                            widget, because then the icon is the only answer and a
+                            radio group with one live entry is a question nobody
+                            can answer. Applies on Save, live, without a restart.
+                        -->
+                        <StackPanel Spacing="6" IsVisible="{Binding CanUseTaskbarWidget}">
+                            <TextBlock Classes="label" Text="{Binding L[Config_Section_Indicator]}" />
+
+                            <RadioButton GroupName="indicator"
+                                         IsChecked="{Binding UseTaskbarWidget}"
+                                         Content="{Binding L[Config_Indicator_Widget]}" />
+                            <TextBlock Classes="caption"
+                                       Margin="24,0,0,0"
+                                       Text="{Binding L[Config_Indicator_Widget_Help]}" />
+
+                            <RadioButton GroupName="indicator"
+                                         IsChecked="{Binding !UseTaskbarWidget}"
+                                         Content="{Binding L[Config_Indicator_Icon]}" />
+                            <TextBlock Classes="caption"
+                                       Margin="24,0,0,0"
+                                       Text="{Binding L[Config_Indicator_Icon_Help]}" />
+
+                            <CheckBox Margin="0,6,0,0"
+                                      IsEnabled="{Binding UseTaskbarWidget}"
+                                      IsChecked="{Binding ShowFableInWidget}"
+                                      Content="{Binding L[Config_Widget_ShowFable]}" />
+                            <TextBlock Classes="caption"
+                                       Margin="24,0,0,0"
+                                       Text="{Binding L[Config_Widget_ShowFable_Help]}" />
+
+                            <CheckBox IsEnabled="{Binding UseTaskbarWidget}"
+                                      IsChecked="{Binding WidgetFollowsSystem}"
+                                      Content="{Binding L[Config_Widget_FollowSystem]}" />
+                            <TextBlock Classes="caption"
+                                       Margin="24,0,0,0"
+                                       Text="{Binding L[Config_Widget_FollowSystem_Help]}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{Binding ThresholdText}" />
+                            <Slider Minimum="1" Maximum="100" TickFrequency="5"
+                                    Value="{Binding ThresholdPercent}" />
+                            <TextBlock Classes="caption" Text="{Binding L[Config_Threshold_Help]}" />
+                        </StackPanel>
+
+                        <Border Classes="warning" IsVisible="{Binding ShowTrayWarning}">
+                            <TextBlock Classes="caption" Text="{Binding TrayWarning}" />
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="{Binding L[Config_Tab_Theme]}">
+                <ScrollViewer>
+                    <StackPanel Margin="0,8,2,8" Spacing="18">
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{Binding L[Config_Theme]}" />
+                            <!-- Applies as you pick, so the list is its own preview. -->
+                            <ComboBox ItemsSource="{Binding Themes}"
+                                      SelectedItem="{Binding SelectedTheme}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate DataType="vm:ThemeOption">
+                                        <Grid ColumnDefinitions="Auto,*" >
+                                            <!-- Three swatches: background, text, primary. -->
+                                            <StackPanel Grid.Column="0"
+                                                        Orientation="Horizontal"
+                                                        Spacing="3"
+                                                        Margin="0,0,10,0"
+                                                        VerticalAlignment="Center"
+                                                        IsVisible="{Binding HasSwatches}">
+                                                <Border Width="14" Height="14" CornerRadius="3"
+                                                        BorderThickness="1"
+                                                        BorderBrush="{DynamicResource Theme.Border}"
+                                                        Background="{Binding BackgroundSwatch}" />
+                                                <Border Width="14" Height="14" CornerRadius="3"
+                                                        Background="{Binding TextSwatch}" />
+                                                <Border Width="14" Height="14" CornerRadius="3"
+                                                        Background="{Binding PrimarySwatch}" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Name}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBlock Classes="caption" Text="{Binding ThemeHelp}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{Binding L[Config_Font]}" />
+                            <ComboBox ItemsSource="{Binding Fonts}"
+                                      SelectedItem="{Binding SelectedFont}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate DataType="vm:FontOption">
+                                        <TextBlock Text="{Binding Name}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <TextBox Text="{Binding CustomFont}"
+                                     IsEnabled="{Binding IsCustomFont}"
+                                     PlaceholderText="{Binding L[Config_Font_Placeholder]}" />
+                            <TextBlock Classes="caption" Text="{Binding L[Config_Font_Help]}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{Binding TransparencyText}" />
+                            <Slider Minimum="0" Maximum="100" TickFrequency="10"
+                                    Value="{Binding OsdTransparencyPercent}" />
+                            <TextBlock Classes="caption" Text="{Binding L[Config_Transparency_Help]}" />
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="{Binding L[Config_Tab_Behaviour]}">
+                <ScrollViewer>
+                    <StackPanel Margin="0,8,2,8" Spacing="18">
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="{Binding IntervalText}" />
+                            <Slider Minimum="60" Maximum="600" TickFrequency="30"
+                                    Value="{Binding PollIntervalSeconds}" />
+                            <TextBlock Classes="caption" Text="{Binding L[Config_Interval_Help]}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <CheckBox Content="{Binding L[Config_Autostart]}"
+                                      IsChecked="{Binding StartWithOperatingSystem}"
+                                      IsEnabled="{Binding IsAutostartSupported}" />
+                            <TextBlock Classes="caption" Text="{Binding AutostartDescription}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <CheckBox Content="{Binding L[Config_AutomaticUpdates]}"
+                                      IsChecked="{Binding AutomaticUpdates}" />
+                            <TextBlock Classes="caption"
+                                       Text="{Binding L[Config_AutomaticUpdates_Help]}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <CheckBox Content="{Binding L[Config_VelocityAlerts]}"
+                                      IsChecked="{Binding VelocityAlerts}" />
+                            <TextBlock Classes="caption"
+                                       Text="{Binding L[Config_VelocityAlerts_Help]}" />
+                        </StackPanel>
+
+                        <CheckBox Content="{Binding L[Config_FakeData]}"
+                                  IsChecked="{Binding UseFakeProvider}" />
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+        </TabControl>
+
+    </DockPanel>
+</Window>
