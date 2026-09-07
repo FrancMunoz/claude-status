@@ -158,8 +158,9 @@ you chose.
   aggressively; this is not a preference.
 - **Fake data** switches to a deterministic built-in provider. Useful for
   screenshots and for trying themes without burning real requests.
-- **Popup transparency** is 0–100 % and affects the details popup's background
-  only. Never its text — a percentage you have to squint at defeats the point.
+- **Popup transparency** is 0–100 %, default 10 %, and affects the details
+  popup's background only. Never its text — a percentage you have to squint at
+  defeats the point.
 
 ### Languages
 

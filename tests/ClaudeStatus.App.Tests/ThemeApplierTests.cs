@@ -66,14 +66,18 @@ public class ThemeApplierTests(HeadlessAppFixture fixture)
     }
 
     [Fact]
-    public void The_default_of_zero_transparency_is_a_solid_panel()
+    public void The_default_transparency_is_a_barely_translucent_panel()
     {
+        // The default is 10 %, not solid: enough that the popup reads as an
+        // overlay, little enough that nothing behind it competes with the
+        // numbers. Only the background takes the alpha, so the text is untouched.
         HeadlessAppFixture.Invoke(() =>
         {
-            Apply(ThemeCatalog.Dark, new ClaudeStatus.Config.AppSettings().OsdTransparency);
+            Apply(ThemeCatalog.Dark, ClaudeStatus.Config.AppSettings.DefaultOsdTransparency);
 
-            ColorOf("Theme.OsdBackground").A.Should().Be(255);
-            ColorOf("Theme.OsdBorder").A.Should().Be(255);
+            ColorOf("Theme.OsdBackground").A.Should().Be(230, "255 less 10 %");
+            ColorOf("Theme.OsdBorder").A.Should().Be(230, "the border fades with the panel");
+            ColorOf("Theme.Text").A.Should().Be(255, "text never carries the alpha");
         });
     }
 

@@ -2134,3 +2134,36 @@ task.
   sets a persistent banner in the details popup plus a once-per-15-minutes flash
   on the indicator. `DetailsViewModel.VelocityText` / `HasVelocityAlert` and
   `TaskbarWidgetViewModel.NoticeText` / `HasNotice` carry it to the views.
+
+## 2026-09-07 — The Claude mark, the widget card, and a default that is not `default`
+
+- **The mark in the taskbar widget.** `ClaudeMark.Geometry` leads the widget,
+  before the `5h` metric, and takes the same ink as the text beside it:
+  `Widget.Ink` blended, `Theme.Primary` on the themed card, both from styles keyed
+  on the existing `.system` class. It sits outside the metrics `Panel`, so it
+  stands in the no-reading states and stays out of the `.stale` fade — it is an
+  identity, not a reading. The hover card's heading swapped its 7px `Ellipse` for
+  the same mark; that was the last `Ellipse` in any view.
+- It went in first as a `StreamGeometry` with the path data pasted into the
+  window, which duplicated `Branding/ClaudeMark` — the class that exists to be the
+  single copy, already bound by `DetailsWindow` and `InfoWindow`. Corrected the
+  same day. Nothing would have reported the drift if the asset were redrawn.
+- **The themed card is outlined in `Theme.Primary`** (1px, rounded) with padding
+  `10,0` → `14,4`. `Theme.OsdBorder` is right for the popup, which opens over the
+  desktop; inside the taskbar a hairline reads as an edge of the taskbar rather
+  than of this app. Blending is untouched and renders pixel-identical, which
+  required restating `Padding` in the `.system` rule — it looks redundant next to
+  the rule above it and is not, so a test asserts both variants.
+- **`OsdTransparency` defaults to 10 %**, and that broke the rule this type is
+  built around: a persisted property's intended value must be `default`. It no
+  longer can be, because 0 (a solid panel) is a legitimate choice and cannot also
+  mean "not set" — and the JSON source generator does not run property
+  initialisers, so a file missing the key would come back 0 while a fresh install
+  came back 0.10. The property is now `double?`; `Normalized()` resolves null and
+  non-finite to `AppSettings.DefaultOsdTransparency`, exactly as it already does
+  for `Polling`. Same shape as the `DisableAutomaticUpdates` inversion, reached
+  from the other direction.
+- **CI had never run.** `build.yml` and `release.yml` both filtered on `main`; the
+  default branch is `master` and `main` does not exist on the remote. Fixed, and a
+  `master` ruleset now requires a pull request whose four checks pass, with linear
+  history, no force-push and no deletion. The repository admin can bypass.

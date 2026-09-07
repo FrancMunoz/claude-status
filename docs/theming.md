@@ -118,10 +118,14 @@ Applies to the small details popup only, and never to its text — a translucent
 number is a number you have to squint at. The other windows are always opaque:
 they are for reading, not for glancing past.
 
-**0 % is a solid panel**, and is the default. At **100 %** the panel and its
-border vanish entirely and the readings float over the desktop, which is what an
-on-screen display traditionally looks like. The text stays fully legible and the
-buttons stay clickable, because only the background ever carries the alpha.
+**10 % is the default** — enough that the popup reads as an overlay rather than a
+window, little enough that nothing behind it competes with the numbers. **0 % is
+a solid panel**, and stays solid: it is a real choice, not the absence of one, so
+picking it survives a reload. At **100 %** the panel and its border vanish
+entirely and the readings float over the desktop, which is what an on-screen
+display traditionally looks like. The text stays fully legible and the buttons
+stay clickable at every setting, because only the background ever carries the
+alpha.
 
 Some Linux compositors do not grant window transparency. Where that happens the
 popup is simply opaque and nothing else changes.

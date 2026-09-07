@@ -297,7 +297,8 @@ public partial class ConfigViewModel : ObservableObject
             SelectedFont = matched ?? Fonts[0];
             OnPropertyChanged(nameof(IsCustomFont));
 
-            OsdTransparencyPercent = Math.Round(settings.OsdTransparency * 100d);
+            OsdTransparencyPercent = Math.Round(
+                (settings.OsdTransparency ?? AppSettings.DefaultOsdTransparency) * 100d);
         }
         finally
         {
