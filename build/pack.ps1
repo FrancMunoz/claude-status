@@ -102,21 +102,19 @@ try {
         # full version so a build is still identifiable.
         $shortVersion = ($Version -split '-')[0]
 
-        # Written OUTSIDE the publish folder, and that is the whole point.
+        # Written beside the publish folder and never inside it.
         #
-        # vpk copies the publish folder wholesale into Contents/MacOS, so a plist
-        # left in there arrives inside the bundle as an application file as well as
-        # being the bundle's manifest. The previous fix for that was
-        # `--exclude 'Info\.plist'`, which cost us a release: vpk applies the
-        # exclude by walking the *finished* .app and deleting every file whose
-        # absolute path matches, unanchored - so the pattern also matched
-        # Contents/Info.plist and deleted the manifest. pkgbuild then found no
-        # bundle to derive an identifier from and failed with "No package
-        # identifier specified and not exactly one component to derive it from",
-        # which names neither the plist nor the exclude.
+        # vpk copies everything in --packDir into the .app, so a generated
+        # Info.plist left there ships as an application file as well as being the
+        # bundle's manifest - and pkgbuild then cannot find exactly one component
+        # to take the package identifier from:
         #
-        # Keeping the file out of the payload in the first place means no exclude
-        # has to be clever, and nothing that is deleted can be load-bearing.
+        #   pkgbuild: error: No package identifier specified and not exactly one
+        #   component to derive it from.
+        #
+        # It fails at the very last step, after the .app and the portable zip have
+        # both been built, which makes it look like an installer problem rather
+        # than a stray file. --exclude does not save it.
         $plistDir = Join-Path $repoRoot 'artifacts/macos'
         New-Item -ItemType Directory -Force -Path $plistDir | Out-Null
         $plistPath = Join-Path $plistDir 'Info.plist'
@@ -130,10 +128,6 @@ try {
         # declared in the template instead, and pkgbuild derives the package
         # identifier from it.
         $extraArgs += '--plist', $plistPath
-
-        # Anchored at the extension so it cannot reach anything but a .pdb. The
-        # publish already drops these (see the csproj), so this is a backstop.
-        $extraArgs += '--exclude', '\.pdb$'
     }
 
     # vpk refuses to package a build whose Main does not call VelopackApp.Run(),
