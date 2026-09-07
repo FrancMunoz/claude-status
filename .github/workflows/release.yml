@@ -67,7 +67,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       # Empty output when there is no release due - every commit since the last tag
       # was docs: or chore:, which is a perfectly normal thing to dispatch into.
@@ -143,7 +143,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Restore
         run: dotnet restore
