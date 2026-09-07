@@ -2,7 +2,7 @@ name: release
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 # The whole release is one job on one runner, deliberately.
