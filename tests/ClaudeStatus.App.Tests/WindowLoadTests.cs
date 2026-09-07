@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
+using ClaudeStatus.App.Branding;
 using ClaudeStatus.App.Theming;
 using ClaudeStatus.App.Tray;
 using ClaudeStatus.App.Views;
@@ -193,9 +194,10 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
     [Fact]
     public void The_taskbar_widget_window_loads_and_draws_the_Claude_mark()
     {
-        // The mark is inlined path data, which the XAML compiler does not
-        // validate: a geometry it cannot parse yields an empty shape, and the
-        // widget would then load perfectly with nothing drawn where the mark is.
+        // An {x:Static} that fails to resolve leaves Data null, and the widget
+        // then loads perfectly with nothing drawn where the mark should be. The
+        // bounds check is what separates "resolved" from "resolved to an empty
+        // shape", which is what an unparsable outline would look like.
         HeadlessAppFixture.Invoke(() =>
         {
             var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
@@ -207,9 +209,27 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
                 .OfType<Shapes.Path>()
                 .Single(p => p.Classes.Contains("widgetMark"));
 
-            mark.Data.Should().NotBeNull("the StreamGeometry resource has to resolve");
+            mark.Data.Should().BeSameAs(ClaudeMark.Geometry, "one outline, drawn everywhere");
             mark.Data!.Bounds.Width.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
             mark.Data.Bounds.Height.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
+        });
+    }
+
+    [Fact]
+    public void The_hover_card_loads_and_leads_with_the_mark()
+    {
+        // The card the widget shows on hover. Its heading is the details popup's
+        // heading, so it draws the details popup's mark beside it; it used to be
+        // a 7px dot, which read as a bullet rather than as the application.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarHoverWindow { DataContext = viewModel };
+
+            Shapes.Path mark = window.GetLogicalDescendants().OfType<Shapes.Path>().Single();
+            mark.Data.Should().BeSameAs(ClaudeMark.Geometry, "one outline, drawn everywhere");
         });
     }
 
