@@ -101,7 +101,25 @@ try {
         # prerelease suffix there, while CFBundleVersion is free-form and keeps the
         # full version so a build is still identifiable.
         $shortVersion = ($Version -split '-')[0]
-        $plistPath = Join-Path $publishDir 'Info.plist'
+
+        # Written OUTSIDE the publish folder, and that is the whole point.
+        #
+        # vpk copies the publish folder wholesale into Contents/MacOS, so a plist
+        # left in there arrives inside the bundle as an application file as well as
+        # being the bundle's manifest. The previous fix for that was
+        # `--exclude 'Info\.plist'`, which cost us a release: vpk applies the
+        # exclude by walking the *finished* .app and deleting every file whose
+        # absolute path matches, unanchored - so the pattern also matched
+        # Contents/Info.plist and deleted the manifest. pkgbuild then found no
+        # bundle to derive an identifier from and failed with "No package
+        # identifier specified and not exactly one component to derive it from",
+        # which names neither the plist nor the exclude.
+        #
+        # Keeping the file out of the payload in the first place means no exclude
+        # has to be clever, and nothing that is deleted can be load-bearing.
+        $plistDir = Join-Path $repoRoot 'artifacts/macos'
+        New-Item -ItemType Directory -Force -Path $plistDir | Out-Null
+        $plistPath = Join-Path $plistDir 'Info.plist'
 
         (Get-Content -Raw 'build/macos/Info.plist.template').
             Replace('__VERSION__', $Version).
@@ -109,12 +127,13 @@ try {
             Set-Content -NoNewline -Path $plistPath
 
         # --plist and --bundleId are mutually exclusive in vpk; the identifier is
-        # declared in the template instead.
+        # declared in the template instead, and pkgbuild derives the package
+        # identifier from it.
         $extraArgs += '--plist', $plistPath
 
-        # The plist must not ship inside the bundle as an application file as well
-        # as being the bundle's own manifest.
-        $extraArgs += '--exclude', '.*\.pdb|Info\.plist'
+        # Anchored at the extension so it cannot reach anything but a .pdb. The
+        # publish already drops these (see the csproj), so this is a backstop.
+        $extraArgs += '--exclude', '\.pdb$'
     }
 
     # vpk refuses to package a build whose Main does not call VelopackApp.Run(),
