@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>CFBundleName</key>
+    <string>ClaudeStatus</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.zeroworks.claudestatus</string>
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__SHORT_VERSION__</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleExecutable</key>
+    <string>ClaudeStatus</string>
+    <key>CFBundleIconFile</key>
+    <string>claude-mark.icns</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <!--
+      The reason this file exists at all. ClaudeStatus lives in the menu bar and
+      quits from its own menu, so a Dock icon offers a way in that leads nowhere
+      and a way out that skips the menu. MacOsAppPresentation sets the same policy
+      at runtime, which is what makes an unpackaged build behave; this stops the
+      icon appearing at all for the packaged one, rather than appearing and then
+      being taken away.
+    -->
+    <key>LSUIElement</key>
+    <true/>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+  </dict>
+</plist>

@@ -31,20 +31,52 @@ handed the version explicitly (see below).
 ## Building a release locally
 
 ```pwsh
-./build/pack.ps1 -Version 0.1.0
+./build/pack.ps1 -Version 0.1.0                      # win-x64, the default
+./build/pack.ps1 -Version 0.1.0 -Runtime osx-arm64   # macOS
 ```
+
+**Each platform packs on itself.** `vpk` shells out to the host's own tools - a
+`.pkg` needs `pkgbuild`, a `Setup.exe` needs the Windows toolchain - so neither
+can be cross-built. That is the only reason the release workflow has two jobs.
 
 Produces, in `artifacts/releases/`:
 
 | file | what it is |
 | --- | --- |
-| `ClaudeStatus-win-Setup.exe` | the installer people download (~28 MB) |
+| `ClaudeStatus-win-Setup.exe` | the Windows installer (~28 MB) |
 | `ClaudeStatus-win-Portable.zip` | unzip-and-run, no installer, **no auto-update** |
+| `ClaudeStatus-osx-Setup.pkg` | the macOS installer, `osx-arm64` |
+| `ClaudeStatus-osx-Portable.zip` | the `.app` in a zip, **no auto-update** |
 | `ClaudeStatus-<version>-full.nupkg` | the payload the updater downloads |
-| `RELEASES`, `releases.win.json`, `assets.win.json` | the feed the updater reads |
+| `RELEASES`, `releases.win.json`, `assets.win.json` | the feed a Windows copy reads |
+| `RELEASES-osx`, `releases.osx.json`, `assets.osx.json` | the feed a Mac reads |
 
-CI runs this exact script with no extra arguments, so a packaging problem is
-reproducible on a laptop rather than only visible in a failed workflow.
+The feeds are **per platform and not interchangeable**: a Mac reads
+`releases.osx.json` and never looks at the Windows one. Attaching an installer
+without its feed produces an app people can install and then never update, and
+nothing about it looks like an error - `ReleaseConfigTests` asserts both sets are
+listed in `.releaserc.json` for that reason.
+
+CI runs this exact script, so a packaging problem is reproducible on a laptop
+rather than only visible in a failed workflow.
+
+## How the macOS package reaches the release
+
+`release.yml` has two jobs, and tagging still happens exactly once.
+
+1. **`macos`** asks semantic-release, in `--dry-run` mode, what the next version
+   would be. Same commits and same config as the real run, so it reaches the same
+   answer without tagging anything. If there is no release due it outputs nothing
+   and every later step is skipped. Otherwise it runs `pack.ps1 -Runtime
+   osx-arm64` and uploads `artifacts/releases/` as a workflow artifact.
+2. **`release`** downloads that artifact into `artifacts/releases/`, then runs
+   semantic-release for real. Its prepare step packs Windows into the same folder
+   - `pack.ps1` creates the folder but never empties it - and the GitHub plugin
+   uploads everything it finds under one tag.
+
+The obvious alternative, a second workflow reacting to the published release,
+**silently never fires**: a tag pushed with `GITHUB_TOKEN` does not trigger
+another workflow, which GitHub does deliberately to prevent recursion.
 
 ## Why the version is passed in explicitly
 
@@ -126,9 +158,14 @@ The practical consequence, and what to tell users:
   reputation, and disappears with an Authenticode certificate (an OV certificate
   is roughly $200â400/year; EV bypasses the reputation period entirely). `vpk`
   takes `--signParams` or `--azureTrustedSignFile` when there is one.
-- **macOS**, when it ships. Unsigned apps need a Gatekeeper bypass
-  (right-click â Open, or `xattr -dr com.apple.quarantine`). Proper notarization
-  needs an Apple Developer account at $99/year.
+- **macOS.** The `.pkg` ships unsigned and un-notarised, and `vpk` warns about
+  both on every run. Gatekeeper reports it as coming from an unidentified
+  developer; users right-click the `.pkg` -> **Open** -> **Open**, or run
+  `xattr -dr com.apple.quarantine` on the installed app. Notarisation needs an
+  Apple Developer account at $99/year, after which `vpk pack` takes
+  `--signAppIdentity`, `--signInstallIdentity` and `--notaryProfile` and the
+  warnings go away. This is the more urgent of the two: macOS refuses the
+  installer outright where Windows only warns.
 
 Both are **paid certificates**, which is why the first releases ship unsigned.
 This is a deliberate, documented decision, not an oversight â but it is the first
@@ -136,11 +173,20 @@ thing to fix if the app gets an audience.
 
 ## Adding a platform
 
-The pack script has no Windows-specific logic. Adding macOS or Linux is:
+macOS is done; Linux is not. The remaining work for a platform is:
 
-1. Add the RID to a build matrix in `release.yml` and pass `-Runtime` through.
-2. Attach the new artifacts in `.releaserc.json`.
-3. Decide the signing story for that platform first (see above).
+1. Add a job to `release.yml` that packs it on its own runner and uploads the
+   result, and download that artifact in the `release` job. Cross-building is not
+   an option - see above.
+2. Teach `pack.ps1` the RID's entry-point name and icon format. Everything
+   platform-specific in that script is derived from `-Runtime`.
+3. Attach both the installer **and its feed** in `.releaserc.json`, and extend
+   `ReleaseConfigTests` so a missing feed fails the build rather than shipping.
+4. Decide the signing story first (see above).
 
-Note that **nothing in this project has ever executed on macOS or Linux**. Those
-builds should be treated as unverified until somebody runs one.
+**Intel Macs are not built.** Only `osx-arm64` is packed. Adding `osx-x64` means a
+second Velopack channel, because the two would otherwise overwrite each other's
+`ClaudeStatus-osx-Setup.pkg` and feed.
+
+**Linux has never been executed.** CI builds and tests it on every push, but no
+one has run the result; treat it as unverified until somebody does.

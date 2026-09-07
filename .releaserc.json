@@ -7,7 +7,9 @@
     "silently never arrive. ReleaseConfigTests asserts they are equal."
   ],
   "repositoryUrl": "https://github.com/FrancMunoz/claude-status",
-  "branches": ["main"],
+  "branches": [
+    "master"
+  ],
   "tagFormat": "v${version}",
   "plugins": [
     "@semantic-release/commit-analyzer",
@@ -22,12 +24,43 @@
       "@semantic-release/github",
       {
         "assets": [
-          { "path": "artifacts/releases/ClaudeStatus-win-Setup.exe", "label": "Windows installer" },
-          { "path": "artifacts/releases/ClaudeStatus-win-Portable.zip", "label": "Windows portable" },
-          { "path": "artifacts/releases/*.nupkg" },
-          { "path": "artifacts/releases/RELEASES" },
-          { "path": "artifacts/releases/releases.win.json" },
-          { "path": "artifacts/releases/assets.win.json" }
+          {
+            "path": "artifacts/releases/ClaudeStatus-win-Setup.exe",
+            "label": "Windows installer"
+          },
+          {
+            "path": "artifacts/releases/ClaudeStatus-win-Portable.zip",
+            "label": "Windows portable"
+          },
+          {
+            "path": "artifacts/releases/ClaudeStatus-osx-Setup.pkg",
+            "label": "macOS installer (Apple Silicon)"
+          },
+          {
+            "path": "artifacts/releases/ClaudeStatus-osx-Portable.zip",
+            "label": "macOS portable (Apple Silicon)"
+          },
+          {
+            "path": "artifacts/releases/*.nupkg"
+          },
+          {
+            "path": "artifacts/releases/RELEASES"
+          },
+          {
+            "path": "artifacts/releases/releases.win.json"
+          },
+          {
+            "path": "artifacts/releases/assets.win.json"
+          },
+          {
+            "path": "artifacts/releases/RELEASES-osx"
+          },
+          {
+            "path": "artifacts/releases/releases.osx.json"
+          },
+          {
+            "path": "artifacts/releases/assets.osx.json"
+          }
         ],
         "successComment": false,
         "failComment": false
