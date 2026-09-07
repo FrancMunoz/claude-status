@@ -5,7 +5,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <ApplicationIcon>Assets/avalonia-logo.ico</ApplicationIcon>
+    <ApplicationIcon>Assets/claude-mark.ico</ApplicationIcon>
     <AssemblyName>ClaudeStatus</AssemblyName>
 
     <!--
