@@ -40,20 +40,35 @@ The icon shows one metric — session % by default — as a bare number. It turn
 swaps the number for a shape when there is no number to show: `!` no credential,
 `✕` exhausted, `⊘` never reached the endpoint.
 
-**Taskbar widget (Windows).** On Windows the default indicator is not the icon but
-a small card in the taskbar beside the clock, showing the session and weekly limits
-at once (the Fable limit too, if you turn it on in Config):
+### Taskbar widget — Windows only
 
-![Taskbar widget](docs/screenshots/taskbar-widget.png)
+On Windows the default indicator is not the icon but a small card in the taskbar
+beside the clock, showing the session and weekly limits at once. Everything in
+this section is Windows-only; macOS and Linux always use the tray icon.
 
 It uses the same technique as [TrafficMonitor](https://github.com/zhongyang219/TrafficMonitor)
 and, like it, relies on undocumented taskbar internals. If the taskbar cannot be
 joined — vertical taskbar, or a Windows update that moves things — the app falls
-back to the tray icon. Config → Display → Indicator switches between the two, live.
-The same tab can drop the card and blend the widget into the taskbar, in the
-clock's own text colour:
+back to the tray icon. **Config → Display** switches between the two, live, and
+holds the options below.
 
-![Taskbar widget blended into a light taskbar](docs/screenshots/taskbar-widget-blend.png)
+| | |
+| --- | --- |
+| ![Themed card](docs/screenshots/taskbar-widget.png) | **Themed card.** Your theme's colours, outlined in its accent. |
+| ![Blended into a dark taskbar](docs/screenshots/taskbar-widget-blend.png) | **Blend into the taskbar** *(default)* — no card, and the clock's own text colour. |
+| ![Blended into a light taskbar](docs/screenshots/taskbar-widget-blend-light.png) | The same blend on a **light taskbar**: the ink follows the taskbar, exactly as the tray icon's does. |
+| ![Themed card with the Fable column](docs/screenshots/taskbar-widget-fable.png) | **Show Fable** adds the weekly Fable limit as a third column. Off by default — most plans hit the session or weekly limit first. |
+
+The widget is themed, so the card follows whichever theme you pick:
+
+<p align="center">
+  <img src="docs/screenshots/themes/widget-claude.png" alt="Taskbar widget in the Claude theme" width="200">
+  <img src="docs/screenshots/themes/widget-nebula.png" alt="Taskbar widget in the Nebula theme" width="200">
+  <img src="docs/screenshots/themes/widget-matcha.png" alt="Taskbar widget in the Matcha theme" width="200">
+</p>
+
+Hovering the widget opens a card with all three limits and their reset times,
+whatever the widget itself is showing.
 
 - **Left click** — the details popup. Click again to dismiss it.
 - **Right click** — Details, Full report…, Show ▸ (switch metric), Refresh,
@@ -72,7 +87,8 @@ See [`docs/translating.md`](docs/translating.md).
 
 ### Themes
 
-Eleven built in, plus your own from a file. Every one of them clears WCAG 4.5:1 on
+Eleven built in, plus your own from a file. **Claude** is the default; *Follow the
+system* is one click away in the picker. Every one of them clears WCAG 4.5:1 on
 body text; a palette that fails is not shipped.
 
 <p align="center">
