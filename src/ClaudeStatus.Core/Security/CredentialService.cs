@@ -154,6 +154,16 @@ public sealed class CredentialService
         CredentialSource source, CancellationToken ct = default)
     {
         IAccessTokenSource tokenSource = ResolveTokenSource(source);
+
+        // Test means "go and look", so anything the source is holding from an
+        // earlier poll has to go first. Without this, a user who has just fixed
+        // their login - or declined a Keychain prompt and changed their mind -
+        // would be shown the stale answer the cache was built to keep serving.
+        if (tokenSource is ICachingAccessTokenSource caching)
+        {
+            caching.Forget();
+        }
+
         IUsageProvider provider = _providerFactory(tokenSource);
 
         try

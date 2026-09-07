@@ -6,6 +6,37 @@ using ClaudeStatus.Security;
 
 namespace ClaudeStatus.Platform.MacOS;
 
+/// <summary>How a read of another application's Keychain item turned out.</summary>
+/// <remarks>
+/// A bare null cannot carry this. "The item is not there" and "you were told no"
+/// look the same to a caller holding null, and they call for opposite responses:
+/// the first is worth retrying on the next poll because Claude Code may log in at
+/// any moment, and the second must not be, because retrying a refusal is what
+/// turns one permission prompt into one per poll.
+/// </remarks>
+public enum KeychainReadOutcome
+{
+    /// <summary>The item was read.</summary>
+    Found = 0,
+
+    /// <summary>No such item. Nobody was asked anything.</summary>
+    NotFound = 1,
+
+    /// <summary>The user was asked and said no, or the Keychain is locked.</summary>
+    Denied = 2,
+
+    /// <summary>Security.framework failed for some other reason.</summary>
+    Unavailable = 3,
+}
+
+/// <summary>The outcome of a Keychain read, and the bytes when there are any.</summary>
+/// <param name="Outcome">What happened.</param>
+/// <param name="Secret">
+/// The item's data, set only when <paramref name="Outcome"/> is
+/// <see cref="KeychainReadOutcome.Found"/>. The caller owns it and must zero it.
+/// </param>
+public readonly record struct KeychainReadResult(KeychainReadOutcome Outcome, byte[]? Secret);
+
 /// <summary>
 /// Stores secrets in the macOS login Keychain via <c>Security.framework</c>.
 /// </summary>
@@ -205,7 +236,7 @@ public sealed class KeychainSecretStore : ISecretStore
     /// length account makes Security.framework match any account under that
     /// service. The first access prompts the user; a refusal surfaces as null.
     /// </remarks>
-    public static Task<byte[]?> RetrieveRawAsync(string service, CancellationToken ct)
+    public static Task<KeychainReadResult> RetrieveRawAsync(string service, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(service);
         ct.ThrowIfCancellationRequested();
@@ -222,16 +253,16 @@ public sealed class KeychainSecretStore : ISecretStore
 
             if (status != ErrSecSuccess || data == IntPtr.Zero)
             {
-                return Task.FromResult<byte[]?>(null);
+                return Task.FromResult(new KeychainReadResult(Classify(status), null));
             }
 
             byte[] result = new byte[length];
             Marshal.Copy(data, result, 0, (int)length);
-            return Task.FromResult<byte[]?>(result);
+            return Task.FromResult(new KeychainReadResult(KeychainReadOutcome.Found, result));
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
         {
-            return Task.FromResult<byte[]?>(null);
+            return Task.FromResult(new KeychainReadResult(KeychainReadOutcome.Unavailable, null));
         }
         finally
         {
@@ -241,6 +272,19 @@ public sealed class KeychainSecretStore : ISecretStore
             }
         }
     }
+
+    /// <summary>Sorts a failing OSStatus into an outcome a caller can act on.</summary>
+    /// <remarks>
+    /// <c>errSecUserCanceled</c> is the prompt's Deny button. <c>errSecAuthFailed</c>
+    /// covers a locked keychain and a password the user could not supply - both are
+    /// "asked and not granted", and both mean the same thing to a poll loop.
+    /// </remarks>
+    private static KeychainReadOutcome Classify(int status) => status switch
+    {
+        ErrSecItemNotFound => KeychainReadOutcome.NotFound,
+        ErrSecUserCanceled or ErrSecAuthFailed => KeychainReadOutcome.Denied,
+        _ => KeychainReadOutcome.Unavailable,
+    };
 
     /// <summary>Turns an OSStatus into a message. Never includes the secret.</summary>
     private static string DescribeStatus(int status, string operation) => status switch

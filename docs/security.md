@@ -231,3 +231,20 @@ Also verified this round:
 5. **429 does not mean what it appears to mean.** An unauthenticated request
    returns `429 rate_limit_error`, not 401 (measured 2026-09-04). Never use a
    429 alone to conclude the credential is valid.
+6. **The macOS source holds the token it read, in memory, until it expires.**
+   Reading another application's Keychain item costs a permission prompt (§7.1),
+   and `ClaudeCodeKeychainTokenSource` is asked for a token on every poll — so
+   reading through to the Keychain every time meant a prompt every time, which is
+   the shape of a dialog users learn to click away rather than read. It therefore
+   keeps the access token and re-reads only once that token's own `expiresAt`
+   has passed, about hourly. The held copy is a `byte[]`, never a `string`, and
+   is zeroed when it is replaced, when the source is disposed, and when `Forget`
+   is called. This widens the T5 window from one request to one token lifetime.
+   Accepted: the token is already reachable by anything running as the user
+   (T9), and the alternative trains the user to dismiss the very prompt that
+   protects it.
+
+   A refusal is remembered the same way and for the same reason — after a
+   declined prompt the source stops asking rather than re-prompting on the next
+   poll. `Forget`, which the Config window's **Test** button calls through
+   `ICachingAccessTokenSource`, is the way back.
