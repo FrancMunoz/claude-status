@@ -1,8 +1,21 @@
 name: release
 
+# Manual only, on purpose.
+#
+# This used to run on every push to master, which meant a release was a side
+# effect of merging rather than a decision: a pull request titled "fix: ..."
+# published a version the moment it was squashed, and one titled "docs: ..."
+# did not, so whether users got a new build came down to how the title was
+# worded. Releasing is now something someone chooses to do.
+#
+# build.yml still runs on every push and pull request, so master is verified
+# continuously whether or not anything is released from it.
+#
+# Run it from Actions -> release -> Run workflow, on master. semantic-release
+# still decides the version from the commits since the last tag, and still
+# declines to release from any branch but master (.releaserc.json), so a
+# dispatch on a topic branch analyses and stops rather than shipping.
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 # Two jobs, and only because macOS packages cannot be built anywhere else.
@@ -29,7 +42,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Builds the macOS installer, if this push is going to release at all.
+  # Builds the macOS installer, if this run is going to release at all.
   #
   # The version has to be known before anything can be packed, and it is
   # semantic-release that decides it from the commit history. Asking it in
@@ -55,9 +68,10 @@ jobs:
         with:
           node-version: 22
 
-      # Empty output when there is no release due, which is the common case on a
-      # push that only changed docs. Every later step is skipped, and the Windows
-      # job reaches the same conclusion on its own.
+      # Empty output when there is no release due - every commit since the last tag
+      # was docs: or chore:, which is a perfectly normal thing to dispatch into.
+      # Every later step is skipped, and the Windows job reaches the same
+      # conclusion on its own.
       #
       # Two things about the grep, and both are load-bearing:
       #
@@ -132,8 +146,10 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      # The gate. A release must never ship something the build workflow would
-      # have rejected, and this workflow runs on the same push, not after it.
+      # The gate. A release must never ship something the build workflow would have
+      # rejected. build.yml has already run against this commit on its way into
+      # master, but this workflow is dispatched by hand and can be pointed at any
+      # commit, so it re-proves it here rather than trusting that it was checked.
       - name: Build
         run: dotnet build --no-restore --configuration Release -warnaserror
 

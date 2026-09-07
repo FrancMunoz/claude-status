@@ -4,14 +4,22 @@ How a version of ClaudeStatus gets from a commit to somebody's machine.
 
 ## The short version
 
-Merge a Conventional Commit to `master`. That is the whole process — and it has
-to be a merge: a ruleset on `master` requires a pull request whose checks pass.
-The repository admin can bypass it, but the release fires on what lands on
-`master`, however it got there.
+**Actions → release → Run workflow**, on `master`. Releasing is a decision
+someone makes, not something that happens because a branch was merged.
 
-The ruleset does not stand in the release's way. It targets the branch, and
-semantic-release only pushes a **tag** and creates a GitHub Release — there is no
-`@semantic-release/git` plugin here, so nothing is ever committed back to
+Merging only accumulates commits. `master` is verified continuously — `build.yml`
+runs on every push and pull request — but nothing reaches a user until the release
+workflow is dispatched by hand.
+
+That is a deliberate change from running on every push to `master`. Under the
+ruleset, merges are squashes, so the squashed commit message is the pull request
+title — which meant a PR titled `fix: …` shipped a version the moment it landed
+and one titled `docs: …` did not. Whether users got a new build came down to how
+a title was worded.
+
+The ruleset does not stand in the release's way either. It targets the branch,
+and semantic-release only pushes a **tag** and creates a GitHub Release — there is
+no `@semantic-release/git` plugin here, so nothing is ever committed back to
 `master`.
 
 `.github/workflows/release.yml` builds, tests, and hands over to semantic-release,
@@ -27,7 +35,12 @@ to make:
 
 If there is one, it tags `vX.Y.Z`, runs `build/pack.ps1`, generates the notes from
 those same commits, and attaches the installer to a GitHub Release. If there is
-not, the workflow exits cleanly having done nothing.
+not — every commit since the last tag was `docs:` or `chore:` — the workflow exits
+cleanly having done nothing, so dispatching it when nothing is due is harmless.
+
+The **type** decides this and the scope is decorative: `fix(docs): …` is a `fix`
+and releases a patch. A documentation change that should ship no version has to
+be typed `docs:`.
 
 **Never edit a version number by hand.** There is no version number in the
 repository to edit — MinVer derives it from the tag, and the release build is
