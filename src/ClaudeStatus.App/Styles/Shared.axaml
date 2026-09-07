@@ -335,9 +335,12 @@
         The Claude mark that leads the card. Primary here, because on the
         themed card the mark is the one place the accent appears - the
         numbers are text and the bars carry their own meaning - so it is what
-        ties the strip to whichever theme is chosen. Stretch and a square
-        box rather than a Width alone: the asset is a 96-unit viewBox with an
-        offset group inside it, and Uniform makes both facts stop mattering.
+        ties the strip to whichever theme is chosen.
+
+        The outline is ClaudeMark.Geometry, the same one the details and info
+        headings draw, so the three cannot drift apart. Only the box and the ink
+        are set here; sizing lives in a style rather than on the Path because the
+        blended and themed variants differ by ink alone.
     -->
     <Style Selector="Path.widgetMark">
         <Setter Property="Fill" Value="{DynamicResource Theme.Primary}" />
