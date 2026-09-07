@@ -71,6 +71,11 @@ secrets.json
 .credentials.json
 *.pfx
 *.p12
+## The App Store Connect API key that notarises the macOS build. It downloads
+## exactly once and cannot be re-fetched, so a copy tends to get parked next to
+## the code that uses it. A credential, not a build input.
+*.p8
+AuthKey_*.p8
 *.snk
 TestResults/
 
