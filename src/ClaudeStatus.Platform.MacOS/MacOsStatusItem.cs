@@ -496,12 +496,6 @@ public sealed class MacOsStatusItem : INativeStatusItem
     {
         MacOsStatusItem? item = _current;
 
-        item?._log.LogInformation(
-            "Menu bar action fired. sender={Sender} current={Current} selfTest={SelfTest}",
-            sender,
-            item is not null,
-            item?._selfTesting);
-
         if (item is { _selfTesting: true })
         {
             item._selfTestReachedManagedCode = true;
@@ -532,11 +526,6 @@ public sealed class MacOsStatusItem : INativeStatusItem
         // command that does not exist, and dropped without a sound. Comparing the
         // sender to the button asks the question that was actually meant.
         nint button = Button;
-        _log.LogInformation(
-            "Menu bar dispatch. sender={Sender} button={Button} match={Match}",
-            sender,
-            button,
-            sender == button);
 
         if (sender != 0 && sender == button)
         {
@@ -563,7 +552,14 @@ public sealed class MacOsStatusItem : INativeStatusItem
     {
         nint mouseEvent = CurrentEvent();
         bool secondary = IsSecondaryClick(mouseEvent);
-        _log.LogInformation("Menu bar item clicked. secondary={Secondary}", secondary);
+        if (FirstClick())
+        {
+            _log.LogInformation("Menu bar item clicked. secondary={Secondary}", secondary);
+        }
+        else
+        {
+            _log.LogDebug("Menu bar item clicked. secondary={Secondary}", secondary);
+        }
 
         if (secondary)
         {
