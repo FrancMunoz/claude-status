@@ -56,6 +56,26 @@
     an unsigned one, so the three parameters are required as a set - see the check
     below.
 
+.PARAMETER WinSignEndpoint
+    The Azure Artifact Signing - formerly Trusted Signing - account endpoint, such
+    as https://weu.codesigning.azure.net.
+
+    Regional, and it must match the region the account was created in. An endpoint
+    for the wrong region is a perfectly valid one: it authenticates, and then reports
+    that the account does not exist.
+
+.PARAMETER WinSignAccount
+    The name of the Artifact Signing account.
+
+.PARAMETER WinSignProfile
+    The name of the certificate profile within that account.
+
+    None of these three is a secret. All three are printed by `signtool verify /pa`
+    on any signed download, and none of them authenticates anything on its own: the
+    credential is found separately by DefaultAzureCredential - an `az login` on a
+    laptop, a federated OIDC token in CI - so no secret is passed to this script or
+    written to a file it creates.
+
 .EXAMPLE
     ./build/pack.ps1 -Version 0.1.0
 
@@ -64,6 +84,12 @@
         -MacSignAppIdentity 'Developer ID Application: Example (TEAMID1234)' `
         -MacSignInstallIdentity 'Developer ID Installer: Example (TEAMID1234)' `
         -MacNotaryProfile 'claude-status-notary'
+
+.EXAMPLE
+    ./build/pack.ps1 -Version 0.1.0 -Runtime win-x64 `
+        -WinSignEndpoint 'https://weu.codesigning.azure.net' `
+        -WinSignAccount 'example' `
+        -WinSignProfile 'example-public-trust'
 #>
 [CmdletBinding()]
 param(
@@ -79,11 +105,44 @@ param(
 
     [string] $MacSignInstallIdentity = $env:MAC_SIGN_INSTALL_IDENTITY,
 
-    [string] $MacNotaryProfile = $env:MAC_NOTARY_PROFILE
+    [string] $MacNotaryProfile = $env:MAC_NOTARY_PROFILE,
+
+    [string] $WinSignEndpoint = $env:WIN_SIGN_ENDPOINT,
+
+    [string] $WinSignAccount = $env:WIN_SIGN_ACCOUNT,
+
+    [string] $WinSignProfile = $env:WIN_SIGN_PROFILE
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+<#
+.SYNOPSIS
+    Reports whether a group of signing parameters is complete, and rejects a partial one.
+
+.DESCRIPTION
+    Signing is optional; half of it is not. Returns $true for a group with every
+    parameter set and $false for an empty one, and throws for anything in between,
+    naming what is missing.
+#>
+function Test-SigningGroup {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Platform,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Specialized.OrderedDictionary] $Parameters
+    )
+
+    $missing = @($Parameters.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object { $_.Key })
+
+    if ($missing.Count -gt 0 -and $missing.Count -lt $Parameters.Count) {
+        throw "$Platform signing needs all of $($Parameters.Keys -join ', '), or none of them. Missing: $($missing -join ', ')."
+    }
+
+    return $missing.Count -eq 0
+}
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
@@ -109,34 +168,42 @@ try {
     # coincidence - the whole point of -Runtime is that they can differ.
     $packForMac = $Runtime.StartsWith('osx-')
 
-    # All three or none of the three, decided before anything is built.
+    # Each platform's parameters are all of them or none of them, decided before
+    # anything is built.
     #
     # Every partial combination produces something that looks like it worked and is
-    # not shippable: the app signed but the .pkg not, so the installer is still
-    # refused; or both signed but nothing notarised, which Gatekeeper treats as
+    # not shippable: on macOS the app signed but the .pkg not, so the installer is
+    # still refused, or both signed but nothing notarised, which Gatekeeper treats as
     # unsigned. Nothing is required, though - an unsigned build is the normal way to
-    # test packaging, and a contributor without a paid Apple account has to be able
-    # to run this script.
+    # test packaging, and a contributor with neither a paid Apple account nor an
+    # Azure subscription has to be able to run this script.
     #
-    # Checked here rather than beside the vpk arguments it feeds, because the publish
+    # Checked here rather than beside the vpk arguments they feed, because the publish
     # step sits between the two and takes minutes. A mistyped parameter should cost a
     # second, not a full build that fails at the very end.
-    $signing = [ordered] @{
+    $signMac = Test-SigningGroup -Platform 'macOS' -Parameters ([ordered] @{
         MacSignAppIdentity     = $MacSignAppIdentity
         MacSignInstallIdentity = $MacSignInstallIdentity
         MacNotaryProfile       = $MacNotaryProfile
-    }
-    $missing = @($signing.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object { $_.Key })
-    $signPackage = $missing.Count -eq 0
+    })
 
-    if ($missing.Count -gt 0 -and $missing.Count -lt $signing.Count) {
-        throw "macOS signing needs all of $($signing.Keys -join ', '), or none of them. Missing: $($missing -join ', ')."
-    }
+    $signWin = Test-SigningGroup -Platform 'Windows' -Parameters ([ordered] @{
+        WinSignEndpoint = $WinSignEndpoint
+        WinSignAccount  = $WinSignAccount
+        WinSignProfile  = $WinSignProfile
+    })
 
-    # Signing arguments are macOS-only; vpk rejects them on a Windows build rather
-    # than ignoring them, so a shell that exports them globally would break win-x64.
-    if ($signPackage -and -not $packForMac) {
+    # Signing arguments belong to one platform each; vpk rejects the other platform's
+    # rather than ignoring them. Someone who releases both ends up with both sets
+    # exported in one shell, and without these two checks that shell would break
+    # whichever build it was not for, from inside vpk, in a message about arguments
+    # rather than about platforms.
+    if ($signMac -and -not $packForMac) {
         throw "macOS signing parameters were supplied for runtime '$Runtime'. They apply only to an osx- runtime."
+    }
+
+    if ($signWin -and $packForMac) {
+        throw "Windows signing parameters were supplied for runtime '$Runtime'. They apply only to a win- runtime."
     }
 
     # Notarisation requires the hardened runtime, whose defaults kill a .NET app on
@@ -172,12 +239,16 @@ try {
     # `plutil -lint` passes on a commented file, so the only thing that catches it is
     # a real signing run. Hence the explanation living here instead.
     $entitlements = Join-Path $repoRoot 'build/macos/ClaudeStatus.entitlements'
-    if ($signPackage -and -not (Test-Path $entitlements)) {
+    if ($signMac -and -not (Test-Path $entitlements)) {
         throw "Entitlements file not found at $entitlements."
     }
 
-    if ($packForMac -and -not $signPackage) {
+    if ($packForMac -and -not $signMac) {
         Write-Host "==> Unsigned macOS build; Gatekeeper will refuse it on another machine." -ForegroundColor Yellow
+    }
+
+    if (-not $packForMac -and -not $signWin) {
+        Write-Host "==> Unsigned Windows build; SmartScreen will warn before it runs." -ForegroundColor Yellow
     }
 
     Write-Host "==> Publishing $Runtime at $Version" -ForegroundColor Cyan
@@ -241,13 +312,46 @@ try {
         # identifier from it.
         $extraArgs += '--plist', $plistPath
 
-        if ($signPackage) {
+        if ($signMac) {
             Write-Host "==> Signing as $MacSignAppIdentity and notarising via $MacNotaryProfile" -ForegroundColor Cyan
             $extraArgs += '--signAppIdentity', $MacSignAppIdentity
             $extraArgs += '--signInstallIdentity', $MacSignInstallIdentity
             $extraArgs += '--signEntitlements', $entitlements
             $extraArgs += '--notaryProfile', $MacNotaryProfile
         }
+    }
+    elseif ($signWin) {
+        # Azure Artifact Signing, until recently called Trusted Signing. The service
+        # issues a fresh certificate per request and each one lives 72 hours, so
+        # nothing durable is stored here: there is no .pfx on the machine, no password
+        # for one, and no expiry date to diarise. vpk hands this file to the
+        # signtool.exe and dlib it bundles.
+        #
+        # That dlib needs the .NET 8 *runtime* present, which is a separate thing from
+        # the SDK in global.json and is not implied by it. Without it signing fails
+        # inside signtool with a missing-framework error that names neither Azure nor
+        # Velopack.
+        #
+        # Written beside the publish folder and never inside it, for the same reason
+        # as the Info.plist above: vpk copies everything in --packDir into the package,
+        # so a metadata file left there would ship to every user. It is not a secret -
+        # signtool prints all three values from any signed download - but it is not
+        # something to distribute either.
+        #
+        # utf8NoBOM is explicit because the parser on the other side rejects a BOM,
+        # and it is exactly the kind of default that differs between hosts.
+        $metadataDir = Join-Path $repoRoot 'artifacts/windows'
+        New-Item -ItemType Directory -Force -Path $metadataDir | Out-Null
+        $metadataPath = Join-Path $metadataDir 'metadata.json'
+
+        [ordered] @{
+            Endpoint               = $WinSignEndpoint
+            CodeSigningAccountName = $WinSignAccount
+            CertificateProfileName = $WinSignProfile
+        } | ConvertTo-Json | Set-Content -Path $metadataPath -Encoding utf8NoBOM
+
+        Write-Host "==> Signing as $WinSignAccount/$WinSignProfile via $WinSignEndpoint" -ForegroundColor Cyan
+        $extraArgs += '--azureTrustedSignFile', $metadataPath
     }
 
     # vpk refuses to package a build whose Main does not call VelopackApp.Run(),

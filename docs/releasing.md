@@ -22,9 +22,8 @@ and semantic-release only pushes a **tag** and creates a GitHub Release — ther
 no `@semantic-release/git` plugin here, so nothing is ever committed back to
 `master`.
 
-`.github/workflows/release.yml` builds, tests, and hands over to semantic-release,
-which reads the commits since the last tag and decides whether there is a release
-to make:
+`.github/workflows/release.yml` asks semantic-release what the commits since the
+last tag amount to, and that answer decides whether there is a release to make:
 
 | commit prefix | result |
 | --- | --- |
@@ -33,10 +32,12 @@ to make:
 | `feat!:` or a `BREAKING CHANGE:` footer | major — `0.1.0` → `1.0.0` |
 | `docs:`, `chore:`, `test:`, `refactor:` | no release |
 
-If there is one, it tags `vX.Y.Z`, runs `build/pack.ps1`, generates the notes from
-those same commits, and attaches the installer to a GitHub Release. If there is
-not — every commit since the last tag was `docs:` or `chore:` — the workflow exits
-cleanly having done nothing, so dispatching it when nothing is due is harmless.
+If there is one, the workflow builds, tests, signs and packs each platform, then
+tags `vX.Y.Z`, generates the notes from those same commits and attaches the
+installers to a GitHub Release. If there is not — every commit since the last tag
+was `docs:` or `chore:` — every job after the first skips itself and the run
+finishes green having done nothing, so dispatching it when nothing is due is
+harmless.
 
 The **type** decides this and the scope is decorative: `fix(docs): …` is a `fix`
 and releases a patch. A documentation change that should ship no version has to
@@ -55,13 +56,15 @@ handed the version explicitly (see below).
 
 **Each platform packs on itself.** `vpk` shells out to the host's own tools - a
 `.pkg` needs `pkgbuild`, a `Setup.exe` needs the Windows toolchain - so neither
-can be cross-built. That is two of the three reasons the release workflow is split
-into jobs; the third is the signing key, and is explained under Signing below.
+can be cross-built. That is two of the reasons the release workflow is split into
+jobs; the other is keeping the signing credentials off the runners that install
+npm packages, and is explained under Signing below.
 
 Both commands above produce an **unsigned** build, which is the right default: it
-is how packaging is tested, and it is the only thing a contributor without a paid
-Apple account can run. To produce what a release actually ships, add the three
-macOS signing parameters - all three, or none, enforced before anything is built:
+is how packaging is tested, and it is the only thing a contributor with neither a
+paid Apple account nor an Azure subscription can run. To produce what a release
+actually ships, add that platform's signing parameters - all of them, or none of
+them, enforced before anything is built:
 
 ```pwsh
 $env:MAC_SIGN_APP_IDENTITY     = 'Developer ID Application: NAME (TEAMID)'
@@ -70,8 +73,21 @@ $env:MAC_NOTARY_PROFILE        = 'claude-status-notary'
 ./build/pack.ps1 -Version 0.1.0 -Runtime osx-arm64
 ```
 
-Notarisation uploads to Apple and waits, so that run takes minutes rather than
-seconds.
+```pwsh
+az login                                      # DefaultAzureCredential finds this
+$env:WIN_SIGN_ENDPOINT = 'https://weu.codesigning.azure.net'
+$env:WIN_SIGN_ACCOUNT  = 'the Artifact Signing account'
+$env:WIN_SIGN_PROFILE  = 'the certificate profile'
+./build/pack.ps1 -Version 0.1.0
+```
+
+A group belongs to one platform and the script says so rather than letting `vpk`
+fail: passing the macOS parameters for `win-x64`, or the Windows ones for an `osx-`
+runtime, is rejected before the build. That matters because anyone who releases
+both ends up with all six exported in one shell.
+
+Notarisation uploads to Apple and waits, so the macOS run takes minutes rather than
+seconds. Signing Windows is a per-file network round trip and adds seconds.
 
 Produces, in `artifacts/releases/`:
 
@@ -94,14 +110,14 @@ listed in `.releaserc.json` for that reason.
 CI runs this exact script, so a packaging problem is reproducible on a laptop
 rather than only visible in a failed workflow.
 
-## How the macOS package reaches the release
+## How the packages reach the release
 
-`release.yml` has three jobs, and tagging still happens exactly once.
+`release.yml` has four jobs, and tagging still happens exactly once.
 
 1. **`decide-version`** asks semantic-release, in `--dry-run` mode, what the next
    version would be. Same commits and same config as the real run, so it reaches
    the same answer without tagging anything. If there is no release due it outputs
-   an empty version and the other two jobs skip themselves.
+   an empty version and every other job skips itself.
 2. **`package-macos`** imports the Developer ID certificates into a keychain it
    creates for the job and puts on the user search list - vpk cannot point
    `productbuild` at it any other way, and `codesign` reports "no identity found"
@@ -110,17 +126,35 @@ rather than only visible in a failed workflow.
    with `spctl` and `stapler`, uploads `artifacts/releases/` as a workflow
    artifact, and deletes the keychain on the way out - including when the build
    failed, which is the case that matters.
-3. **`release`** downloads that artifact into `artifacts/releases/`, then runs
-   semantic-release for real. Its prepare step packs Windows into the same folder
-   - `pack.ps1` creates the folder but never empties it - and the GitHub plugin
-   uploads everything it finds under one tag.
+3. **`package-windows`** builds and tests, signs into `az login`'s federated Azure
+   token, runs `pack.ps1 -Runtime win-x64`, checks the result with
+   `Get-AuthenticodeSignature`, and uploads its own artifact.
+4. **`release`** downloads both artifacts into `artifacts/releases/`, checks that
+   every asset `.releaserc.json` lists actually arrived, and runs semantic-release
+   for real to tag, write the notes and upload.
 
-The first two are separate jobs because of the **signing key**, not the platform.
-Deciding the version means running semantic-release, which `npx` installs at run
-time from a dependency tree of hundreds of packages. Anything in that tree runs
-with the same access to the keychain that `codesign` has, and a stolen Developer
-ID key lets someone ship malware signed as this project. So the version is decided
-on a runner that holds no secrets, and handed over as a job output.
+The middle two are separate jobs because of the **signing credentials**, not the
+platform. semantic-release is what decides the version and what publishes, and
+`npx` installs it at run time from a dependency tree of hundreds of packages.
+Anything in that tree runs with the same access to those credentials that
+`codesign` and `signtool` have; a stolen Developer ID key, or an Azure token good
+for the rest of the job, lets someone ship malware signed as this project. So npm
+runs in the first and last jobs, which hold nothing, and the signing jobs between
+them run none at all.
+
+That is also why the last job packs nothing. It used to: `release` ran
+`pack.ps1` from semantic-release's prepare step, which put the npm tree and a
+signing credential on one runner the moment Windows was signed too. Both platforms
+now arrive already signed, and the publishing job cannot produce a binary at all.
+
+`permissions` is declared per job for the same reason rather than once at the top.
+The workflow default is read-only; only `release` can write a tag, and only
+`package-windows` can mint an OIDC token.
+
+The github plugin only *warns* about an asset path that matches nothing, so with
+packing moved out of that job a half-empty release could otherwise be tagged
+without anything failing. The check in step 4 reads the asset paths out of
+`.releaserc.json` itself, so it cannot drift from the list that uploads them.
 
 The obvious alternative, a second workflow reacting to the published release,
 **silently never fires**: a tag pushed with `GITHUB_TOKEN` does not trigger
@@ -131,10 +165,11 @@ another workflow, which GitHub does deliberately to prevent recursion.
 `pack.ps1` takes `-Version` and passes `-p:Version=... -p:MinVerSkip=true` to
 `dotnet publish`.
 
-This looks redundant next to MinVer and is not. semantic-release computes the next
-version and creates the tag **after** running the prepare step that builds the
-artifacts. MinVer, reading tags, would see the *previous* one — so every release
-would ship stamped one version behind the release it was attached to.
+This looks redundant next to MinVer and is not. Everything is packed **before**
+semantic-release tags anything — it has to be, since the installers are built in
+jobs that finish before the publishing one starts. MinVer, reading tags, would see
+the *previous* one — so every release would ship stamped one version behind the
+release it was attached to.
 
 ## What gets published, and what does not
 
@@ -193,8 +228,9 @@ staged, and taking it is optional.
 
 ## Signing
 
-**macOS is signed and notarised. Windows is not yet.** The two platforms are at
-different stages, so they are described separately.
+**Both platforms are signed.** They share nothing beyond that - different
+authorities, different failure modes, different consequences for a user - so they
+are described separately.
 
 ### macOS
 
@@ -311,18 +347,95 @@ secret and nothing else.
 
 ### Windows
 
-Not signed. `vpk` says so on every run, and SmartScreen shows "Windows protected
-your PC" on the installer - users click *More info* → *Run anyway*. This fades as
-the download builds reputation.
+Signed with **Azure Artifact Signing** - the service Microsoft launched as Trusted
+Signing and renamed - which removes the "Windows protected your PC" SmartScreen
+prompt that an unsigned installer gets.
 
-An Authenticode certificate removes it. An OV certificate is roughly $200-400/year
-and EV bypasses the reputation period entirely, but **Azure Trusted Signing** is
-worth pricing first: it is a subscription an order of magnitude cheaper, and `vpk`
-takes `--azureTrustedSignFile` for it as well as `--signParams` for a local
-certificate. It requires identity validation, so check the current eligibility
-terms before budgeting for it.
+Windows is the less severe of the two: an unsigned build warns, where an unsigned
+macOS build is refused outright. It was still worth doing, because a warning that
+says *Unknown publisher* is the one thing a user sees before they have anything to
+judge the app by.
 
-Windows is the less urgent of the two: it warns, where macOS refuses.
+The service issues a **fresh certificate for every signing request, valid 72
+hours**, so nothing durable is stored anywhere: no `.pfx` on a machine or in a
+secret, no password for one, no expiry to diarise, and nothing an attacker can take
+away and use tomorrow. That is the reason to prefer it over a bought certificate as
+much as the price - a Basic account is $9.99/month for 5,000 signatures, against
+$200-400/year for an OV certificate whose private key then has to live somewhere.
+
+`vpk` supports it directly. `pack.ps1` writes the three-value metadata file it
+wants and passes `--azureTrustedSignFile`; the values are the account endpoint,
+the account name and the certificate profile, and none of them is a credential.
+
+#### First-time setup in Azure
+
+The portal work, once, in this order. Steps 1-4 are on the signing service and
+step 5 is what lets CI use it.
+
+1. Register the **`Microsoft.CodeSigning`** resource provider on the subscription.
+2. Create an **Artifact Signing account**. The region decides the endpoint the
+   build uses - West Europe is `https://weu.codesigning.azure.net` - and an
+   endpoint from the wrong region authenticates and then reports that the account
+   does not exist, so note the pair together.
+3. Complete **identity validation**, in the portal only; the CLI cannot do it. It
+   is the long pole and the one that can fail outright, so check eligibility before
+   paying for anything:
+   - **Organization** needs a legal entity with three or more years of verifiable
+     tax history, and takes 1-20 business days.
+   - **Individual** needs a government ID and a Verified ID check against a
+     billing account whose details match the certificate exactly, and is open only
+     to residents of the United States and Canada.
+
+   Assign yourself the **Artifact Signing Identity Verifier** role first, or the
+   *New identity* button stays greyed out with no explanation.
+4. Create a **certificate profile** of type **Public Trust** against that identity
+   validation. Its name is `WINDOWS_SIGN_PROFILE`.
+5. Register a Microsoft Entra **app registration** with a **federated credential**
+   for this repository (issuer GitHub, `FrancMunoz/claude-status`, entity *Branch*
+   → `master`), and give it the **Trusted Signing Certificate Profile Signer** role
+   on the signing account. No client secret: see below.
+
+#### CI configuration
+
+`package-windows` reads three secrets and three variables, and checks all six
+before building for the same reason the macOS job does - packing without them
+succeeds and only warns.
+
+| Actions **secret** | contents |
+| --- | --- |
+| `AZURE_CLIENT_ID` | the app registration's application (client) ID |
+| `AZURE_TENANT_ID` | the Entra tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | the subscription holding the signing account |
+
+| Actions **variable** | contents |
+| --- | --- |
+| `WINDOWS_SIGN_ENDPOINT` | e.g. `https://weu.codesigning.azure.net` |
+| `WINDOWS_SIGN_ACCOUNT` | the Artifact Signing account name |
+| `WINDOWS_SIGN_PROFILE` | the certificate profile name |
+
+**None of these six is a signing credential, and there is no Azure secret in this
+repository at all.** Authentication is OIDC: the job asks GitHub for a short-lived
+token describing this repository and ref, and the federated credential trades it
+for an Azure access token that expires with the job. Nothing here can be stolen and
+reused, and revoking the ability to sign is a change in Azure rather than a
+rotation in these settings. The three identifiers are marked secret only because
+they identify the tenant; the three signing values are **variables**, exactly as
+the macOS identities are, because `signtool` prints all three from any signed
+download and masking them would turn a mismatch into `*** not found`.
+
+The runner also needs the **.NET 8 runtime**, installed by a second `setup-dotnet`
+step. The library that talks to Azure is a .NET 8 program and the SDK in
+`global.json` neither is nor implies it; without it, signing fails after a full
+build with a missing-framework error that names nothing belonging to this project.
+
+Verify a finished build the way CI does - no Windows SDK required, and it validates
+the chain against the machine's own root store, so `Valid` means a user's machine
+will agree:
+
+```pwsh
+Get-AuthenticodeSignature artifacts/releases/ClaudeStatus-win-Setup.exe |
+    Format-List Status, StatusMessage, SignerCertificate
+```
 
 ## Adding a platform
 

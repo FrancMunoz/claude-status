@@ -60,8 +60,9 @@ run it.
 - Installs **per user**. No administrator rights, nothing written to
   `Program Files`, nothing in the registry except the autostart entry if you
   enable it.
-- **SmartScreen will warn you the first time.** Click *More info* → *Run anyway*.
-  The installer is not code-signed; see [§7](#code-signing) for why.
+- **SmartScreen may warn you the first time.** Click *More info* → *Run anyway*.
+  The installer is code-signed, but a signature has to accumulate reputation
+  before the warning stops; see [§7](#code-signing).
 - Updates itself. See [§3](#updates).
 
 A `ClaudeStatus-win-Portable.zip` is also published. Unzip and run — but it
@@ -399,10 +400,10 @@ Push a Conventional Commit to `main`. That is the whole process.
 | `feat!:` or a `BREAKING CHANGE:` footer | major |
 | `docs:` `chore:` `test:` `refactor:` | no release |
 
-semantic-release reads the commits, decides the version, tags `vX.Y.Z`, runs
-`pack.ps1`, writes the notes and attaches the installer. **Never edit a version
-number by hand** — there is none in the repo to edit. MinVer derives it from the
-tag.
+semantic-release reads the commits and decides the version; each platform is then
+built and signed on a runner of its own, and semantic-release tags `vX.Y.Z`,
+writes the notes and attaches the installers. **Never edit a version number by
+hand** — there is none in the repo to edit. MinVer derives it from the tag.
 
 ### Code signing
 
@@ -412,12 +413,13 @@ tag.
   `pack.ps1` takes the identities and a `notarytool` profile, and requires all
   three or none: a partially signed build looks like it worked and is still
   refused.
-- **Windows** — not signed. SmartScreen warns until download reputation builds.
-  An Authenticode certificate removes it (~$200–400/year OV; EV skips the
-  reputation period), though Azure Trusted Signing is worth pricing first. `vpk`
-  accepts `--signParams` or `--azureTrustedSignFile`.
+- **Windows** — signed with **Azure Artifact Signing**, which issues a fresh
+  certificate per request that lives 72 hours, so no key is stored anywhere and
+  there is nothing to rotate. SmartScreen may still warn until the signature
+  builds reputation. `pack.ps1` takes the endpoint, account and profile, and
+  requires all three or none.
 
-Windows is the less urgent of the two: it warns, where macOS refuses.
+Windows was the less urgent of the two: it warns, where macOS refuses.
 
 `docs/releasing.md` has the setup, the entitlements, and the CI secrets.
 
