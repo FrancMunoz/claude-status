@@ -94,6 +94,10 @@
   <data name="Tray_Mode_Ring" xml:space="preserve">
     <value>Ring</value>
   </data>
+  <data name="Tray_Mode_Row" xml:space="preserve">
+    <value>Alles in einer Zeile</value>
+    <comment>Show menu entry for the inline row of every limit at once. macOS only; the entry is absent where the indicator must be square.</comment>
+  </data>
   <data name="Tray_Tooltip" xml:space="preserve">
     <value>ClaudeStatus — {0}</value>
   </data>
@@ -406,6 +410,10 @@
   <data name="Tray_Report" xml:space="preserve">
     <value>Vollständiger Bericht…</value>
   </data>
+  <data name="Tray_Row_Fable" xml:space="preserve">
+    <value>F</value>
+    <comment>Menu bar row label for the weekly Fable limit. Kept to one letter: the row sits in the macOS menu bar beside the clock.</comment>
+  </data>
   <data name="Details_MoreButton" xml:space="preserve">
     <value>Mehr…</value>
   </data>
@@ -600,6 +608,14 @@
   </data>
   <data name="Config_Widget_ShowFable_Help" xml:space="preserve">
     <value>Standardmäßig aus: die meisten Tarife erreichen das Sitzungs- oder Wochenlimit lange vor dem Fable-Limit, und das Widget ist ohne es schmaler. Das Detailfenster zeigt immer alle drei.</value>
+  </data>
+  <data name="Config_Row_ShowFable" xml:space="preserve">
+    <value>Fable-Limit in der Menüleiste anzeigen</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
+  </data>
+  <data name="Config_Row_ShowFable_Help" xml:space="preserve">
+    <value>Standardmäßig aus: Die meisten Tarife erreichen das Sitzungs- oder Wochenlimit lange vor dem Fable-Limit, und das Menüleistenelement ist ohne es kürzer. Das Popup zeigt immer alle drei.</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
   </data>
   <data name="Config_Widget_FollowSystem" xml:space="preserve">
     <value>In die Taskleiste einfügen</value>

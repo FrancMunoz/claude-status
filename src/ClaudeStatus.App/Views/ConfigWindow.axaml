@@ -155,6 +155,23 @@
                                        Text="{Binding L[Config_Widget_FollowSystem_Help]}" />
                         </StackPanel>
 
+                        <!--
+                            The same Fable setting, for an indicator that has no
+                            taskbar widget to put it in. The block above is hidden
+                            wherever the widget cannot be hosted, which is precisely
+                            where the menu bar row is drawn - so without this the
+                            third column could never be switched on.
+                        -->
+                        <StackPanel Spacing="6" IsVisible="{Binding CanUseInlineRow}">
+                            <TextBlock Classes="label" Text="{Binding L[Config_Section_Indicator]}" />
+
+                            <CheckBox IsChecked="{Binding ShowFableInWidget}"
+                                      Content="{Binding L[Config_Row_ShowFable]}" />
+                            <TextBlock Classes="caption"
+                                       Margin="24,0,0,0"
+                                       Text="{Binding L[Config_Row_ShowFable_Help]}" />
+                        </StackPanel>
+
                         <StackPanel Spacing="4">
                             <TextBlock Classes="label" Text="{Binding ThresholdText}" />
                             <Slider Minimum="1" Maximum="100" TickFrequency="5"

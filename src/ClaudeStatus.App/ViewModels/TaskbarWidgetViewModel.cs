@@ -37,6 +37,9 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     [ObservableProperty]
     private bool _showFable;
 
+    /// <summary>How old a reading may be before it is shown as out of date.</summary>
+    private TimeSpan _staleAfter = StalePolicy.Floor;
+
     /// <summary>
     /// Whether the widget blends into the taskbar rather than drawing the themed
     /// card - see <see cref="Config.AppSettings.WidgetFollowsSystem"/>.
@@ -111,10 +114,19 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     public double ThresholdPercent { get; private set; } = 80d;
 
     /// <summary>Applies the settings and re-evaluates the current reading.</summary>
-    public void Configure(double thresholdPercent, bool showFable, bool followSystem = false)
+    /// <param name="staleAfter">
+    /// How old a reading may be before the widget shows it as out of date. From
+    /// <see cref="StalePolicy"/>, shared with the tray icon and the macOS menu bar.
+    /// </param>
+    public void Configure(
+        double thresholdPercent,
+        bool showFable,
+        bool followSystem = false,
+        TimeSpan? staleAfter = null)
     {
         ThresholdPercent = thresholdPercent;
         ShowFable = showFable;
+        _staleAfter = staleAfter ?? StalePolicy.Floor;
         FollowsSystem = followSystem;
         Refresh();
     }
@@ -148,7 +160,11 @@ public partial class TaskbarWidgetViewModel : ObservableObject
         }
 
         HasReading = true;
-        IsStale = _snapshot.IsStale;
+
+        // The shared rule, not the monitor's raw flag: one failed request against an
+        // endpoint that 429s readily must not make a reading seconds old look
+        // doubtful. See StalePolicy for why both conditions are needed.
+        IsStale = StalePolicy.ShowsAsStale(_snapshot, _now, _staleAfter);
         AlertGlyph = string.Empty;
         AlertText = string.Empty;
 

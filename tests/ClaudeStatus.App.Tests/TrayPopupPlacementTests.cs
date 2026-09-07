@@ -50,6 +50,79 @@ public class TrayPopupPlacementTests
         placed.Bottom.Should().BeLessThanOrEqualTo(Bottom.Bottom, "it must not sit under the taskbar");
     }
 
+    /// <summary>A mac: 24 pt menu bar at the top, 70 pt Dock at the bottom.</summary>
+    /// <remarks>
+    /// The Dock is deliberately deeper than the menu bar, because that is the whole
+    /// bug. The inset heuristic takes the deepest edge, so it concluded the tray was
+    /// at the bottom and opened the popup as far from the menu bar as the screen
+    /// allows.
+    /// </remarks>
+    private static readonly PixelRect MenuBarAndDock = new(0, 24, 1920, 986);
+
+    [Fact]
+    public void A_deep_dock_no_longer_drags_the_popup_away_from_the_menu_bar()
+    {
+        PixelPoint at = TrayPopupPlacement.Place(
+            Bounds, MenuBarAndDock, Popup, 1.0, anchorAtTop: true);
+
+        at.Y.Should().BeInRange(
+            MenuBarAndDock.Y,
+            MenuBarAndDock.Y + 20,
+            "a menu bar popup opens just under the menu bar, whatever the Dock is doing");
+    }
+
+    [Fact]
+    public void Without_the_hint_a_deep_dock_still_wins_which_is_the_bug_it_documents()
+    {
+        // Pinned deliberately: this is the inference the macOS hint exists to
+        // bypass, and if it ever starts returning the top on its own then the hint
+        // has become dead weight and should go.
+        PixelPoint at = TrayPopupPlacement.Place(Bounds, MenuBarAndDock, Popup, 1.0);
+
+        at.Y.Should().BeGreaterThan(
+            MenuBarAndDock.Y + 100, "the deepest inset is the Dock, so the guess is 'bottom'");
+    }
+
+    [Fact]
+    public void The_popup_is_centred_on_the_icon_it_was_opened_from()
+    {
+        const int iconX = 1500;
+
+        PixelPoint at = TrayPopupPlacement.Place(
+            Bounds, MenuBarAndDock, Popup, 1.0, anchorAtTop: true, anchorX: iconX);
+
+        int centre = at.X + (int)Popup.Width / 2;
+        centre.Should().BeCloseTo(iconX, 1);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(30)]
+    [InlineData(1890)]
+    [InlineData(1920)]
+    public void An_icon_near_a_screen_edge_still_gets_a_popup_that_is_fully_on_screen(int iconX)
+    {
+        // A menu bar item can sit close enough to either edge that centring on it
+        // would hang the popup off the screen - and on a mac the right edge is
+        // exactly where these icons live.
+        PixelPoint at = TrayPopupPlacement.Place(
+            Bounds, MenuBarAndDock, Popup, 1.0, anchorAtTop: true, anchorX: iconX);
+
+        at.X.Should().BeGreaterThanOrEqualTo(MenuBarAndDock.X);
+        (at.X + (int)Popup.Width).Should().BeLessThanOrEqualTo(MenuBarAndDock.Right);
+    }
+
+    [Fact]
+    public void The_icon_anchor_is_ignored_where_no_platform_reports_one()
+    {
+        // Windows and Linux pass null, and must keep the corner anchoring they had.
+        PixelPoint withoutAnchor = TrayPopupPlacement.Place(Bounds, Bottom, Popup, 1.0);
+        PixelPoint withNullAnchor = TrayPopupPlacement.Place(
+            Bounds, Bottom, Popup, 1.0, anchorAtTop: false, anchorX: null);
+
+        withNullAnchor.Should().Be(withoutAnchor);
+    }
+
     [Fact]
     public void A_bottom_taskbar_anchors_the_popup_to_the_bottom_right()
     {

@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <RootNamespace>ClaudeStatus</RootNamespace>
+    <!-- LibraryImport generates unsafe marshalling stubs (CoreGraphicsPointerLocator),
+         the same reason the Windows project sets this. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

@@ -18,8 +18,22 @@ namespace ClaudeStatus.App.Tray;
 /// <para>
 /// Avalonia exposes no tray-icon position on any backend, so the anchor corner is
 /// inferred from where the taskbar is - the gap between the screen bounds and its
-/// working area. That puts the popup under a bottom taskbar on Windows, under the
-/// menu bar on macOS, and beside a left- or right-docked panel on Linux.
+/// working area. That puts the popup under a bottom taskbar on Windows and beside
+/// a left- or right-docked panel on Linux.
+/// </para>
+/// <para>
+/// <b>The inference is a guess, and on macOS it was the wrong one.</b> It compares
+/// insets and takes the deepest, so a Dock along the bottom - 64 pt and up - beat
+/// the menu bar's 24 pt and the popup opened in the bottom-right corner, as far
+/// from the menu bar item that opened it as the screen allows. Platforms that
+/// <i>know</i> where their tray is now say so through <paramref name="anchorAtTop"/>
+/// instead of leaving it to be deduced.
+/// </para>
+/// <para>
+/// <paramref name="anchorX"/> goes one better. The pointer is on the tray icon at
+/// the instant the popup is asked for, so passing that x centres the popup under
+/// the icon itself rather than under the corner of the screen it happens to sit
+/// nearest.
 /// </para>
 /// </remarks>
 internal static class TrayPopupPlacement
@@ -39,8 +53,21 @@ internal static class TrayPopupPlacement
     /// unless the popup is larger than the working area itself, in which case it is
     /// pinned to the top-left so at least the beginning of the content is reachable.
     /// </returns>
+    /// <param name="anchorAtTop">
+    /// True where the tray is known to run along the top edge, which skips the
+    /// inset inference for the vertical axis.
+    /// </param>
+    /// <param name="anchorX">
+    /// Where the tray icon is horizontally, in physical pixels, when the platform
+    /// can say. The popup is centred on it; null keeps the corner anchoring.
+    /// </param>
     public static PixelPoint Place(
-        PixelRect screenBounds, PixelRect workingArea, Size sizeDip, double scaling)
+        PixelRect screenBounds,
+        PixelRect workingArea,
+        Size sizeDip,
+        double scaling,
+        bool anchorAtTop = false,
+        int? anchorX = null)
     {
         // A non-finite or absurd scaling would silently produce a window parked in
         // another timezone. Anything outside this range is a broken backend, not a
@@ -62,10 +89,23 @@ internal static class TrayPopupPlacement
         int insetLeft = workingArea.X - screenBounds.X;
         int insetRight = screenBounds.Right - workingArea.Right;
 
-        bool atTop = insetTop > insetBottom && insetTop >= insetLeft && insetTop >= insetRight;
-        bool atLeft = insetLeft > insetRight && insetLeft >= insetTop && insetLeft >= insetBottom;
+        bool atTop = anchorAtTop
+            || (insetTop > insetBottom && insetTop >= insetLeft && insetTop >= insetRight);
 
-        int x = atLeft ? workingArea.X + margin : workingArea.Right - width - margin;
+        // A known top edge settles the horizontal question too: a top-edge tray runs
+        // the width of the screen, so "which side is the panel on" has no answer to
+        // give and the left/right inference would only add noise.
+        bool atLeft = !anchorAtTop
+            && insetLeft > insetRight && insetLeft >= insetTop && insetLeft >= insetBottom;
+
+        int x = anchorX is { } anchor
+
+            // Centred on the icon, not aligned to it: the popup is far wider than a
+            // tray icon, so aligning an edge would push it off to one side of the
+            // thing it belongs to.
+            ? anchor - (width / 2)
+            : atLeft ? workingArea.X + margin : workingArea.Right - width - margin;
+
         int y = atTop ? workingArea.Y + margin : workingArea.Bottom - height - margin;
 
         // The clamp is what actually guarantees the window is on screen. The anchor

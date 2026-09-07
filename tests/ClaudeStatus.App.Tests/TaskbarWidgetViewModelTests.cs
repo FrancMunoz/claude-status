@@ -10,6 +10,16 @@ public class TaskbarWidgetViewModelTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;
 
+    /// <summary>
+    /// Long enough after <see cref="Now"/> that a reading counts as out of date.
+    /// </summary>
+    /// <remarks>
+    /// The widget follows <see cref="StalePolicy"/>: the monitor's flag says a
+    /// refresh failed, and only age says the number has stopped being worth
+    /// trusting. Both are needed, so a test about looking stale has to age it.
+    /// </remarks>
+    private static readonly DateTimeOffset MuchLater = Now + TimeSpan.FromMinutes(10);
+
     private static UsageSnapshot Snapshot(double session, double week, double fable, bool stale = false) => new(
         UsageWindow.Create(session, Now),
         UsageWindow.Create(week, Now),
@@ -81,10 +91,24 @@ public class TaskbarWidgetViewModelTests
     {
         var vm = new TaskbarWidgetViewModel(new Localizer());
 
-        vm.Update(Snapshot(61, 43, 88, stale: true), IndicatorAlert.None, Now);
+        vm.Update(Snapshot(61, 43, 88, stale: true), IndicatorAlert.None, MuchLater);
 
         vm.HasReading.Should().BeTrue();
         vm.IsStale.Should().BeTrue();
+    }
+
+    [Fact]
+    public void One_failed_refresh_does_not_make_a_fresh_reading_look_doubtful()
+    {
+        // The endpoint 429s readily and the monitor flags a reading stale on the
+        // first failure. Fading a number that arrived seconds ago on that basis
+        // told the user to distrust the best information they had.
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        vm.Update(Snapshot(61, 43, 88, stale: true), IndicatorAlert.None, Now);
+
+        vm.HasReading.Should().BeTrue();
+        vm.IsStale.Should().BeFalse();
     }
 
     [Fact]
@@ -108,7 +132,7 @@ public class TaskbarWidgetViewModelTests
         vm.HasReading.Should().BeFalse();
         vm.AlertGlyph.Should().Be("⊘");
 
-        vm.Update(Snapshot(61, 43, 88, stale: true), IndicatorAlert.Unreachable, Now);
+        vm.Update(Snapshot(61, 43, 88, stale: true), IndicatorAlert.Unreachable, MuchLater);
         vm.HasReading.Should().BeTrue("a stale number beats a symbol");
         vm.IsStale.Should().BeTrue();
     }

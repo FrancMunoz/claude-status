@@ -121,7 +121,11 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
     public void Configure(IndicatorOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        _viewModel.Configure(options.ThresholdPercent, options.ShowWeekFable, options.FollowSystem);
+        _viewModel.Configure(
+            options.ThresholdPercent,
+            options.ShowWeekFable,
+            options.FollowSystem,
+            StalePolicy.ThresholdFor(options.PollInterval));
     }
 
     /// <inheritdoc />

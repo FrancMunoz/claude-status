@@ -71,7 +71,20 @@ public enum IndicatorAlert
 /// Whether the indicator blends into the taskbar - transparent, in the taskbar's
 /// own text colour - rather than drawing the theme's card.
 /// </param>
-public sealed record IndicatorOptions(double ThresholdPercent, bool ShowWeekFable, bool FollowSystem = false);
+/// <param name="PollInterval">
+/// How often a fresh reading is expected, when the caller knows.
+/// </param>
+/// <remarks>
+/// <see cref="PollInterval"/> is what lets an indicator judge whether a reading is
+/// genuinely out of date rather than merely one failed request behind. Optional
+/// because most indicators do not care: only the macOS menu bar uses it, and it
+/// falls back to a fixed floor without it.
+/// </remarks>
+public sealed record IndicatorOptions(
+    double ThresholdPercent,
+    bool ShowWeekFable,
+    bool FollowSystem = false,
+    TimeSpan? PollInterval = null);
 
 /// <summary>
 /// How usage is shown in the tray or menu bar.

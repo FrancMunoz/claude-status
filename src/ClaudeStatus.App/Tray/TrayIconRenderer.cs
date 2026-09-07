@@ -57,13 +57,12 @@ public static class TrayIconRenderer
     /// Opacity of a reading that is no longer current.
     /// </summary>
     /// <remarks>
-    /// Chosen to be unmistakable beside a fresh icon while still perfectly
-    /// legible on its own - the number is stale, not unavailable, and it is
-    /// still the best information there is. Much below this and it starts to
-    /// read as "broken"; much above and the difference stops registering at
-    /// 16 px, which is the only size that matters.
+    /// The value lives in <see cref="IndicatorText"/> now, shared with the macOS
+    /// menu bar so the two fade alike. Much below it and the icon starts to read as
+    /// "broken"; much above and the difference stops registering at 16 px, which is
+    /// the only size that matters.
     /// </remarks>
-    private const double StaleAlpha = 0.55d;
+    private const double StaleAlpha = IndicatorText.StaleAlpha;
 
     /// <summary>Clearance around the number, in nominal pixels.</summary>
     /// <remarks>
@@ -169,22 +168,29 @@ public static class TrayIconRenderer
     /// this runs on every poll, and leaking a bitmap a minute adds up over a day
     /// in the tray.
     /// </remarks>
+    /// <param name="faded">
+    /// Whether to draw the reading as out of date. Decided by the caller through
+    /// <see cref="StalePolicy"/> rather than read from the snapshot here: the rule
+    /// needs a clock and the configured poll interval, and this class deliberately
+    /// knows about neither.
+    /// </param>
     public static RenderTargetBitmap Render(
         UsageSnapshot? snapshot,
         IndicatorMode mode,
         ThresholdState state,
         IndicatorAlert alert = IndicatorAlert.None,
-        TrayBackground background = TrayBackground.Unknown)
+        TrayBackground background = TrayBackground.Unknown,
+        bool faded = false)
     {
         UsageWindow? window = snapshot?.ForMode(mode);
         Palette palette = Palette.For(background, state);
 
-        // A stale reading is drawn faded. Everywhere else in the app says so in
-        // words - the tooltip, the popup's banner, the report - but the icon is
-        // the thing people actually glance at, and until now a three-hour-old
-        // 61 % looked exactly like a live one. That is the reading someone acts
-        // on without checking.
-        if (snapshot?.IsStale == true)
+        // An out-of-date reading is drawn faded. Everywhere else in the app says so
+        // in words - the tooltip, the popup's banner, the report - but the icon is
+        // the thing people actually glance at, and until now a three-hour-old 61 %
+        // looked exactly like a live one. That is the reading someone acts on
+        // without checking.
+        if (faded)
         {
             palette = palette.Faded(StaleAlpha);
         }
@@ -259,10 +265,10 @@ public static class TrayIconRenderer
 
     /// <summary>Whether a reading has consumed the whole window.</summary>
     /// <remarks>
-    /// The same rounding <see cref="FormatPercent"/> uses, so the icon can never
-    /// show a cross while the tooltip still says 99 %.
+    /// Delegates to <see cref="IndicatorText"/>, which is where the icon and the
+    /// macOS menu bar item agree on what the readings mean.
     /// </remarks>
-    internal static bool IsExhausted(double percent) => percent >= 99.95d;
+    internal static bool IsExhausted(double percent) => IndicatorText.IsExhausted(percent);
 
     /// <summary>
     /// A cross, for a window with nothing left in it.
@@ -597,14 +603,10 @@ public static class TrayIconRenderer
     /// </summary>
     /// <remarks>
     /// "100" is three characters and simply renders at a smaller size rather than
-    /// being abbreviated. Rounding is away from zero, so 99.6 shows as 100 rather
-    /// than suggesting there is headroom left.
+    /// being abbreviated. The rounding itself lives in <see cref="IndicatorText"/>,
+    /// shared with the macOS menu bar item.
     /// </remarks>
-    internal static string FormatPercent(double percent)
-    {
-        int rounded = (int)Math.Round(Math.Clamp(percent, 0d, 100d), MidpointRounding.AwayFromZero);
-        return rounded.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    }
+    internal static string FormatPercent(double percent) => IndicatorText.FormatPercent(percent);
 
     /// <summary>The colours for one combination of tray background and threshold state.</summary>
     /// <param name="Ink">The glyph colour.</param>

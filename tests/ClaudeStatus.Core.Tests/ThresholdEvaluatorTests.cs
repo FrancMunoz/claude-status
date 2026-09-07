@@ -22,6 +22,58 @@ public class ThresholdEvaluatorTests
     }
 
     [Fact]
+    public void The_row_takes_the_worst_verdict_of_the_windows_it_shows()
+    {
+        // 29 / 58 / 88. The row draws session and week side by side, so a calm
+        // session must not make a week past the threshold look calm too.
+        UsageSnapshot snapshot = Fixture.Parse(Fixture.Normal);
+
+        ThresholdEvaluator.EvaluateRow(snapshot, 50d, includeWeekFable: false)
+            .Should().Be(ThresholdState.Exceeded, "the weekly window is at 58 %");
+
+        ThresholdEvaluator.EvaluateRow(snapshot, 80d, includeWeekFable: false)
+            .Should().Be(ThresholdState.Normal, "neither shown window has reached 80 %");
+    }
+
+    [Fact]
+    public void The_row_ignores_a_Fable_window_it_is_not_drawing()
+    {
+        // 88 % Fable, and the user turned that column off. Turning the row red for
+        // a reading that is not on screen is a warning about nothing visible.
+        UsageSnapshot snapshot = Fixture.Parse(Fixture.Normal);
+
+        ThresholdEvaluator.EvaluateRow(snapshot, 80d, includeWeekFable: false)
+            .Should().Be(ThresholdState.Normal);
+
+        ThresholdEvaluator.EvaluateRow(snapshot, 80d, includeWeekFable: true)
+            .Should().Be(ThresholdState.Exceeded);
+    }
+
+    [Fact]
+    public void A_row_with_a_missing_window_is_Unknown_rather_than_Normal()
+    {
+        // Same promise the single-window evaluator makes: a window we know nothing
+        // about must never leave the indicator looking calm.
+        var snapshot = new UsageSnapshot(
+            UsageWindow.Create(10d, null),
+            null,
+            null,
+            new Dictionary<string, UsageWindow>(),
+            DateTimeOffset.UnixEpoch,
+            false);
+
+        ThresholdEvaluator.EvaluateRow(snapshot, 80d, includeWeekFable: false)
+            .Should().Be(ThresholdState.Unknown);
+    }
+
+    [Fact]
+    public void A_null_snapshot_has_no_row_verdict_either()
+    {
+        ThresholdEvaluator.EvaluateRow(null, 80d, includeWeekFable: true)
+            .Should().Be(ThresholdState.Unknown);
+    }
+
+    [Fact]
     public void A_null_snapshot_is_Unknown()
     {
         ThresholdEvaluator.Evaluate(null, IndicatorMode.SessionPercent, 80d)

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using ClaudeStatus.App.Controls;
 
 namespace ClaudeStatus.App.Tests;
@@ -71,6 +72,14 @@ public class UsageBarTests(HeadlessAppFixture fixture)
             handle.Free();
         }
 
+        // Skia hands back the platform's native channel order - BGRA on Windows,
+        // RGBA on macOS - so the offsets cannot be hard-coded. Reading them the
+        // wrong way round swaps the track for the fill, and 50 % still passes
+        // because a mirrored bar fills exactly as many columns.
+        bool rgba = bitmap.Format == PixelFormat.Rgba8888;
+        int redOffset = rgba ? 0 : 2;
+        int blueOffset = rgba ? 2 : 0;
+
         // The middle row, where both the track and the fill are at full height and
         // the semicircular caps are at their widest.
         int middle = Height / 2;
@@ -78,8 +87,8 @@ public class UsageBarTests(HeadlessAppFixture fixture)
         for (int x = 0; x < Width; x++)
         {
             int offset = (middle * stride) + (x * 4);
-            byte blue = buffer[offset];
-            byte red = buffer[offset + 2];
+            byte blue = buffer[offset + blueOffset];
+            byte red = buffer[offset + redOffset];
             if (red > blue)
             {
                 count++;

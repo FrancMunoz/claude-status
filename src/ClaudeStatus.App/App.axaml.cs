@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using ClaudeStatus.App.Composition;
 using ClaudeStatus.Platform;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,7 +47,12 @@ public partial class App : Application, IDisposable
 
             if (!_instanceGuard.ShouldRun)
             {
-                desktop.Shutdown();
+                // Posted rather than called: this runs before the main loop has
+                // started, and shutting the dispatcher down from here leaves the
+                // loop to start on a dead dispatcher and throw. Queueing it makes
+                // the loop begin, process this, and exit 0 - which is what "the
+                // loser exits quietly" was always meant to mean.
+                Dispatcher.UIThread.Post(() => desktop.Shutdown());
                 base.OnFrameworkInitializationCompleted();
                 return;
             }

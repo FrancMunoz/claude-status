@@ -26,4 +26,15 @@ public sealed class MacOsPlatformInfo : PlatformInfoBase
     /// <inheritdoc />
     /// <remarks>The menu bar is always there.</remarks>
     public override TraySupport TraySupport => TraySupport.Available;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// An <c>NSStatusItem</c> takes the width of the image it is given, which is
+    /// what lets the row of percentages sit in the menu bar as one item.
+    /// </remarks>
+    public override bool SupportsInlineTrayText => true;
+
+    /// <inheritdoc />
+    /// <remarks>The menu bar is at the top of the screen and cannot be moved.</remarks>
+    public override bool TrayIsAtTop => true;
 }

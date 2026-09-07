@@ -94,6 +94,10 @@
   <data name="Tray_Mode_Ring" xml:space="preserve">
     <value>Ring</value>
   </data>
+  <data name="Tray_Mode_Row" xml:space="preserve">
+    <value>All in a row</value>
+    <comment>Show menu entry for the inline row of every limit at once. macOS only; the entry is absent where the indicator must be square.</comment>
+  </data>
   <data name="Tray_Tooltip" xml:space="preserve">
     <value>ClaudeStatus — {0}</value>
   </data>
@@ -406,6 +410,10 @@
   <data name="Tray_Report" xml:space="preserve">
     <value>Full report…</value>
   </data>
+  <data name="Tray_Row_Fable" xml:space="preserve">
+    <value>F</value>
+    <comment>Menu bar row label for the weekly Fable limit. Kept to one letter: the row sits in the macOS menu bar beside the clock.</comment>
+  </data>
   <data name="Details_MoreButton" xml:space="preserve">
     <value>More…</value>
   </data>
@@ -600,6 +608,14 @@
   </data>
   <data name="Config_Widget_ShowFable_Help" xml:space="preserve">
     <value>Off by default: most plans reach the session or weekly limit long before the Fable one, and the widget is narrower without it. The popup always shows all three.</value>
+  </data>
+  <data name="Config_Row_ShowFable" xml:space="preserve">
+    <value>Show the Fable limit in the menu bar</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
+  </data>
+  <data name="Config_Row_ShowFable_Help" xml:space="preserve">
+    <value>Off by default: most plans reach the session or weekly limit long before the Fable one, and the menu bar item is shorter without it. The popup always shows all three.</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
   </data>
   <data name="Config_Widget_FollowSystem" xml:space="preserve">
     <value>Blend into the taskbar</value>

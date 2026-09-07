@@ -120,8 +120,16 @@ public sealed record AppSettings
     /// </remarks>
     public int SchemaVersion { get; init; } = 1;
 
-    /// <summary>Which metric the tray icon shows.</summary>
-    public IndicatorMode IndicatorMode { get; init; } = IndicatorMode.SessionPercent;
+    /// <summary>
+    /// Which metric the tray icon shows.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="IndicatorMode.Row"/> by default, which is the richest reading a
+    /// tray can give and costs nothing where it cannot be drawn: a tray that needs
+    /// a square icon renders it as <see cref="IndicatorMode.SessionPercent"/>, the
+    /// previous default, so this changes nothing on Windows or Linux.
+    /// </remarks>
+    public IndicatorMode IndicatorMode { get; init; } = IndicatorMode.Row;
 
     /// <summary>Widget or icon. The widget is the default; the icon is the fallback.</summary>
     public IndicatorKind Indicator { get; init; } = IndicatorKind.TaskbarWidget;

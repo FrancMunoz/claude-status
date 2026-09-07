@@ -20,6 +20,20 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.UnixEpoch;
 
+    [Fact]
+    public void The_mark_renders_ink_at_the_size_asked_for()
+    {
+        // The path is copied verbatim from an SVG; a transcription slip would parse
+        // fine and draw nothing at all.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            byte[] png = ClaudeStatus.App.Branding.ClaudeMark.ToPng(32);
+
+            png.Should().NotBeEmpty();
+            png.Take(4).Should().Equal(0x89, (byte)'P', (byte)'N', (byte)'G');
+        });
+    }
+
     private static UsageSnapshot At(double percent) => new(
         UsageWindow.Create(percent, Now),
         UsageWindow.Create(percent, Now),
@@ -165,6 +179,12 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
         return total;
     }
 
+    /// <summary>A reading the monitor has flagged as not refreshed.</summary>
+    /// <remarks>
+    /// The flag alone no longer fades anything: <see cref="StalePolicy"/> weighs the
+    /// reading's age too, and that decision belongs to the indicator rather than to
+    /// the drawing. These tests cover the drawing, so they ask for the fade outright.
+    /// </remarks>
     private static UsageSnapshot Stale(double percent) => At(percent) with { IsStale = true };
 
     [Theory]
@@ -183,7 +203,7 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
                 IndicatorAlert.None, background);
             using RenderTargetBitmap stale = TrayIconRenderer.Render(
                 Stale(61), IndicatorMode.SessionPercent, ThresholdState.Normal,
-                IndicatorAlert.None, background);
+                IndicatorAlert.None, background, faded: true);
 
             InkMass(stale).Should().BeLessThan(
                 InkMass(fresh), $"a stale reading must look different on a {background} tray");
@@ -202,7 +222,7 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
                 IndicatorAlert.None, TrayBackground.Dark);
             using RenderTargetBitmap stale = TrayIconRenderer.Render(
                 Stale(61), IndicatorMode.SessionPercent, ThresholdState.Normal,
-                IndicatorAlert.None, TrayBackground.Dark);
+                IndicatorAlert.None, TrayBackground.Dark, faded: true);
 
             InkMass(stale).Should().BeGreaterThan(
                 (long)(InkMass(fresh) * 0.35), "a fade that faint reads as a fault");
@@ -218,10 +238,10 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
         {
             using RenderTargetBitmap stale = TrayIconRenderer.Render(
                 Stale(95), IndicatorMode.SessionPercent, ThresholdState.Exceeded,
-                IndicatorAlert.None, TrayBackground.Dark);
+                IndicatorAlert.None, TrayBackground.Dark, faded: true);
             using RenderTargetBitmap normal = TrayIconRenderer.Render(
                 Stale(61), IndicatorMode.SessionPercent, ThresholdState.Normal,
-                IndicatorAlert.None, TrayBackground.Dark);
+                IndicatorAlert.None, TrayBackground.Dark, faded: true);
 
             Inspect(stale).MeanLuminance.Should().NotBe(
                 Inspect(normal).MeanLuminance, "the alert ink must survive the fade");
@@ -238,7 +258,7 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
                 IndicatorAlert.None, TrayBackground.Dark);
             using RenderTargetBitmap stale = TrayIconRenderer.Render(
                 Stale(61), IndicatorMode.Ring, ThresholdState.Normal,
-                IndicatorAlert.None, TrayBackground.Dark);
+                IndicatorAlert.None, TrayBackground.Dark, faded: true);
 
             InkMass(stale).Should().BeLessThan(InkMass(fresh));
         });
@@ -255,7 +275,7 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
                 IndicatorAlert.NeedsCredential, TrayBackground.Dark);
             using RenderTargetBitmap stale = TrayIconRenderer.Render(
                 Stale(61), IndicatorMode.SessionPercent, ThresholdState.Unknown,
-                IndicatorAlert.NeedsCredential, TrayBackground.Dark);
+                IndicatorAlert.NeedsCredential, TrayBackground.Dark, faded: true);
 
             InkMass(stale).Should().Be(InkMass(fresh));
         });

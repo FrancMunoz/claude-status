@@ -217,6 +217,10 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
         public TraySupport TraySupport => TraySupport.Available;
 
         public string? ExecutablePath => Environment.ProcessPath;
+
+        public bool SupportsInlineTrayText => false;
+
+        public bool TrayIsAtTop => false;
     }
 
     private sealed class StubAutostart : IAutostart
