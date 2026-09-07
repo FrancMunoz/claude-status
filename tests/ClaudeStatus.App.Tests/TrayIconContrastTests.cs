@@ -27,7 +27,7 @@ public class TrayIconContrastTests(HeadlessAppFixture fixture)
         // fine and draw nothing at all.
         HeadlessAppFixture.Invoke(() =>
         {
-            byte[] png = ClaudeStatus.App.Branding.ClaudeMark.ToPng(32);
+            byte[] png = ClaudeStatus.App.Branding.AppMark.ToPng(32);
 
             png.Should().NotBeEmpty();
             png.Take(4).Should().Equal(0x89, (byte)'P', (byte)'N', (byte)'G');

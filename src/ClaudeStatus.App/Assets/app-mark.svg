@@ -1,0 +1,8 @@
+<svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="app-mark-title">
+  <title id="app-mark-title">Usage gauge</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 31.5 76.579 A 33 33 0 1 1 64.5 76.579 L 56.5 62.722 A 17 17 0 1 0 39.5 62.722 Z
+    M 36 40 H 60 V 46 H 36 Z
+    M 40 50 H 56 V 56 H 40 Z
+  "/>
+</svg>

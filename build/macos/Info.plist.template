@@ -17,7 +17,7 @@
     <key>CFBundleExecutable</key>
     <string>ClaudeStatus</string>
     <key>CFBundleIconFile</key>
-    <string>claude-mark.icns</string>
+    <string>app-mark.icns</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSHighResolutionCapable</key>

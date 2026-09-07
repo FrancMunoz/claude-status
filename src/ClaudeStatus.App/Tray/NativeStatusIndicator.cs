@@ -82,7 +82,7 @@ public sealed class NativeStatusIndicator : IStatusIndicator
 
         // Once. The mark never changes - its colour follows the text through the
         // platform's own tinting, so there is nothing here to keep in step.
-        _item.SetIcon(ClaudeMark.ToPng(IconPixels));
+        _item.SetIcon(AppMark.ToPng(IconPixels));
 
         RebuildMenu();
 

@@ -57,7 +57,7 @@
                 should be the same header. It was a 7px dot, which read as a
                 bullet rather than as the application.
             -->
-            <Path Data="{x:Static branding:ClaudeMark.Geometry}"
+            <Path Data="{x:Static branding:AppMark.Geometry}"
                   Width="19"
                   Height="19"
                   Stretch="Uniform"

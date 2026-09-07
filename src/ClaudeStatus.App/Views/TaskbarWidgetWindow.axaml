@@ -80,7 +80,7 @@
                 doing that job. For the same reason it does not take the .stale
                 fade - it is not a reading.
             -->
-            <Path Classes="widgetMark" Data="{x:Static branding:ClaudeMark.Geometry}" />
+            <Path Classes="widgetMark" Data="{x:Static branding:AppMark.Geometry}" />
 
             <Panel>
                 <StackPanel Orientation="Horizontal"
