@@ -143,6 +143,10 @@ public sealed record UsageSnapshot(
         IndicatorMode.WeekPercent => Week,
         IndicatorMode.WeekFablePercent => WeekFable,
         IndicatorMode.Ring => Session,
+
+        // The row shows several, but callers that want one - the tooltip, the
+        // exhausted check - get the session window, which is the one people act on.
+        IndicatorMode.Row => Session,
         _ => null,
     };
 

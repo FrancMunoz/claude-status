@@ -59,4 +59,25 @@ public interface IPlatformInfo
     /// determined.
     /// </summary>
     string? ExecutablePath { get; }
+
+    /// <summary>
+    /// Whether the indicator may be wider than it is tall, so several metrics can
+    /// be written across it.
+    /// </summary>
+    /// <remarks>
+    /// True on macOS, where a menu bar item sizes itself to whatever image it is
+    /// given. A Windows notification-area icon is a fixed square and a Linux panel
+    /// makes no promise either way, so both get the single-number icon and
+    /// <see cref="ClaudeStatus.Usage.IndicatorMode.Row"/> falls back.
+    /// </remarks>
+    bool SupportsInlineTrayText { get; }
+
+    /// <summary>Whether the indicator lives along the top edge of the screen.</summary>
+    /// <remarks>
+    /// A fact on macOS, where the menu bar cannot be moved, and the reason the
+    /// popup needs to be told rather than left to infer it: the inference reads the
+    /// screen's insets, and a Dock along the bottom is deeper than the menu bar, so
+    /// it concluded "tray at the bottom" and put the popup in the wrong corner.
+    /// </remarks>
+    bool TrayIsAtTop { get; }
 }

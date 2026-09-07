@@ -27,7 +27,27 @@ public sealed class TrayIconIndicator : IStatusIndicator
 {
     private readonly ITrayThemeProvider _theme;
     private readonly ILocalizer _l;
+    private readonly TimeProvider _clock;
     private readonly TrayIcon _trayIcon;
+
+    /// <summary>How old a reading may be before the icon fades it.</summary>
+    /// <remarks>
+    /// From <see cref="StalePolicy"/>, the same rule the macOS menu bar and the
+    /// taskbar widget use. Until this existed the icon faded on the monitor's raw
+    /// flag, which fires on one failed request - and against an endpoint that 429s
+    /// readily that meant a faded icon over a reading seconds old.
+    /// </remarks>
+    private TimeSpan _staleAfter = StalePolicy.Floor;
+
+    /// <summary>The context menu, created once and never replaced.</summary>
+    /// <remarks>
+    /// macOS's native exporter caches the <see cref="NativeMenu"/> it handed to the
+    /// tray icon and rejects any other instance ("The menu being updated does not
+    /// match"), so a language change refills this one in place rather than swapping
+    /// it for a new one.
+    /// </remarks>
+    private readonly NativeMenu _menu = new();
+
     private RenderTargetBitmap? _currentBitmap;
 
     /// <summary>
@@ -43,11 +63,17 @@ public sealed class TrayIconIndicator : IStatusIndicator
     /// <summary>The mode last rendered, so a rebuilt menu keeps its radio tick.</summary>
     private IndicatorMode _currentMode = IndicatorMode.SessionPercent;
 
+
     private bool _disposed;
 
-    public TrayIconIndicator(ILocalizer localizer, ITrayThemeProvider? theme = null)
+    /// <param name="localizer">Supplies the menu text.</param>
+    /// <param name="theme">The tray background, for contrast. Unknown when omitted.</param>
+    /// <param name="clock">Judges how old a reading is. The system clock by default.</param>
+    public TrayIconIndicator(
+        ILocalizer localizer, ITrayThemeProvider? theme = null, TimeProvider? clock = null)
     {
         _l = localizer ?? throw new ArgumentNullException(nameof(localizer));
+        _clock = clock ?? TimeProvider.System;
 
         // Unknown is the safe default: it makes the renderer draw a halo, which
         // reads on any panel colour.
@@ -61,12 +87,13 @@ public sealed class TrayIconIndicator : IStatusIndicator
         };
 
         _modeItems = CreateModeItems();
-        _trayIcon.Menu = BuildMenu();
+        FillMenu();
+        _trayIcon.Menu = _menu;
 
         // A NativeMenu is handed to the OS, and the backends differ on whether an
-        // item's header can be changed after that. Rebuilding the whole menu is the
-        // only thing that behaves the same everywhere, and it happens once per
-        // language change, not per poll.
+        // item's header can be changed after that. Refilling the menu with fresh
+        // items is the only thing that behaves the same everywhere, and it happens
+        // once per language change, not per poll.
         _l.PropertyChanged += (_, _) => Dispatcher.UIThread.Post(RebuildMenu);
     }
 
@@ -75,6 +102,18 @@ public sealed class TrayIconIndicator : IStatusIndicator
 
     /// <inheritdoc />
     public event EventHandler<ContextActionEventArgs>? MenuAction;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The icon shows one metric and needs none of the per-metric settings. It does
+    /// need the poll interval, which is what tells it how old a reading has to be
+    /// before fading it is honest rather than alarmist.
+    /// </remarks>
+    public void Configure(IndicatorOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        _staleAfter = StalePolicy.ThresholdFor(options.PollInterval);
+    }
 
     /// <inheritdoc />
     public void Show()
@@ -99,8 +138,18 @@ public sealed class TrayIconIndicator : IStatusIndicator
 
         // Read the theme on every render rather than caching it, so switching the
         // system theme takes effect on the next poll with no notification plumbing.
+        //
+        // Row is not drawable here and never reaches this tray by choice: an
+        // Avalonia status item is square on every backend, so the row belongs to
+        // the native indicator. It is mapped rather than rejected because the
+        // config file travels between machines.
         RenderTargetBitmap bitmap = TrayIconRenderer.Render(
-            snapshot, mode, state, alert, _theme.Current);
+            snapshot,
+            mode == IndicatorMode.Row ? IndicatorMode.SessionPercent : mode,
+            state,
+            alert,
+            _theme.Current,
+            StalePolicy.ShowsAsStale(snapshot, _clock.GetUtcNow(), _staleAfter));
 
         // Assign the new icon before disposing the old one; the backend may still
         // be reading the previous bitmap while it swaps.
@@ -121,8 +170,8 @@ public sealed class TrayIconIndicator : IStatusIndicator
         UpdateModeChecks(mode);
     }
 
-    /// <summary>Builds the right-click menu described in <c>docs/manual.md</c> §3.</summary>
-    private NativeMenu BuildMenu()
+    /// <summary>Fills <see cref="_menu"/> with the menu described in <c>docs/manual.md</c> §3.</summary>
+    private void FillMenu()
     {
         var showMenu = new NativeMenu();
         foreach (NativeMenuItem item in _modeItems)
@@ -130,20 +179,19 @@ public sealed class TrayIconIndicator : IStatusIndicator
             showMenu.Add(item);
         }
 
-        var menu = new NativeMenu
-        {
-            CreateItem("Tray_Details", ContextAction.ShowDetails),
-            CreateItem("Tray_Report", ContextAction.ShowReport),
-            new NativeMenuItem(_l["Tray_Show"]) { Menu = showMenu },
-            CreateItem("Tray_Refresh", ContextAction.Refresh),
-            new NativeMenuItemSeparator(),
-            CreateItem("Tray_Config", ContextAction.OpenConfig),
-            CreateItem("Tray_Info", ContextAction.ShowInfo),
-            new NativeMenuItemSeparator(),
-            CreateItem("Tray_Quit", ContextAction.Quit),
-        };
+        // Drop the old items before adding the new ones: a NativeMenuItem belongs to
+        // exactly one NativeMenu, and adding one that still has a parent throws.
+        _menu.Items.Clear();
 
-        return menu;
+        _menu.Add(CreateItem("Tray_Details", ContextAction.ShowDetails));
+        _menu.Add(CreateItem("Tray_Report", ContextAction.ShowReport));
+        _menu.Add(new NativeMenuItem(_l["Tray_Show"]) { Menu = showMenu });
+        _menu.Add(CreateItem("Tray_Refresh", ContextAction.Refresh));
+        _menu.Add(new NativeMenuItemSeparator());
+        _menu.Add(CreateItem("Tray_Config", ContextAction.OpenConfig));
+        _menu.Add(CreateItem("Tray_Info", ContextAction.ShowInfo));
+        _menu.Add(new NativeMenuItemSeparator());
+        _menu.Add(CreateItem("Tray_Quit", ContextAction.Quit));
     }
 
     /// <summary>Rebuilds the menu in the current language, keeping the mode tick.</summary>
@@ -155,11 +203,17 @@ public sealed class TrayIconIndicator : IStatusIndicator
         }
 
         _modeItems = CreateModeItems();
-        _trayIcon.Menu = BuildMenu();
+        FillMenu();
         UpdateModeChecks(_currentMode);
     }
 
-    /// <summary>The four mode items, in <see cref="IndicatorMode"/> order.</summary>
+    /// <summary>
+    /// The four mode items, in <see cref="IndicatorMode"/> order.
+    /// </summary>
+    /// <remarks>
+    /// The row is not among them. It cannot be drawn into a square status item, so
+    /// offering it here would be a menu entry that appears to do nothing.
+    /// </remarks>
     private NativeMenuItem[] CreateModeItems() =>
     [
         CreateModeItem("Tray_Mode_Session", IndicatorMode.SessionPercent),
@@ -190,9 +244,13 @@ public sealed class TrayIconIndicator : IStatusIndicator
     /// <summary>Moves the radio tick to the mode now on show.</summary>
     private void UpdateModeChecks(IndicatorMode mode)
     {
+        // Row is drawn here as the session number, so that is where its tick goes;
+        // the menu would otherwise show nothing selected at all.
+        IndicatorMode ticked = mode == IndicatorMode.Row ? IndicatorMode.SessionPercent : mode;
+
         for (int index = 0; index < _modeItems.Length; index++)
         {
-            _modeItems[index].IsChecked = (IndicatorMode)index == mode;
+            _modeItems[index].IsChecked = (IndicatorMode)index == ticked;
         }
     }
 

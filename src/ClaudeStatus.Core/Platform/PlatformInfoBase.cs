@@ -30,6 +30,16 @@ public abstract class PlatformInfoBase : IPlatformInfo
     public virtual string OperatingSystemName => RuntimeInformation.OSDescription.Trim();
 
     /// <inheritdoc />
+    /// <remarks>False unless a platform says otherwise: a square icon is what every
+    /// tray is guaranteed to accept.</remarks>
+    public virtual bool SupportsInlineTrayText => false;
+
+    /// <inheritdoc />
+    /// <remarks>False unless a platform says otherwise, leaving the popup to infer
+    /// the corner from the screen insets as it always has.</remarks>
+    public virtual bool TrayIsAtTop => false;
+
+    /// <inheritdoc />
     /// <remarks>
     /// Prefers <see cref="Environment.ProcessPath"/> - for a single-file build
     /// that is the real executable, which is what an autostart entry must point

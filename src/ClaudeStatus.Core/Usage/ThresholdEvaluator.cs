@@ -34,6 +34,59 @@ public static class ThresholdEvaluator
             ? ThresholdState.Unknown
             : Evaluate(snapshot.ForMode(mode), thresholdPercent);
 
+    /// <summary>
+    /// Evaluates the row indicator: the worst verdict among the windows it shows.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The row draws every window in one ink colour, so it needs one verdict. Worst
+    /// wins, because the row turning red has to mean "something here is past your
+    /// threshold" - taking the session window alone would leave a 92 % weekly limit
+    /// looking calm.
+    /// </para>
+    /// <para>
+    /// <paramref name="includeWeekFable"/> is not a formality. The row only draws
+    /// the Fable window when the user asked for it, and judging a metric that is not
+    /// on screen would turn the row red for a reading nobody can see.
+    /// </para>
+    /// </remarks>
+    public static ThresholdState EvaluateRow(
+        UsageSnapshot? snapshot, double thresholdPercent, bool includeWeekFable)
+    {
+        if (snapshot is null)
+        {
+            return ThresholdState.Unknown;
+        }
+
+        ThresholdState worst = Worst(
+            Evaluate(snapshot.Session, thresholdPercent),
+            Evaluate(snapshot.Week, thresholdPercent));
+
+        return includeWeekFable && snapshot.WeekFable is not null
+            ? Worst(worst, Evaluate(snapshot.WeekFable, thresholdPercent))
+            : worst;
+    }
+
+    /// <summary>
+    /// The more serious of two verdicts.
+    /// </summary>
+    /// <remarks>
+    /// Exceeded beats Unknown beats Normal. Unknown outranking Normal keeps the
+    /// promise <see cref="Evaluate(UsageWindow?, double)"/> makes: a window we know
+    /// nothing about must never make the indicator look calm.
+    /// </remarks>
+    private static ThresholdState Worst(ThresholdState left, ThresholdState right)
+    {
+        if (left == ThresholdState.Exceeded || right == ThresholdState.Exceeded)
+        {
+            return ThresholdState.Exceeded;
+        }
+
+        return left == ThresholdState.Unknown || right == ThresholdState.Unknown
+            ? ThresholdState.Unknown
+            : ThresholdState.Normal;
+    }
+
     /// <summary>Evaluates all three headline windows, for the details view.</summary>
     public static (ThresholdState Session, ThresholdState Week, ThresholdState WeekFable) EvaluateAll(
         UsageSnapshot? snapshot, double thresholdPercent)

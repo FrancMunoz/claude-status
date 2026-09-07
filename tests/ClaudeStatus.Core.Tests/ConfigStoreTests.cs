@@ -30,7 +30,10 @@ public class ConfigStoreTests : IDisposable
         store.Exists.Should().BeFalse();
         AppSettings settings = await store.LoadAsync(Ct);
 
-        settings.IndicatorMode.Should().Be(IndicatorMode.SessionPercent);
+        // Row, not SessionPercent: it is the richest reading a tray can give, and
+        // a tray that needs a square icon renders it as the session number anyway,
+        // so the default costs nothing where the row cannot be drawn.
+        settings.IndicatorMode.Should().Be(IndicatorMode.Row);
         settings.ThresholdPercent.Should().Be(80d);
         settings.CredentialSource.Should().Be(CredentialSource.ClaudeCodeLogin);
         settings.HasCredential.Should().BeFalse();

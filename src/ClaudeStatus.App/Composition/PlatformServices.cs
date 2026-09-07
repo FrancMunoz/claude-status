@@ -4,6 +4,7 @@ using ClaudeStatus.Platform.MacOS;
 using ClaudeStatus.Platform.Windows;
 using ClaudeStatus.Security;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ClaudeStatus.App.Composition;
 
@@ -33,6 +34,8 @@ public static class PlatformServices
         services.AddSingleton(provider => CreateSecretStore(provider.GetRequiredService<IPlatformInfo>()));
         services.AddSingleton(_ => CreateTrayThemeProvider());
         services.AddSingleton(_ => CreateTaskbarHost());
+        services.AddSingleton(_ => CreateTrayPointerLocator());
+        services.AddSingleton(_ => CreateAppPresentation());
 
         return services;
     }
@@ -143,6 +146,43 @@ public static class PlatformServices
         => OperatingSystem.IsWindows()
             ? new WindowsTrayThemeProvider()
             : new StaticTrayThemeProvider(TrayBackground.Unknown);
+
+    /// <summary>
+    /// Builds the presentation policy for the running OS.
+    /// </summary>
+    /// <remarks>
+    /// Only macOS can be asked to drop its Dock icon. Windows keeps the app off the
+    /// taskbar per window already, and Linux panels make no such promise.
+    /// </remarks>
+    public static IAppPresentation CreateAppPresentation()
+        => OperatingSystem.IsMacOS()
+            ? new MacOsAppPresentation()
+            : new UnchangedAppPresentation();
+
+    /// <summary>
+    /// Builds the native status item, where the OS draws one from text.
+    /// </summary>
+    /// <remarks>
+    /// macOS only, and null everywhere else - Windows and Linux both want the
+    /// rendered icon, and the caller falls back to it when this returns null.
+    /// </remarks>
+    public static INativeStatusItem? CreateNativeStatusItem(ILoggerFactory? loggerFactory = null)
+        => OperatingSystem.IsMacOS()
+            ? new MacOsStatusItem(loggerFactory?.CreateLogger<MacOsStatusItem>())
+            : null;
+
+    /// <summary>
+    /// Builds the pointer locator the tray popup anchors to.
+    /// </summary>
+    /// <remarks>
+    /// Only macOS needs one. Windows and Linux anchor the popup to a screen corner,
+    /// which the working-area insets already answer correctly there - it is the
+    /// menu bar, with a Dock below it deeper than itself, that the insets get wrong.
+    /// </remarks>
+    public static ITrayPointerLocator CreateTrayPointerLocator()
+        => OperatingSystem.IsMacOS()
+            ? new CoreGraphicsPointerLocator()
+            : new UnknownTrayPointerLocator();
 
     /// <summary>
     /// Builds the token source that reads Claude Code's existing login.

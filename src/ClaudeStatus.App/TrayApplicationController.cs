@@ -73,6 +73,18 @@ public sealed class TrayApplicationController : IDisposable
     private InfoWindow? _infoWindow;
     private AppSettings _settings = new();
 
+    /// <summary>
+    /// Where the pointer was when the popup was last asked for, in the OS's own
+    /// screen units, or null where the platform cannot say.
+    /// </summary>
+    /// <remarks>
+    /// Stands in for the tray icon's position, which no backend reports. Captured
+    /// at the click rather than read at placement time - see
+    /// <see cref="ITrayPointerLocator"/> for why that distinction is the whole
+    /// point of it.
+    /// </remarks>
+    private double? _pointerXAtClick;
+
     /// <summary>When the popup last hid itself through losing focus.</summary>
     /// <remarks>
     /// Stamped so a tray click arriving immediately afterwards can be recognised
@@ -123,6 +135,20 @@ public sealed class TrayApplicationController : IDisposable
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        // Where the OS draws a status item from text, that is the best indicator
+        // available: it sizes itself to the reading and can tell a left click from
+        // a right one, neither of which a rendered icon can do.
+        if (services.GetRequiredService<IPlatformInfo>().SupportsInlineTrayText
+            && PlatformServices.CreateNativeStatusItem(
+                services.GetService<ILoggerFactory>()) is { IsAvailable: true } native)
+        {
+            return new NativeStatusIndicator(
+                native,
+                services.GetRequiredService<ILocalizer>(),
+                services.GetService<ILogger<NativeStatusIndicator>>(),
+                services.GetRequiredService<TimeProvider>());
+        }
+
         ITaskbarHost host = services.GetRequiredService<ITaskbarHost>();
         if (kind == IndicatorKind.TaskbarWidget && host.IsSupported)
         {
@@ -168,7 +194,11 @@ public sealed class TrayApplicationController : IDisposable
     }
 
     private static IndicatorOptions IndicatorOptionsFrom(AppSettings settings)
-        => new(settings.ThresholdPercent, settings.ShowFableInWidget, settings.WidgetFollowsSystem);
+        => new(
+            settings.ThresholdPercent,
+            settings.ShowFableInWidget,
+            settings.WidgetFollowsSystem,
+            settings.Polling?.BaseInterval);
 
     /// <summary>The settings currently in force.</summary>
     public AppSettings Settings => _settings;
@@ -177,6 +207,15 @@ public sealed class TrayApplicationController : IDisposable
     public async Task StartAsync()
     {
         _settings = await _configStore.LoadAsync().ConfigureAwait(true);
+
+        // Before any window exists. The app lives in the tray or the menu bar and
+        // quits from its own menu, so a Dock icon offers a way in that leads
+        // nowhere and a way out that skips the menu.
+        if (_services.GetRequiredService<IAppPresentation>().HideFromDock())
+        {
+            _services.GetRequiredService<ILogger<TrayApplicationController>>()
+                .LogInformation("Running as a background app: no Dock or task switcher entry.");
+        }
 
         // The constructor could only build the icon. Now that the settings are
         // known, build what they ask for - before Show, so nothing flashes.
@@ -382,13 +421,39 @@ public sealed class TrayApplicationController : IDisposable
     }
 
     /// <summary>Redraws the tray icon for a reading.</summary>
+    /// <remarks>
+    /// The row is the one mode whose verdict is not a single window's, so it is
+    /// judged separately - see <see cref="ThresholdEvaluator.EvaluateRow"/>. The
+    /// branch is on the mode, not on the operating system, so it stays inside the
+    /// rule <c>docs/manual.md</c> §6 sets.
+    /// </remarks>
     private void RenderIndicator(UsageSnapshot? snapshot)
     {
-        ThresholdState state = ThresholdEvaluator.Evaluate(
-            snapshot, _settings.IndicatorMode, _settings.ThresholdPercent);
+        IndicatorMode mode = EffectiveMode;
 
-        _indicator.Render(snapshot, _settings.IndicatorMode, state, CurrentAlert());
+        ThresholdState state = mode == IndicatorMode.Row
+            ? ThresholdEvaluator.EvaluateRow(
+                snapshot, _settings.ThresholdPercent, _settings.ShowFableInWidget)
+            : ThresholdEvaluator.Evaluate(snapshot, mode, _settings.ThresholdPercent);
+
+        _indicator.Render(snapshot, mode, state, CurrentAlert());
     }
+
+    /// <summary>
+    /// The mode this machine can actually draw.
+    /// </summary>
+    /// <remarks>
+    /// The config file travels between machines - it is the same account and the
+    /// same sync folder - so a mode chosen on a Mac can be read by a Windows
+    /// install that has no way to render it. Resolving it here means the setting
+    /// survives the round trip instead of being rewritten to something else the
+    /// moment the other machine starts.
+    /// </remarks>
+    private IndicatorMode EffectiveMode
+        => _settings.IndicatorMode == IndicatorMode.Row
+            && !_services.GetRequiredService<IPlatformInfo>().SupportsInlineTrayText
+            ? IndicatorMode.SessionPercent
+            : _settings.IndicatorMode;
 
     /// <summary>
     /// Works out whether the user has to do something.
@@ -417,6 +482,16 @@ public sealed class TrayApplicationController : IDisposable
     /// </remarks>
     private void OnLeftClicked()
     {
+        // Read now, not when the window is placed. By then the popup has been
+        // constructed and measured and the pointer may have moved on; this is the
+        // one instant it is guaranteed to be over the tray icon.
+        _pointerXAtClick = _services.GetRequiredService<ITrayPointerLocator>().PointerX;
+
+        _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
+            "Indicator left click. pointerX={PointerX} alert={Alert}",
+            _pointerXAtClick,
+            CurrentAlert());
+
         if (CurrentAlert() == IndicatorAlert.NeedsCredential)
         {
             ShowConfig();
@@ -456,6 +531,12 @@ public sealed class TrayApplicationController : IDisposable
 
     private void OnMenuAction(object? sender, ContextActionEventArgs e)
     {
+        // The context menu opens at the icon and the pointer is still on it, so
+        // this is as good an anchor as the left click's. Captured for every action
+        // rather than just Details so a stale position from an earlier click can
+        // never be the one that places the window.
+        _pointerXAtClick = _services.GetRequiredService<ITrayPointerLocator>().PointerX;
+
         switch (e.Action)
         {
             case ContextAction.ShowDetails:
@@ -822,7 +903,7 @@ public sealed class TrayApplicationController : IDisposable
     /// popup stranded where the screen used to be.
     /// </para>
     /// </remarks>
-    private static void PositionNearTray(Window window)
+    private void PositionNearTray(Window window)
     {
         IReadOnlyList<Screen> all = window.Screens.All;
         Screen? screen = window.Screens.Primary ?? (all.Count > 0 ? all[0] : null);
@@ -837,8 +918,37 @@ public sealed class TrayApplicationController : IDisposable
             laidOut.Width > 0 ? laidOut.Width : window.Width,
             laidOut.Height > 0 ? laidOut.Height : window.Height);
 
+        IPlatformInfo platform = _services.GetRequiredService<IPlatformInfo>();
+
+        // The locator reports the OS's own screen units; everything in
+        // TrayPopupPlacement is physical pixels, and on a HiDPI display those are
+        // not the same number. Converting here keeps that conversion in the one
+        // place that already knows the scaling.
+        int? anchorX = _pointerXAtClick is { } pointer && double.IsFinite(pointer)
+            ? (int)Math.Round(pointer * screen.Scaling)
+            : null;
+
         window.Position = TrayPopupPlacement.Place(
-            screen.Bounds, screen.WorkingArea, size, screen.Scaling);
+            screen.Bounds,
+            screen.WorkingArea,
+            size,
+            screen.Scaling,
+            platform.TrayIsAtTop,
+            anchorX);
+
+        // A popup nobody can find looks exactly like a click that did nothing, and
+        // the two have completely different causes. These are the numbers that tell
+        // them apart.
+        _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
+            "Popup placed at {Position}. size={Size} screen={Bounds} work={Work} "
+            + "scaling={Scaling} anchorX={AnchorX} atTop={AtTop}",
+            window.Position,
+            size,
+            screen.Bounds,
+            screen.WorkingArea,
+            screen.Scaling,
+            anchorX,
+            platform.TrayIsAtTop);
     }
 
     /// <inheritdoc />

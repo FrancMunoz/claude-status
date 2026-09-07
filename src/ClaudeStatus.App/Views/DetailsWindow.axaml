@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ClaudeStatus.App.ViewModels"
         xmlns:controls="using:ClaudeStatus.App.Controls"
+        xmlns:branding="using:ClaudeStatus.App.Branding"
         x:Class="ClaudeStatus.App.Views.DetailsWindow"
         x:DataType="vm:DetailsViewModel"
         Title="ClaudeStatus"
@@ -72,17 +73,20 @@
         <StackPanel Spacing="16">
 
             <!--
-                A title bar the OS is not drawing for us. The accent dot is the
-                only place the primary colour appears at full strength in this
-                window, which is what makes a theme change read immediately.
+                A title bar the OS is not drawing for us. The mark is the only place
+                the primary colour appears at full strength in this window, which is
+                what makes a theme change read immediately - it was a plain dot
+                until the application had a mark of its own to put there.
 
                 L is the shared localizer; the indexer re-reads on a language change.
             -->
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Ellipse Width="7"
-                         Height="7"
-                         VerticalAlignment="Center"
-                         Fill="{DynamicResource Theme.Primary}" />
+                <Path Data="{x:Static branding:ClaudeMark.Geometry}"
+                      Width="19"
+                      Height="19"
+                      Stretch="Uniform"
+                      VerticalAlignment="Center"
+                      Fill="{DynamicResource Theme.Primary}" />
                 <TextBlock Classes="heading"
                            VerticalAlignment="Center"
                            Text="{Binding L[Details_Heading]}" />

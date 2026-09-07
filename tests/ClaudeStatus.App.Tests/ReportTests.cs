@@ -305,6 +305,10 @@ public class ReportViewModelTests
         public TraySupport TraySupport => TraySupport.Available;
 
         public string? ExecutablePath => Environment.ProcessPath;
+
+        public bool SupportsInlineTrayText => false;
+
+        public bool TrayIsAtTop => false;
     }
 }
 

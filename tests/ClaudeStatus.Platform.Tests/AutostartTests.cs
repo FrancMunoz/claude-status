@@ -314,4 +314,8 @@ internal sealed class StubPlatformInfo : IPlatformInfo
     public string? Executable { get; init; } = Environment.ProcessPath;
 
     public string? ExecutablePath => Executable;
+
+    public bool SupportsInlineTrayText { get; init; }
+
+    public bool TrayIsAtTop { get; init; }
 }

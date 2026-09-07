@@ -227,6 +227,18 @@ public partial class ConfigViewModel : ObservableObject
     /// </remarks>
     public bool CanUseTaskbarWidget => _taskbarHost.IsSupported;
 
+    /// <summary>
+    /// Whether the indicator draws every limit in a row, and so whether the Fable
+    /// column is a choice worth offering.
+    /// </summary>
+    /// <remarks>
+    /// The same setting the taskbar widget uses, reached through a second control
+    /// because the widget's own block is hidden where no taskbar can host it - and
+    /// that is exactly where the menu bar row lives. Without this the setting was
+    /// unreachable on the one platform that can draw the third column.
+    /// </remarks>
+    public bool CanUseInlineRow => _platform.SupportsInlineTrayText;
+
     /// <summary>True when the tray may not work on this desktop.</summary>
     public bool ShowTrayWarning => _platform.TraySupport != TraySupport.Available;
 

@@ -94,6 +94,10 @@
   <data name="Tray_Mode_Ring" xml:space="preserve">
     <value>Anneau</value>
   </data>
+  <data name="Tray_Mode_Row" xml:space="preserve">
+    <value>Tout sur une ligne</value>
+    <comment>Show menu entry for the inline row of every limit at once. macOS only; the entry is absent where the indicator must be square.</comment>
+  </data>
   <data name="Tray_Tooltip" xml:space="preserve">
     <value>ClaudeStatus — {0}</value>
   </data>
@@ -406,6 +410,10 @@
   <data name="Tray_Report" xml:space="preserve">
     <value>Rapport complet…</value>
   </data>
+  <data name="Tray_Row_Fable" xml:space="preserve">
+    <value>F</value>
+    <comment>Menu bar row label for the weekly Fable limit. Kept to one letter: the row sits in the macOS menu bar beside the clock.</comment>
+  </data>
   <data name="Details_MoreButton" xml:space="preserve">
     <value>Plus…</value>
   </data>
@@ -600,6 +608,14 @@
   </data>
   <data name="Config_Widget_ShowFable_Help" xml:space="preserve">
     <value>Désactivé par défaut : la plupart des forfaits atteignent la limite de session ou hebdomadaire bien avant celle de Fable, et le widget est plus étroit sans elle. La fenêtre de détails affiche toujours les trois.</value>
+  </data>
+  <data name="Config_Row_ShowFable" xml:space="preserve">
+    <value>Afficher la limite Fable dans la barre des menus</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
+  </data>
+  <data name="Config_Row_ShowFable_Help" xml:space="preserve">
+    <value>Désactivé par défaut : la plupart des forfaits atteignent la limite de session ou hebdomadaire bien avant celle de Fable, et l'élément de la barre des menus est plus court sans elle. La fenêtre contextuelle affiche toujours les trois.</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
   </data>
   <data name="Config_Widget_FollowSystem" xml:space="preserve">
     <value>Fondre dans la barre des tâches</value>

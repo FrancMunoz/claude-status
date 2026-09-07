@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ClaudeStatus.App.ViewModels"
+        xmlns:branding="using:ClaudeStatus.App.Branding"
         x:Class="ClaudeStatus.App.Views.InfoWindow"
         x:DataType="vm:InfoViewModel"
         Title="{Binding L[Info_Title]}"
@@ -12,16 +13,18 @@
     <StackPanel Margin="24" Spacing="18">
 
         <!--
-            The name block. The accent dot is the same one that heads the popup,
-            which is the cheapest way to make four separate windows read as one
-            application.
+            The name block. The mark is the same one that heads the popup and sits
+            in the menu bar, which is the cheapest way to make four separate windows
+            and a status item read as one application.
         -->
         <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="9">
-                <Ellipse Width="8"
-                         Height="8"
-                         VerticalAlignment="Center"
-                         Fill="{DynamicResource Theme.Primary}" />
+                <Path Data="{x:Static branding:ClaudeMark.Geometry}"
+                      Width="21"
+                      Height="21"
+                      Stretch="Uniform"
+                      VerticalAlignment="Center"
+                      Fill="{DynamicResource Theme.Primary}" />
                 <TextBlock Classes="heading"
                            VerticalAlignment="Center"
                            Text="{Binding ApplicationName}" />

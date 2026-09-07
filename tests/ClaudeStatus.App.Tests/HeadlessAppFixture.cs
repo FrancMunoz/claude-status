@@ -30,7 +30,14 @@ public sealed class HeadlessAppFixture : IDisposable
     public HeadlessAppFixture()
     {
         _uiThread = new Thread(Run) { IsBackground = true, Name = "avalonia-headless" };
-        _uiThread.SetApartmentState(ApartmentState.STA);
+
+        // STA is a Windows COM concept: the call throws PlatformNotSupportedException
+        // on macOS and Linux. Avalonia's headless backend does not need it there.
+        if (OperatingSystem.IsWindows())
+        {
+            _uiThread.SetApartmentState(ApartmentState.STA);
+        }
+
         _uiThread.Start();
 
         // Fail loudly rather than hanging the whole suite if startup breaks.

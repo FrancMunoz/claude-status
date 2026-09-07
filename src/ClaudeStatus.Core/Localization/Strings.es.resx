@@ -94,6 +94,10 @@
   <data name="Tray_Mode_Ring" xml:space="preserve">
     <value>Anillo</value>
   </data>
+  <data name="Tray_Mode_Row" xml:space="preserve">
+    <value>Todo en una fila</value>
+    <comment>Show menu entry for the inline row of every limit at once. macOS only; the entry is absent where the indicator must be square.</comment>
+  </data>
   <data name="Tray_Tooltip" xml:space="preserve">
     <value>ClaudeStatus — {0}</value>
   </data>
@@ -406,6 +410,10 @@
   <data name="Tray_Report" xml:space="preserve">
     <value>Informe completo…</value>
   </data>
+  <data name="Tray_Row_Fable" xml:space="preserve">
+    <value>F</value>
+    <comment>Menu bar row label for the weekly Fable limit. Kept to one letter: the row sits in the macOS menu bar beside the clock.</comment>
+  </data>
   <data name="Details_MoreButton" xml:space="preserve">
     <value>Más…</value>
   </data>
@@ -600,6 +608,14 @@
   </data>
   <data name="Config_Widget_ShowFable_Help" xml:space="preserve">
     <value>Desactivado por defecto: la mayoría de planes llegan al límite de sesión o semanal mucho antes que al de Fable, y el widget es más estrecho sin él. La ventana de detalles siempre muestra los tres.</value>
+  </data>
+  <data name="Config_Row_ShowFable" xml:space="preserve">
+    <value>Mostrar el límite de Fable en la barra de menús</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
+  </data>
+  <data name="Config_Row_ShowFable_Help" xml:space="preserve">
+    <value>Desactivado por defecto: la mayoría de los planes alcanzan el límite de sesión o semanal mucho antes que el de Fable, y el elemento de la barra de menús es más corto sin él. La ventana emergente siempre muestra los tres.</value>
+    <comment>Shown only where the indicator can be wider than it is tall (macOS). The Windows widget has its own wording in Config_Widget_ShowFable.</comment>
   </data>
   <data name="Config_Widget_FollowSystem" xml:space="preserve">
     <value>Integrar en la barra de tareas</value>
