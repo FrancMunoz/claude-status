@@ -72,6 +72,32 @@ public sealed class MacOsStatusItem : INativeStatusItem
     /// </remarks>
     private const double IconPoints = 16d;
 
+    /// <summary>
+    /// Set between the mark and the text.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// AppKit exposes no gap between an <c>NSButton</c>'s image and its title -
+    /// <c>imagePosition</c> says which side the image sits on and nothing says how
+    /// far away, so the only place the space can come from is one of the two things
+    /// being spaced. Padding the image would mean drawing the mark into a wider
+    /// canvas, which is a second bitmap and a <c>drawInRect:</c> declaration this
+    /// interop layer deliberately does without; a space at the head of the title
+    /// costs neither.
+    /// </para>
+    /// <para>
+    /// It is also the better of the two on its merits. The mark is read as a glyph
+    /// leading a line of text, and a space is measured in the menu bar's own font -
+    /// so the gap tracks the text size the system chose, where a padded bitmap
+    /// would be fixed in points and drift out of proportion the moment it did not.
+    /// U+2002 rather than a plain space: a word space here reads as a missing word,
+    /// and the mark needs more air than one anyway - it is a figure being set
+    /// against text, not a letter in it. Half an em comes out around 6 pt beside
+    /// the menu bar's own 13 pt, which is the gap the mark was asked for.
+    /// </para>
+    /// </remarks>
+    private const string MarkGap = "\u2002";
+
     /// <summary>The action every button and menu item routes through.</summary>
     private const string ActionSelector = "claudeStatusAction:";
 
@@ -239,7 +265,8 @@ public sealed class MacOsStatusItem : INativeStatusItem
         // NSStatusBarButton already knows the right answer for its own context, and
         // handing it a bare string is how to get it. The menu bar font arrives the
         // same way, which is the other thing the attributed string was there for.
-        ObjC.Send(button, ObjC.sel_registerName("setTitle:"), ObjC.NSString(text));
+        // MarkGap leads it, so the mark is not touching the number it introduces.
+        ObjC.Send(button, ObjC.sel_registerName("setTitle:"), ObjC.NSString(MarkGap + text));
 
         // Red is the one colour worth overriding for: it means the same thing in
         // every appearance and has to survive being read at a glance. It tints the

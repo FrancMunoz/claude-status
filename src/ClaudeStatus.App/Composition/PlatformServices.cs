@@ -192,8 +192,16 @@ public static class PlatformServices
     /// Keychain under the item name Claude Code itself uses, so there is no file
     /// to read - see <c>docs/data-source.md</c>.
     /// </remarks>
-    public static IAccessTokenSource CreateClaudeCodeTokenSource(TimeProvider? clock = null)
+    /// <param name="clock">Judges token expiry. The system clock by default.</param>
+    /// <param name="loggerFactory">
+    /// Where the macOS source reports a declined Keychain prompt. That is the one
+    /// event worth a line: it is silent from the outside, and it is the reason the
+    /// numbers stopped.
+    /// </param>
+    public static IAccessTokenSource CreateClaudeCodeTokenSource(
+        TimeProvider? clock = null, ILoggerFactory? loggerFactory = null)
         => OperatingSystem.IsMacOS()
-            ? new ClaudeCodeKeychainTokenSource(clock)
+            ? new ClaudeCodeKeychainTokenSource(
+                clock, log: loggerFactory?.CreateLogger<ClaudeCodeKeychainTokenSource>())
             : new ClaudeCodeFileTokenSource(clock: clock);
 }

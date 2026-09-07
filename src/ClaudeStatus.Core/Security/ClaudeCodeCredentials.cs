@@ -31,7 +31,27 @@ public static class ClaudeCodeCredentials
     /// </returns>
     /// <exception cref="JsonException">The blob is not valid JSON.</exception>
     public static byte[]? ExtractAccessToken(ReadOnlySpan<byte> utf8Json, DateTimeOffset now)
+        => ExtractAccessToken(utf8Json, now, out _);
+
+    /// <summary>
+    /// As above, and also reports when the token stops being usable.
+    /// </summary>
+    /// <remarks>
+    /// The expiry exists for callers that pay a price to reach the blob and would
+    /// rather not pay it again for a token they already hold - the macOS Keychain
+    /// source, which is charged a permission prompt per read. It is the credential
+    /// owner's own deadline, not a guess: caching until it and no further is the
+    /// difference between reading the Keychain once an hour and once a minute.
+    /// </remarks>
+    /// <param name="expiresAt">
+    /// Null when the blob names no expiry, which means the same thing here as it
+    /// does to <see cref="IsExpired"/> - unknown, so let the endpoint judge. A
+    /// caller holding the token has nothing to cache against and should not.
+    /// </param>
+    public static byte[]? ExtractAccessToken(
+        ReadOnlySpan<byte> utf8Json, DateTimeOffset now, out DateTimeOffset? expiresAt)
     {
+        expiresAt = null;
         if (utf8Json.IsEmpty)
         {
             return null;
@@ -52,7 +72,8 @@ public static class ClaudeCodeCredentials
             return null;
         }
 
-        if (IsExpired(oauth, now))
+        expiresAt = ExpiryOf(oauth);
+        if (expiresAt is { } deadline && deadline <= now)
         {
             return null;
         }
@@ -66,16 +87,17 @@ public static class ClaudeCodeCredentials
         return Encoding.UTF8.GetBytes(text);
     }
 
-    /// <summary>Reads <c>expiresAt</c> (milliseconds since the epoch) and compares it to now.</summary>
+    /// <summary>Reads <c>expiresAt</c>, milliseconds since the epoch.</summary>
     /// <remarks>
-    /// A missing or unreadable expiry is treated as "not expired" - let the
-    /// endpoint be the judge rather than refusing to try.
+    /// Null when it is missing or unreadable, which callers treat as "not expired" -
+    /// let the endpoint be the judge rather than refusing to try.
     /// </remarks>
-    private static bool IsExpired(JsonElement oauth, DateTimeOffset now)
+    private static DateTimeOffset? ExpiryOf(JsonElement oauth)
         => oauth.TryGetProperty(ExpiresAtPropertyName, out JsonElement expiresAt)
         && expiresAt.ValueKind == JsonValueKind.Number
         && expiresAt.TryGetInt64(out long milliseconds)
-        && DateTimeOffset.FromUnixTimeMilliseconds(milliseconds) <= now;
+            ? DateTimeOffset.FromUnixTimeMilliseconds(milliseconds)
+            : null;
 
     /// <summary>Zeroes a credential blob. A convenience so no call site forgets.</summary>
     public static void Wipe(byte[]? blob)

@@ -40,7 +40,11 @@ public static class AppServices
             provider.GetRequiredService<TimeProvider>(),
             provider.GetRequiredService<ILogger<JsonSnapshotCache>>()));
 
-        services.AddSingleton(_ => PlatformServices.CreateClaudeCodeTokenSource());
+        // A singleton, and it matters: on macOS this source holds the token it read
+        // so that polling does not go back to the Keychain, and a fresh instance
+        // per resolve would hold nothing and prompt every time.
+        services.AddSingleton(p => PlatformServices.CreateClaudeCodeTokenSource(
+            loggerFactory: p.GetService<ILoggerFactory>()));
 
         // One localizer for the whole app, shared by every view model. It has to be
         // a singleton: switching language raises a change on this instance, and any
