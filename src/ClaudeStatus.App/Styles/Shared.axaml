@@ -321,13 +321,20 @@
         which is not ours to know: text is only ever drawn on a surface the theme
         catalogue has already checked it against. It also means the popup's
         transparency setting applies here too, so the two look like one thing.
+
+        The outline is the theme's primary rather than the OSD border the popup
+        uses. The popup opens over the desktop, where a hairline is enough to say
+        where it ends; this card sits inside the taskbar, against chrome we do not
+        control and did not choose, and a faint border there reads as an edge of
+        the taskbar rather than as the edge of this app. The accent is the one
+        colour on the strip that is unambiguously ours.
     -->
     <Style Selector="Border.widget">
         <Setter Property="Background" Value="{DynamicResource Theme.OsdBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Theme.OsdBorder}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.Primary}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="14,4" />
         <Setter Property="Margin" Value="0,5" />
     </Style>
 
@@ -401,10 +408,18 @@
 
         The descendant selectors are more specific than the plain ones above, so
         .exceeded and .unknown have to be restated here or the ink would win.
+
+        Padding is restated for the same reason, and it is the setter most likely
+        to be deleted as redundant: it is not. The card above carries 14,4 to give
+        its primary outline something to enclose, and blended there is no outline,
+        so the widget would simply sit further from the tray for no reason anyone
+        looking at it could see. This keeps the blended strip where it has always
+        been - the card grew, and blending did not.
     -->
     <Style Selector="Border.widget.system">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="10,0" />
     </Style>
 
     <!--

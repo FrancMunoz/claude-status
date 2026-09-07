@@ -273,6 +273,54 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
         });
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Only_the_themed_card_carries_the_primary_outline_and_its_padding(bool followSystem)
+    {
+        // The themed card is outlined in the primary and padded to enclose it.
+        // Blended keeps the tighter padding, because there is no outline there to
+        // enclose and the strip would otherwise drift away from the tray for no
+        // visible reason. The .system padding setter reads as redundant with the
+        // one above it and is not; this is what says so.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            ThemeApplier.Apply(Application.Current!, ThemeCatalog.Dark, string.Empty, 0d);
+
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Configure(80d, showFable: false, followSystem: followSystem);
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarWidgetWindow { DataContext = viewModel };
+            TaskbarInk.Apply(window.Resources, TrayBackground.Dark);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            Border card = window.GetLogicalDescendants()
+                .OfType<Border>()
+                .Single(b => b.Classes.Contains("widget"));
+
+            if (followSystem)
+            {
+                card.BorderThickness.Should().Be(default(Thickness), "blending draws no card");
+                card.Padding.Should().Be(new Thickness(10, 0));
+            }
+            else
+            {
+                Rgb primary = ThemeCatalog.Dark.Primary;
+
+                card.BorderThickness.Should().Be(new Thickness(1));
+                card.BorderBrush.Should().BeAssignableTo<ISolidColorBrush>();
+                ((ISolidColorBrush)card.BorderBrush!).Color
+                    .Should().Be(Color.FromRgb(primary.R, primary.G, primary.B));
+                card.Padding.Should().Be(new Thickness(14, 4));
+                card.CornerRadius.TopLeft.Should().BeGreaterThan(0d, "the outline is rounded");
+            }
+
+            window.Close();
+        });
+    }
+
     private static ClaudeStatus.Security.CredentialService BuildCredentialService()
         => new(
             new NullSecretStore(),
