@@ -175,8 +175,39 @@ public class IconGenerator
         });
     }
 
-    /// <summary>The bounding box of every non-transparent pixel.</summary>
-    private static Rect InkBounds(byte[] png, int size)
+    [Fact]
+    public void The_menu_bar_template_icon_is_still_black_and_fills_its_canvas()
+    {
+        // ToPng(int) feeds the macOS NSStatusItem as a *template* image: the
+        // system throws the colours away, keeps the alpha, and tints the result
+        // to match the menu bar's own text. Black is therefore not a style choice
+        // there, and an inset would shrink the mark against the numbers beside
+        // it - so the colour and inset this overload passes are load-bearing.
+        //
+        // It routes through the parameterised overload added for the app icons,
+        // and the only test that covered it asserted that some PNG came out.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            byte[] png = ClaudeMark.ToPng(64);
+            byte[] pixels = Pixels(png, 64);
+
+            for (int i = 0; i < pixels.Length; i += 4)
+            {
+                if (pixels[i + 3] > 8)
+                {
+                    (pixels[i] + pixels[i + 1] + pixels[i + 2])
+                        .Should().Be(0, "a template image must be black, not the brand colour");
+                }
+            }
+
+            Rect ink = InkBounds(png, 64);
+            Math.Max(ink.Width, ink.Height)
+                .Should().BeInRange(61, 65, "the template icon takes no inset");
+        });
+    }
+
+    /// <summary>Decodes a PNG to raw BGRA bytes.</summary>
+    private static byte[] Pixels(byte[] png, int size)
     {
         using var stream = new MemoryStream(png);
         using var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
@@ -192,6 +223,14 @@ public class IconGenerator
         {
             System.Runtime.InteropServices.Marshal.FreeHGlobal(scratch);
         }
+
+        return pixels;
+    }
+
+    /// <summary>The bounding box of every non-transparent pixel.</summary>
+    private static Rect InkBounds(byte[] png, int size)
+    {
+        byte[] pixels = Pixels(png, size);
 
         int minX = size, minY = size, maxX = -1, maxY = -1;
         for (int y = 0; y < size; y++)
