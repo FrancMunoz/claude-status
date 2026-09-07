@@ -1,11 +1,17 @@
 using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
+using Avalonia.Media;
+using Avalonia.Threading;
+using ClaudeStatus.App.Theming;
 using ClaudeStatus.App.Tray;
 using ClaudeStatus.App.Views;
 using ClaudeStatus.Platform;
 using ClaudeStatus.Security;
+using ClaudeStatus.Theming;
 using Microsoft.Extensions.Time.Testing;
+using Shapes = Avalonia.Controls.Shapes;
 
 namespace ClaudeStatus.App.Tests;
 
@@ -181,6 +187,69 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
             using var bitmap = TrayIconRenderer.Render(snapshot, IndicatorMode.Ring, ThresholdState.Normal);
 
             bitmap.Should().NotBeNull();
+        });
+    }
+
+    [Fact]
+    public void The_taskbar_widget_window_loads_and_draws_the_Claude_mark()
+    {
+        // The mark is inlined path data, which the XAML compiler does not
+        // validate: a geometry it cannot parse yields an empty shape, and the
+        // widget would then load perfectly with nothing drawn where the mark is.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarWidgetWindow { DataContext = viewModel };
+
+            Shapes.Path mark = window.GetLogicalDescendants()
+                .OfType<Shapes.Path>()
+                .Single(p => p.Classes.Contains("widgetMark"));
+
+            mark.Data.Should().NotBeNull("the StreamGeometry resource has to resolve");
+            mark.Data!.Bounds.Width.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
+            mark.Data.Bounds.Height.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void The_mark_is_inked_by_the_same_choice_as_the_numbers_beside_it(bool followSystem)
+    {
+        // Blended, the mark matches the taskbar ink the values use; on the
+        // themed card it takes the primary. Both come from styles keyed on the
+        // .system class, so the risk is a selector that never matches and a mark
+        // that silently stays one colour in both modes.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            // The headless app boots with no theme applied, so the .system-off case
+            // would resolve Theme.Primary to nothing and pass vacuously.
+            ThemeApplier.Apply(Application.Current!, ThemeCatalog.Dark, string.Empty, 0d);
+
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Configure(80d, showFable: false, followSystem: followSystem);
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarWidgetWindow { DataContext = viewModel };
+            TaskbarInk.Apply(window.Resources, TrayBackground.Dark);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            Shapes.Path mark = window.GetLogicalDescendants()
+                .OfType<Shapes.Path>()
+                .Single(p => p.Classes.Contains("widgetMark"));
+
+            Rgb primary = ThemeCatalog.Dark.Primary;
+            Color expected = followSystem
+                ? TaskbarInk.InkFor(TrayBackground.Dark)
+                : Color.FromRgb(primary.R, primary.G, primary.B);
+
+            mark.Fill.Should().BeAssignableTo<ISolidColorBrush>();
+            ((ISolidColorBrush)mark.Fill!).Color.Should().Be(expected);
+
+            window.Close();
         });
     }
 
