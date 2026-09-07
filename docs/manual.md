@@ -34,7 +34,8 @@ command reads:
 | **Week (Fable)** | the 7-day limit for top-tier models |
 
 The tray icon shows one of them as a number. The taskbar widget (Windows,
-the default there) shows the session and weekly limits at once, and Fable if enabled.
+the default there) shows the session and weekly limits at once, and Fable if
+enabled, led by the Claude mark so the strip is identifiable as this app.
 
 ### ⚠ The data source is unofficial
 
@@ -157,8 +158,9 @@ you chose.
   aggressively; this is not a preference.
 - **Fake data** switches to a deterministic built-in provider. Useful for
   screenshots and for trying themes without burning real requests.
-- **Popup transparency** is 0–100 % and affects the details popup's background
-  only. Never its text — a percentage you have to squint at defeats the point.
+- **Popup transparency** is 0–100 %, default 10 %, and affects the details
+  popup's background only. Never its text — a percentage you have to squint at
+  defeats the point.
 
 ### Languages
 
@@ -466,6 +468,10 @@ it rotates the user's live token out from under Claude Code.
 - **The tray icon is not themed** — it follows the taskbar, which we do not
   control. The taskbar widget *is* themed: it draws on the theme's own OSD
   surface rather than on the taskbar, so the contrast problem never arises.
+- The Claude mark leading the widget is inlined path data, not an image,
+  because it has to recolour: `Theme.Primary` on the themed card,
+  `Widget.Ink` when the widget blends into the taskbar. It is the one place
+  the accent appears on that strip.
 
 ### Fluent controls
 

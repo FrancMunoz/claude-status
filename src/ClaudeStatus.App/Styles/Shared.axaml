@@ -321,14 +321,40 @@
         which is not ours to know: text is only ever drawn on a surface the theme
         catalogue has already checked it against. It also means the popup's
         transparency setting applies here too, so the two look like one thing.
+
+        The outline is the theme's primary rather than the OSD border the popup
+        uses. The popup opens over the desktop, where a hairline is enough to say
+        where it ends; this card sits inside the taskbar, against chrome we do not
+        control and did not choose, and a faint border there reads as an edge of
+        the taskbar rather than as the edge of this app. The accent is the one
+        colour on the strip that is unambiguously ours.
     -->
     <Style Selector="Border.widget">
         <Setter Property="Background" Value="{DynamicResource Theme.OsdBackground}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Theme.OsdBorder}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.Primary}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}" />
-        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="Padding" Value="14,4" />
         <Setter Property="Margin" Value="0,5" />
+    </Style>
+
+    <!--
+        The Claude mark that leads the card. Primary here, because on the
+        themed card the mark is the one place the accent appears - the
+        numbers are text and the bars carry their own meaning - so it is what
+        ties the strip to whichever theme is chosen.
+
+        The outline is ClaudeMark.Geometry, the same one the details and info
+        headings draw, so the three cannot drift apart. Only the box and the ink
+        are set here; sizing lives in a style rather than on the Path because the
+        blended and themed variants differ by ink alone.
+    -->
+    <Style Selector="Path.widgetMark">
+        <Setter Property="Fill" Value="{DynamicResource Theme.Primary}" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <Style Selector="StackPanel.widgetMetric">
@@ -382,10 +408,29 @@
 
         The descendant selectors are more specific than the plain ones above, so
         .exceeded and .unknown have to be restated here or the ink would win.
+
+        Padding is restated for the same reason, and it is the setter most likely
+        to be deleted as redundant: it is not. The card above carries 14,4 to give
+        its primary outline something to enclose, and blended there is no outline,
+        so the widget would simply sit further from the tray for no reason anyone
+        looking at it could see. This keeps the blended strip where it has always
+        been - the card grew, and blending did not.
     -->
     <Style Selector="Border.widget.system">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="10,0" />
+    </Style>
+
+    <!--
+        Blended, the mark drops the accent and takes the taskbar ink, the same
+        colour as the clock and as the values beside it. A themed primary here
+        would be the one coloured thing on a strip that is meant to read as
+        part of the taskbar, and on a taskbar tinted near that primary it
+        would be the one thing that disappeared.
+    -->
+    <Style Selector="Border.widget.system Path.widgetMark">
+        <Setter Property="Fill" Value="{DynamicResource Widget.Ink}" />
     </Style>
 
     <Style Selector="Border.widget.system TextBlock.widgetLabel">

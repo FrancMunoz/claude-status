@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ClaudeStatus.App.ViewModels"
         xmlns:controls="using:ClaudeStatus.App.Controls"
+        xmlns:branding="using:ClaudeStatus.App.Branding"
         x:Class="ClaudeStatus.App.Views.TaskbarWidgetWindow"
         x:DataType="vm:TaskbarWidgetViewModel"
         Title="ClaudeStatus"
@@ -26,6 +27,11 @@
         which is the trick that sidesteps the tray icon's whole contrast problem:
         the widget never draws text directly on the taskbar, only on a surface
         whose text colour the theme catalogue has already checked against it.
+
+        Windows only in practice. TrayApplicationController builds this indicator
+        only when ITaskbarHost.IsSupported, and the only host that returns true is
+        WindowsTaskbarHost; macOS and Linux get UnsupportedTaskbarHost and keep the
+        tray icon. Nothing in this file needs an OS check of its own.
     -->
 
     <Window.Resources>
@@ -65,36 +71,48 @@
             Classes.system="{Binding FollowsSystem}"
             HorizontalAlignment="Left"
             VerticalAlignment="Center">
-        <Panel>
-            <StackPanel Orientation="Horizontal"
-                        Spacing="14"
-                        VerticalAlignment="Center"
-                        IsVisible="{Binding HasReading}"
-                        Classes.stale="{Binding IsStale}">
-                <ContentControl Content="{Binding Session}"
-                                ContentTemplate="{StaticResource WidgetMetricTemplate}" />
-                <ContentControl Content="{Binding Week}"
-                                ContentTemplate="{StaticResource WidgetMetricTemplate}" />
-                <ContentControl Content="{Binding WeekFable}"
-                                IsVisible="{Binding ShowFable}"
-                                ContentTemplate="{StaticResource WidgetMetricTemplate}" />
-            </StackPanel>
-
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
             <!--
-                Nothing to show: the same three states the tray icon draws as
-                shapes, with a word beside each because here there is room for one.
+                The mark leads, before the 5h metric. It sits outside the Panel
+                below rather than inside the metric row so it also stands in the
+                no-reading states: it says which app this strip of taskbar belongs
+                to, and an identity that vanishes the moment a poll fails is not
+                doing that job. For the same reason it does not take the .stale
+                fade - it is not a reading.
             -->
-            <StackPanel Orientation="Horizontal"
-                        Spacing="8"
-                        VerticalAlignment="Center"
-                        IsVisible="{Binding !HasReading}">
-                <TextBlock Classes="widgetGlyph"
-                           VerticalAlignment="Center"
-                           Text="{Binding AlertGlyph}" />
-                <TextBlock Classes="widgetValue"
-                           VerticalAlignment="Center"
-                           Text="{Binding AlertText}" />
-            </StackPanel>
-        </Panel>
+            <Path Classes="widgetMark" Data="{x:Static branding:ClaudeMark.Geometry}" />
+
+            <Panel>
+                <StackPanel Orientation="Horizontal"
+                            Spacing="14"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding HasReading}"
+                            Classes.stale="{Binding IsStale}">
+                    <ContentControl Content="{Binding Session}"
+                                    ContentTemplate="{StaticResource WidgetMetricTemplate}" />
+                    <ContentControl Content="{Binding Week}"
+                                    ContentTemplate="{StaticResource WidgetMetricTemplate}" />
+                    <ContentControl Content="{Binding WeekFable}"
+                                    IsVisible="{Binding ShowFable}"
+                                    ContentTemplate="{StaticResource WidgetMetricTemplate}" />
+                </StackPanel>
+
+                <!--
+                    Nothing to show: the same three states the tray icon draws as
+                    shapes, with a word beside each because here there is room for one.
+                -->
+                <StackPanel Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding !HasReading}">
+                    <TextBlock Classes="widgetGlyph"
+                               VerticalAlignment="Center"
+                               Text="{Binding AlertGlyph}" />
+                    <TextBlock Classes="widgetValue"
+                               VerticalAlignment="Center"
+                               Text="{Binding AlertText}" />
+                </StackPanel>
+            </Panel>
+        </StackPanel>
     </Border>
 </Window>

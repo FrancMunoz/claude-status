@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ClaudeStatus.App.ViewModels"
+             xmlns:branding="using:ClaudeStatus.App.Branding"
              x:Class="ClaudeStatus.App.Views.TaskbarWidgetTooltip"
              x:DataType="vm:TaskbarWidgetViewModel">
 
@@ -50,10 +51,18 @@
 
     <StackPanel Spacing="8" MinWidth="260">
         <StackPanel Orientation="Horizontal" Spacing="8">
-            <Ellipse Width="7"
-                     Height="7"
-                     VerticalAlignment="Center"
-                     Fill="{DynamicResource Theme.Primary}" />
+            <!--
+                The mark, at the size and spacing DetailsWindow uses: this card
+                carries the same heading as the details popup, so the two headers
+                should be the same header. It was a 7px dot, which read as a
+                bullet rather than as the application.
+            -->
+            <Path Data="{x:Static branding:ClaudeMark.Geometry}"
+                  Width="19"
+                  Height="19"
+                  Stretch="Uniform"
+                  VerticalAlignment="Center"
+                  Fill="{DynamicResource Theme.Primary}" />
             <TextBlock Classes="heading"
                        VerticalAlignment="Center"
                        Text="{Binding L[Details_Heading]}" />

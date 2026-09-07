@@ -104,10 +104,16 @@ public sealed record PollingOptions
 /// </para>
 /// <para>
 /// So: <b>every persisted property must have <c>default</c> as its intended
-/// value</b>, exactly as <see cref="OsdTransparency"/> already does, or be
-/// repaired in <see cref="Normalized"/>. That is why the update setting is stored
-/// as <see cref="DisableAutomaticUpdates"/> rather than as the positive flag the
-/// user interface shows.
+/// value</b>, or be repaired in <see cref="Normalized"/>. That is why the update
+/// setting is stored as <see cref="DisableAutomaticUpdates"/> rather than as the
+/// positive flag the user interface shows.
+/// </para>
+/// <para>
+/// When a wanted default is not <c>default</c> and <c>default</c> is itself a
+/// legitimate choice, the property is made nullable so the two can be told apart,
+/// and <see cref="Normalized"/> resolves the null. <see cref="OsdTransparency"/>
+/// is the worked example: 0 means "solid", which a user may genuinely want, so it
+/// cannot double as "not set".
 /// </para>
 /// </remarks>
 public sealed record AppSettings
@@ -255,11 +261,17 @@ public sealed record AppSettings
     /// The colour theme, or <see cref="ThemeCatalog.SystemId"/> to follow the OS.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <see cref="ThemeCatalog.DefaultId"/> by default, not <see cref="ThemeCatalog.SystemId"/>.
+    /// Following the OS is a choice the user can make and is recorded as one.
+    /// </para>
+    /// <para>
     /// Bounded the same way as <see cref="LanguageTag"/>: short, lower-case ASCII,
     /// no separators. It also becomes a file name when the theme comes from
     /// <c>themes/</c>, so the validation is what stops a path escaping that folder.
+    /// </para>
     /// </remarks>
-    public string ThemeId { get; init; } = ThemeCatalog.SystemId;
+    public string ThemeId { get; init; } = ThemeCatalog.DefaultId;
 
     /// <summary>
     /// The interface font family, or empty for the platform default.
@@ -272,8 +284,18 @@ public sealed record AppSettings
     /// </remarks>
     public string FontFamily { get; init; } = FontCatalog.SystemDefault;
 
+    /// <summary>The transparency the popup gets when the user has not chosen one.</summary>
+    /// <remarks>
+    /// Enough to show that the popup is an overlay and not a window, and little
+    /// enough that nothing behind it competes with the readings. Every built-in
+    /// theme still clears its contrast checks here: only the background carries
+    /// the alpha, so the text is unaffected at any setting.
+    /// </remarks>
+    public const double DefaultOsdTransparency = 0.10d;
+
     /// <summary>
-    /// Background transparency of the details popup, 0 (solid) to 1 (invisible).
+    /// Background transparency of the details popup, 0 (solid) to 1 (invisible),
+    /// or <c>null</c> for <see cref="DefaultOsdTransparency"/>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -285,10 +307,19 @@ public sealed record AppSettings
     /// <para>
     /// <b>Transparency, not opacity.</b> The two are the same slider read from
     /// opposite ends, and the whole app uses this direction so the word never has
-    /// to be mentally inverted: the default is <b>0</b>, meaning "add no
-    /// transparency", which is also the value a new settings file gets by simply
-    /// omitting the field. Expressing it as opacity would make the do-nothing
-    /// default the number 1, which reads like a setting that is already turned on.
+    /// to be mentally inverted: 0 means "add no transparency". Expressed as
+    /// opacity, "leave it alone" would be the number 1, which reads like a
+    /// setting already turned on.
+    /// </para>
+    /// <para>
+    /// <b>Nullable because the default is no longer <c>default</c>.</b> It was 0
+    /// until 2026-09-07, which let this be a plain <c>double</c> - see the warning
+    /// on this type. Now that the default is <see cref="DefaultOsdTransparency"/>,
+    /// a plain <c>double</c> could not tell "the user asked for a solid panel"
+    /// from "this key is not in the file": the first must stay solid, the second
+    /// must become the default, and both arrive as 0. <c>null</c> is the absent
+    /// case, and <see cref="Normalized"/> resolves it, exactly as it already does
+    /// for <see cref="Polling"/>.
     /// </para>
     /// <para>
     /// A full 1 is a real setting, not a degenerate one: the panel and its border
@@ -297,7 +328,7 @@ public sealed record AppSettings
     /// carries the alpha, the text stays legible and the buttons stay clickable.
     /// </para>
     /// </remarks>
-    public double OsdTransparency { get; init; }
+    public double? OsdTransparency { get; init; }
 
     /// <summary>Clamps anything that arrived from disk into a usable range.</summary>
     public AppSettings Normalized() => this with
@@ -311,10 +342,16 @@ public sealed record AppSettings
         CredentialSource = Enum.IsDefined(CredentialSource) ? CredentialSource : CredentialSource.ClaudeCodeLogin,
         Polling = (Polling ?? new PollingOptions()).Normalized(),
         LanguageTag = LanguageCatalog.IsValidTag(LanguageTag) ? LanguageTag : LanguageCatalog.FollowSystem,
-        ThemeId = ThemeCatalog.IsValidId(ThemeId) ? ThemeId : ThemeCatalog.SystemId,
+        // An absent key arrives here as null (the source generator skips the
+        // initialiser above), so this line is what actually sets the default for
+        // an existing settings file. Both must name the same theme.
+        ThemeId = ThemeCatalog.IsValidId(ThemeId) ? ThemeId : ThemeCatalog.DefaultId,
         FontFamily = FontCatalog.Normalize(FontFamily),
-        OsdTransparency = double.IsFinite(OsdTransparency)
-            ? Math.Clamp(OsdTransparency, 0d, 1d)
-            : 0d,
+        // Absent (null) and unusable (NaN, infinity) both become the default; a
+        // real number is clamped. After this the value is never null, so nothing
+        // downstream has to know that "not chosen" was ever representable.
+        OsdTransparency = OsdTransparency is double t && double.IsFinite(t)
+            ? Math.Clamp(t, 0d, 1d)
+            : DefaultOsdTransparency,
     };
 }

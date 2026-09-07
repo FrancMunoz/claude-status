@@ -1,11 +1,18 @@
 using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
+using Avalonia.Media;
+using Avalonia.Threading;
+using ClaudeStatus.App.Branding;
+using ClaudeStatus.App.Theming;
 using ClaudeStatus.App.Tray;
 using ClaudeStatus.App.Views;
 using ClaudeStatus.Platform;
 using ClaudeStatus.Security;
+using ClaudeStatus.Theming;
 using Microsoft.Extensions.Time.Testing;
+using Shapes = Avalonia.Controls.Shapes;
 
 namespace ClaudeStatus.App.Tests;
 
@@ -181,6 +188,136 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
             using var bitmap = TrayIconRenderer.Render(snapshot, IndicatorMode.Ring, ThresholdState.Normal);
 
             bitmap.Should().NotBeNull();
+        });
+    }
+
+    [Fact]
+    public void The_taskbar_widget_window_loads_and_draws_the_Claude_mark()
+    {
+        // An {x:Static} that fails to resolve leaves Data null, and the widget
+        // then loads perfectly with nothing drawn where the mark should be. The
+        // bounds check is what separates "resolved" from "resolved to an empty
+        // shape", which is what an unparsable outline would look like.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarWidgetWindow { DataContext = viewModel };
+
+            Shapes.Path mark = window.GetLogicalDescendants()
+                .OfType<Shapes.Path>()
+                .Single(p => p.Classes.Contains("widgetMark"));
+
+            mark.Data.Should().BeSameAs(ClaudeMark.Geometry, "one outline, drawn everywhere");
+            mark.Data!.Bounds.Width.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
+            mark.Data.Bounds.Height.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
+        });
+    }
+
+    [Fact]
+    public void The_hover_card_loads_and_leads_with_the_mark()
+    {
+        // The card the widget shows on hover. Its heading is the details popup's
+        // heading, so it draws the details popup's mark beside it; it used to be
+        // a 7px dot, which read as a bullet rather than as the application.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarHoverWindow { DataContext = viewModel };
+
+            Shapes.Path mark = window.GetLogicalDescendants().OfType<Shapes.Path>().Single();
+            mark.Data.Should().BeSameAs(ClaudeMark.Geometry, "one outline, drawn everywhere");
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void The_mark_is_inked_by_the_same_choice_as_the_numbers_beside_it(bool followSystem)
+    {
+        // Blended, the mark matches the taskbar ink the values use; on the
+        // themed card it takes the primary. Both come from styles keyed on the
+        // .system class, so the risk is a selector that never matches and a mark
+        // that silently stays one colour in both modes.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            // The headless app boots with no theme applied, so the .system-off case
+            // would resolve Theme.Primary to nothing and pass vacuously.
+            ThemeApplier.Apply(Application.Current!, ThemeCatalog.Dark, string.Empty, 0d);
+
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Configure(80d, showFable: false, followSystem: followSystem);
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarWidgetWindow { DataContext = viewModel };
+            TaskbarInk.Apply(window.Resources, TrayBackground.Dark);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            Shapes.Path mark = window.GetLogicalDescendants()
+                .OfType<Shapes.Path>()
+                .Single(p => p.Classes.Contains("widgetMark"));
+
+            Rgb primary = ThemeCatalog.Dark.Primary;
+            Color expected = followSystem
+                ? TaskbarInk.InkFor(TrayBackground.Dark)
+                : Color.FromRgb(primary.R, primary.G, primary.B);
+
+            mark.Fill.Should().BeAssignableTo<ISolidColorBrush>();
+            ((ISolidColorBrush)mark.Fill!).Color.Should().Be(expected);
+
+            window.Close();
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Only_the_themed_card_carries_the_primary_outline_and_its_padding(bool followSystem)
+    {
+        // The themed card is outlined in the primary and padded to enclose it.
+        // Blended keeps the tighter padding, because there is no outline there to
+        // enclose and the strip would otherwise drift away from the tray for no
+        // visible reason. The .system padding setter reads as redundant with the
+        // one above it and is not; this is what says so.
+        HeadlessAppFixture.Invoke(() =>
+        {
+            ThemeApplier.Apply(Application.Current!, ThemeCatalog.Dark, string.Empty, 0d);
+
+            var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
+            viewModel.Configure(80d, showFable: false, followSystem: followSystem);
+            viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+
+            var window = new TaskbarWidgetWindow { DataContext = viewModel };
+            TaskbarInk.Apply(window.Resources, TrayBackground.Dark);
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            Border card = window.GetLogicalDescendants()
+                .OfType<Border>()
+                .Single(b => b.Classes.Contains("widget"));
+
+            if (followSystem)
+            {
+                card.BorderThickness.Should().Be(default(Thickness), "blending draws no card");
+                card.Padding.Should().Be(new Thickness(10, 0));
+            }
+            else
+            {
+                Rgb primary = ThemeCatalog.Dark.Primary;
+
+                card.BorderThickness.Should().Be(new Thickness(1));
+                card.BorderBrush.Should().BeAssignableTo<ISolidColorBrush>();
+                ((ISolidColorBrush)card.BorderBrush!).Color
+                    .Should().Be(Color.FromRgb(primary.R, primary.G, primary.B));
+                card.Padding.Should().Be(new Thickness(14, 4));
+                card.CornerRadius.TopLeft.Should().BeGreaterThan(0d, "the outline is rounded");
+            }
+
+            window.Close();
         });
     }
 

@@ -82,7 +82,7 @@ public class ConfigStoreTests : IDisposable
         loaded.SchemaVersion.Should().Be(1);
         loaded.AutomaticUpdates.Should().BeTrue();
         loaded.Polling.Should().NotBeNull();
-        loaded.ThemeId.Should().Be(ThemeCatalog.SystemId);
+        loaded.ThemeId.Should().Be(ThemeCatalog.DefaultId);
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public class ConfigStoreTests : IDisposable
         // The id also becomes a file name under themes/, so this is what stops a
         // path escaping that folder as well as what keeps a token out of settings.
         new AppSettings { ThemeId = hostile }.Normalized()
-            .ThemeId.Should().Be(ThemeCatalog.SystemId);
+            .ThemeId.Should().Be(ThemeCatalog.DefaultId);
     }
 
     [Theory]
@@ -318,7 +318,7 @@ public class ConfigStoreTests : IDisposable
     [InlineData(-5d, 0d)]
     [InlineData(0.5d, 0.5d)]
     [InlineData(2d, 1d)]
-    [InlineData(double.NaN, 0d)]
+    [InlineData(double.NaN, AppSettings.DefaultOsdTransparency)]
     public void The_popup_transparency_is_clamped_into_range(double given, double expected)
     {
         new AppSettings { OsdTransparency = given }.Normalized()
@@ -326,21 +326,44 @@ public class ConfigStoreTests : IDisposable
     }
 
     [Fact]
-    public void The_popup_is_solid_by_default()
+    public void An_explicit_zero_stays_solid_and_is_not_mistaken_for_unset()
     {
-        // Stated as transparency rather than opacity precisely so that the
-        // do-nothing default is zero, which is also what a settings file gets by
-        // omitting the field entirely.
-        new AppSettings().OsdTransparency.Should().Be(0d);
-        new AppSettings().Normalized().OsdTransparency.Should().Be(0d);
+        // The whole reason the property is nullable. 0 is a setting a user can
+        // legitimately want, so it must survive normalisation untouched even
+        // though the default is no longer 0.
+        new AppSettings { OsdTransparency = 0d }.Normalized()
+            .OsdTransparency.Should().Be(0d);
     }
 
     [Fact]
-    public async Task A_settings_file_with_no_transparency_field_loads_as_solid()
+    public void The_popup_is_slightly_transparent_by_default()
     {
+        new AppSettings().OsdTransparency.Should().BeNull("nothing has been chosen yet");
+        new AppSettings().Normalized()
+            .OsdTransparency.Should().Be(AppSettings.DefaultOsdTransparency);
+    }
+
+    [Fact]
+    public async Task A_settings_file_with_no_transparency_field_loads_as_the_default()
+    {
+        // The path that made the property nullable. A plain double would come
+        // back as 0 here - the JSON source generator does not run property
+        // initialisers - and a fresh install would disagree with a partial file
+        // about what "default" means.
         Directory.CreateDirectory(_directory);
         await File.WriteAllTextAsync(
             Path.Combine(_directory, JsonConfigStore.FileName), """{ "thresholdPercent": 80 }""", Ct);
+
+        (await Store().LoadAsync(Ct))
+            .OsdTransparency.Should().Be(AppSettings.DefaultOsdTransparency);
+    }
+
+    [Fact]
+    public async Task A_settings_file_that_asks_for_a_solid_popup_keeps_it_across_a_reload()
+    {
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(
+            Path.Combine(_directory, JsonConfigStore.FileName), """{ "osdTransparency": 0 }""", Ct);
 
         (await Store().LoadAsync(Ct)).OsdTransparency.Should().Be(0d);
     }

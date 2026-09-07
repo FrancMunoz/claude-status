@@ -303,7 +303,14 @@ public sealed class TrayApplicationController : IDisposable
             _services.GetRequiredService<JsonThemeStore>().All(),
             systemIsDark);
 
-        ThemeApplier.Apply(application, theme, _settings.FontFamily, _settings.OsdTransparency);
+        // Normalized() has already resolved the null, but these settings can also
+        // arrive straight from a caller, so the default is restated rather than
+        // assumed.
+        ThemeApplier.Apply(
+            application,
+            theme,
+            _settings.FontFamily,
+            _settings.OsdTransparency ?? AppSettings.DefaultOsdTransparency);
 
         // Runs on every settings change, which is exactly when these can move.
         _indicator.Configure(IndicatorOptionsFrom(_settings));
