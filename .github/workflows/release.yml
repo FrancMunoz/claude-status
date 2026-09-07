@@ -48,7 +48,8 @@ jobs:
   # semantic-release that decides it from the commit history. Asking it in
   # --dry-run mode gives the same answer the real run will reach in the next job,
   # from the same commits and the same config, without tagging anything.
-  macos:
+  package-macos:
+    name: package the macOS installer
     runs-on: macos-latest
 
     outputs:
@@ -122,10 +123,11 @@ jobs:
           retention-days: 1
 
   release:
+    name: package Windows, tag and publish every platform
     # Windows, because vpk builds the Setup.exe natively here. The macOS
     # artifacts are carried in from the job above.
     runs-on: windows-latest
-    needs: macos
+    needs: package-macos
 
     steps:
       - uses: actions/checkout@v4
@@ -165,7 +167,7 @@ jobs:
       # pack.ps1 creates that directory but never empties it, so the macOS files
       # are still there when the Windows ones land beside them.
       - name: Download the macOS release
-        if: needs.macos.outputs.version != ''
+        if: needs.package-macos.outputs.version != ''
         uses: actions/download-artifact@v4
         with:
           name: macos-release

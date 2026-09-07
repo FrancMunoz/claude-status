@@ -101,7 +101,23 @@ try {
         # prerelease suffix there, while CFBundleVersion is free-form and keeps the
         # full version so a build is still identifiable.
         $shortVersion = ($Version -split '-')[0]
-        $plistPath = Join-Path $publishDir 'Info.plist'
+
+        # Written beside the publish folder and never inside it.
+        #
+        # vpk copies everything in --packDir into the .app, so a generated
+        # Info.plist left there ships as an application file as well as being the
+        # bundle's manifest - and pkgbuild then cannot find exactly one component
+        # to take the package identifier from:
+        #
+        #   pkgbuild: error: No package identifier specified and not exactly one
+        #   component to derive it from.
+        #
+        # It fails at the very last step, after the .app and the portable zip have
+        # both been built, which makes it look like an installer problem rather
+        # than a stray file. --exclude does not save it.
+        $plistDir = Join-Path $repoRoot 'artifacts/macos'
+        New-Item -ItemType Directory -Force -Path $plistDir | Out-Null
+        $plistPath = Join-Path $plistDir 'Info.plist'
 
         (Get-Content -Raw 'build/macos/Info.plist.template').
             Replace('__VERSION__', $Version).
@@ -111,10 +127,6 @@ try {
         # --plist and --bundleId are mutually exclusive in vpk; the identifier is
         # declared in the template instead.
         $extraArgs += '--plist', $plistPath
-
-        # The plist must not ship inside the bundle as an application file as well
-        # as being the bundle's own manifest.
-        $extraArgs += '--exclude', '.*\.pdb|Info\.plist'
     }
 
     # vpk refuses to package a build whose Main does not call VelopackApp.Run(),
