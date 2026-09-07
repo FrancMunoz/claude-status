@@ -58,6 +58,19 @@ jobs:
       # Empty output when there is no release due, which is the common case on a
       # push that only changed docs. Every later step is skipped, and the Windows
       # job reaches the same conclusion on its own.
+      #
+      # Two things about the grep, and both are load-bearing:
+      #
+      # -i, because semantic-release words the line differently for the very first
+      # release. With a previous tag it says "The next release version is X.Y.Z";
+      # with none it says "There is no previous release, the next release version
+      # is X.Y.Z" - lower-case, because it is mid-sentence. A case-sensitive match
+      # therefore finds nothing on exactly the release that has never been made,
+      # which is the one release nobody can test by repeating.
+      #
+      # || true, because "no match" is a legitimate answer meaning "no release
+      # due", and this step runs under set -e with pipefail: grep exiting 1 would
+      # otherwise fail the job rather than leave `version` empty as intended.
       - name: Decide the version
         id: version
         env:
@@ -69,7 +82,7 @@ jobs:
             -p @semantic-release/exec@6 \
             -p @semantic-release/github@11 \
             semantic-release --dry-run | tee semantic-release.log || true
-          version=$(grep -oE 'The next release version is [0-9]+\.[0-9]+\.[0-9]+[^ ]*' semantic-release.log | tail -1 | awk '{print $NF}')
+          version=$(grep -oiE 'the next release version is [0-9]+\.[0-9]+\.[0-9]+[^ ]*' semantic-release.log | tail -1 | awk '{print $NF}' || true)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ -z "$version" ]; then
             echo "No release due; skipping the macOS package."
