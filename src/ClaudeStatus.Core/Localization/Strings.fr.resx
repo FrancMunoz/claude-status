@@ -302,6 +302,9 @@
   <data name="Info_License" xml:space="preserve">
     <value>Licence MIT. Réalisé avec Avalonia UI.</value>
   </data>
+  <data name="Info_MadeIn" xml:space="preserve">
+    <value>Fait avec {0} à Menorca</value>
+  </data>
   <data name="Credential_None" xml:space="preserve">
     <value>Ressemble à un jeton d'accès valide.</value>
   </data>

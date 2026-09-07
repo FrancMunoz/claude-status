@@ -94,4 +94,47 @@ public sealed class InfoViewModel : ObservableObject
 
     /// <summary>Project home. A URL, so never translated.</summary>
     public static string ProjectUrl => "https://github.com/FrancMunoz/claude-status";
+
+    /// <summary>
+    /// The heart in "Made with ❤ in Menorca".
+    /// </summary>
+    /// <remarks>
+    /// U+2764 without the emoji variation selector, so the platform picks the
+    /// text glyph and the foreground brush decides its colour. With the selector
+    /// it becomes a colour emoji whose red is the font's, not the theme's, and
+    /// the one line on this window that is meant to be warm ends up clashing
+    /// with whichever palette is in use.
+    /// </remarks>
+    public static string Heart => "❤";
+
+    /// <summary>The text before the heart in the "made in" line.</summary>
+    public string MadeInBefore => MadeInPart(0);
+
+    /// <summary>The text after the heart in the "made in" line.</summary>
+    public string MadeInAfter => MadeInPart(1);
+
+    /// <summary>
+    /// Splits the "made in" template around its placeholder.
+    /// </summary>
+    /// <remarks>
+    /// The heart has to be its own control to be coloured on its own, but the
+    /// words around it move: German puts the verb at the end. So the template
+    /// keeps the word order and the placeholder marks where the symbol goes,
+    /// exactly as <see cref="ILocalizer.Format"/> would - only here the argument
+    /// is a control rather than a string.
+    /// </remarks>
+    private string MadeInPart(int part)
+    {
+        string template = _l["Info_MadeIn"];
+        int at = template.IndexOf("{0}", StringComparison.Ordinal);
+
+        if (at < 0)
+        {
+            // A translation that lost its placeholder still has to read as a
+            // sentence; showing it whole beats showing half of it.
+            return part == 0 ? template : string.Empty;
+        }
+
+        return part == 0 ? template[..at] : template[(at + 3)..];
+    }
 }

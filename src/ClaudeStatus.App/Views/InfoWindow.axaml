@@ -57,6 +57,19 @@
         <StackPanel Spacing="5">
             <TextBlock Classes="caption" Text="{Binding License}" />
             <TextBlock Classes="caption" Text="{Binding ProjectUrl}" />
+
+            <!--
+                Three controls rather than one string because only the heart is
+                red, and the words around it move between languages - the
+                template's placeholder says where the symbol lands.
+            -->
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Classes="caption" Text="{Binding MadeInBefore}" />
+                <TextBlock Classes="caption"
+                           Foreground="{DynamicResource Theme.Alert}"
+                           Text="{Binding Heart}" />
+                <TextBlock Classes="caption" Text="{Binding MadeInAfter}" />
+            </StackPanel>
         </StackPanel>
 
     </StackPanel>
