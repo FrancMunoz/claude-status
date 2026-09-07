@@ -34,6 +34,12 @@ public class ReleaseConfigTests
         return directory!.FullName;
     }
 
+    /// <summary>
+    /// The branch <c>docs/releasing.md</c> tells you to dispatch the release
+    /// workflow on. Kept here so the assertion and the instruction cannot drift.
+    /// </summary>
+    private const string DispatchBranch = "master";
+
     private static JsonElement ReleaseConfig()
     {
         string path = Path.Combine(RepositoryRoot(), ".releaserc.json");
@@ -53,32 +59,48 @@ public class ReleaseConfigTests
     }
 
     [Fact]
-    public void Semantic_release_publishes_from_the_branch_the_workflow_runs_on()
+    public void Semantic_release_publishes_from_the_branch_the_workflow_is_run_on()
     {
         // These were master and main for a while, and the effect was total: the
         // workflow fired on every push, semantic-release read its own config,
         // decided master was not a release branch, and exited zero having done
         // nothing. A green tick on a release that never happened.
+        //
+        // The workflow is dispatched by hand now, so the branch it runs on is
+        // whichever ref the operator picks and no file can name it in advance.
+        // What is still checkable is the pair that made that incident possible:
+        // the workflow must be dispatchable at all, and the branch everyone is
+        // told to dispatch it on must be one semantic-release will release from.
         string[] configured = ReleaseConfig()
             .GetProperty("branches")
             .EnumerateArray()
             .Select(branch => branch.GetString()!)
             .ToArray();
 
-        string workflow = Path.Combine(
+        string path = Path.Combine(
             RepositoryRoot(), ".github", "workflows", "release.yml");
-        Assert.SkipUnless(File.Exists(workflow), "release.yml is not present.");
+        Assert.SkipUnless(File.Exists(path), "release.yml is not present.");
+        string workflow = File.ReadAllText(path);
 
-        // The trigger, as "branches: [name]" under the push event.
-        Match trigger = Regex.Match(
-            File.ReadAllText(workflow),
-            @"branches:\s*\[\s*(?<name>[A-Za-z0-9._/-]+)\s*\]");
-
-        trigger.Success.Should().BeTrue("release.yml must declare the branch it runs on");
+        Regex.IsMatch(workflow, @"(?m)^\s*workflow_dispatch:")
+            .Should().BeTrue("a manual-only release workflow that cannot be dispatched can never run");
 
         configured.Should().Contain(
-            trigger.Groups["name"].Value,
-            "semantic-release only releases from a branch it is configured for");
+            DispatchBranch,
+            $"the docs tell you to run the workflow on '{DispatchBranch}', and "
+            + "semantic-release only releases from a branch it is configured for");
+
+        // Should a push trigger ever come back, the original invariant applies
+        // again and is asserted exactly as it was.
+        Match trigger = Regex.Match(
+            workflow, @"push:\s*\n\s*branches:\s*\[\s*(?<name>[A-Za-z0-9._/-]+)\s*\]");
+
+        if (trigger.Success)
+        {
+            configured.Should().Contain(
+                trigger.Groups["name"].Value,
+                "a push trigger must name a branch semantic-release releases from");
+        }
     }
 
     [Fact]
