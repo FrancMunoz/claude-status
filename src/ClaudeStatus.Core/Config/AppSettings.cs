@@ -261,11 +261,17 @@ public sealed record AppSettings
     /// The colour theme, or <see cref="ThemeCatalog.SystemId"/> to follow the OS.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <see cref="ThemeCatalog.DefaultId"/> by default, not <see cref="ThemeCatalog.SystemId"/>.
+    /// Following the OS is a choice the user can make and is recorded as one.
+    /// </para>
+    /// <para>
     /// Bounded the same way as <see cref="LanguageTag"/>: short, lower-case ASCII,
     /// no separators. It also becomes a file name when the theme comes from
     /// <c>themes/</c>, so the validation is what stops a path escaping that folder.
+    /// </para>
     /// </remarks>
-    public string ThemeId { get; init; } = ThemeCatalog.SystemId;
+    public string ThemeId { get; init; } = ThemeCatalog.DefaultId;
 
     /// <summary>
     /// The interface font family, or empty for the platform default.
@@ -336,7 +342,10 @@ public sealed record AppSettings
         CredentialSource = Enum.IsDefined(CredentialSource) ? CredentialSource : CredentialSource.ClaudeCodeLogin,
         Polling = (Polling ?? new PollingOptions()).Normalized(),
         LanguageTag = LanguageCatalog.IsValidTag(LanguageTag) ? LanguageTag : LanguageCatalog.FollowSystem,
-        ThemeId = ThemeCatalog.IsValidId(ThemeId) ? ThemeId : ThemeCatalog.SystemId,
+        // An absent key arrives here as null (the source generator skips the
+        // initialiser above), so this line is what actually sets the default for
+        // an existing settings file. Both must name the same theme.
+        ThemeId = ThemeCatalog.IsValidId(ThemeId) ? ThemeId : ThemeCatalog.DefaultId,
         FontFamily = FontCatalog.Normalize(FontFamily),
         // Absent (null) and unusable (NaN, infinity) both become the default; a
         // real number is clamped. After this the value is never null, so nothing

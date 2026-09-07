@@ -24,8 +24,13 @@ preview.
 | `solar` | Solar | Amber on cream |
 | `matcha` | Matcha | Green on off-white |
 
-**Follow the system** is the default: it uses Light when the desktop is in light
-mode and Dark when it is in dark mode.
+**Claude** is the default — this app reports on Claude usage and sits beside the
+clock all day, so it looks like the thing it is about rather than like a generic
+system panel.
+
+**Follow the system** is one click away in the picker, and uses Light when the
+desktop is in light mode and Dark when it is in dark mode. It is a choice like
+any other and is recorded as one; it is not what you get by saying nothing.
 
 ## Adding your own
 

@@ -82,7 +82,7 @@ public class ConfigStoreTests : IDisposable
         loaded.SchemaVersion.Should().Be(1);
         loaded.AutomaticUpdates.Should().BeTrue();
         loaded.Polling.Should().NotBeNull();
-        loaded.ThemeId.Should().Be(ThemeCatalog.SystemId);
+        loaded.ThemeId.Should().Be(ThemeCatalog.DefaultId);
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public class ConfigStoreTests : IDisposable
         // The id also becomes a file name under themes/, so this is what stops a
         // path escaping that folder as well as what keeps a token out of settings.
         new AppSettings { ThemeId = hostile }.Normalized()
-            .ThemeId.Should().Be(ThemeCatalog.SystemId);
+            .ThemeId.Should().Be(ThemeCatalog.DefaultId);
     }
 
     [Theory]

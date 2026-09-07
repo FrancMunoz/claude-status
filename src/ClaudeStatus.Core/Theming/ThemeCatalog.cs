@@ -20,6 +20,16 @@ public static class ThemeCatalog
     /// <summary>The id meaning "follow the operating system's light or dark setting".</summary>
     public const string SystemId = "system";
 
+    /// <summary>The theme a fresh install gets, and the fallback for an id that no longer resolves.</summary>
+    /// <remarks>
+    /// Claude rather than <see cref="SystemId"/>: this app reports on Claude usage
+    /// and sits beside the clock all day, so it should look like the thing it is
+    /// about rather than like a generic system panel. Following the OS is still one
+    /// click away in the picker, and a user who chooses it is recorded as having
+    /// chosen it - <see cref="SystemId"/> is a real value, not the absence of one.
+    /// </remarks>
+    public const string DefaultId = "claude";
+
     /// <summary>The theme used when the OS is in light mode, and the fallback for anything unknown.</summary>
     public static Theme Light { get; } = new(
         Id: "light",
