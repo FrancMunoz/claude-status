@@ -56,7 +56,17 @@ try {
     if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
     New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 
-    $isMacOS = $Runtime.StartsWith('osx-')
+    # Not $isMacOS, however much it reads better. PowerShell variable names are
+    # case-insensitive, so that is $IsMacOS - an automatic, read-only, AllScope
+    # variable in PowerShell 6+ - and assigning to it throws "Cannot overwrite
+    # variable IsMacOS because it is read-only or constant". It fails on every
+    # platform, not only macOS: the automatic variable exists everywhere and is
+    # merely $false off a Mac.
+    #
+    # It also means the question this asks is not the one the name implied. We
+    # want the runtime being *built for*, which on CI is the same machine only by
+    # coincidence - the whole point of -Runtime is that they can differ.
+    $packForMac = $Runtime.StartsWith('osx-')
 
     Write-Host "==> Publishing $Runtime at $Version" -ForegroundColor Cyan
     dotnet publish src/ClaudeStatus.App/ClaudeStatus.App.csproj `
@@ -70,10 +80,10 @@ try {
     # The entry point keeps the platform's own convention: a .exe on Windows, an
     # extensionless Mach-O on macOS. Naming the wrong one fails inside vpk with a
     # message about a missing file rather than about the platform.
-    $mainExe = if ($isMacOS) { 'ClaudeStatus' } else { 'ClaudeStatus.exe' }
+    $mainExe = if ($packForMac) { 'ClaudeStatus' } else { 'ClaudeStatus.exe' }
 
     # Each platform reads only its own icon container.
-    $icon = if ($isMacOS) {
+    $icon = if ($packForMac) {
         'src/ClaudeStatus.App/Assets/claude-mark.icns'
     } else {
         'src/ClaudeStatus.App/Assets/avalonia-logo.ico'
@@ -81,7 +91,7 @@ try {
 
     $extraArgs = @()
 
-    if ($isMacOS) {
+    if ($packForMac) {
         # The bundle's Info.plist is generated rather than shipped, because two of
         # its values are the version and vpk has no way to substitute them into a
         # file it is handed. Everything else in it is fixed - see the template for
