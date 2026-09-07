@@ -406,16 +406,20 @@ tag.
 
 ### Code signing
 
-Nothing is signed. `vpk` says so on every run.
+- **macOS** — signed with a Developer ID certificate and notarised by Apple, with
+  the ticket stapled to both the `.pkg` and the `.app`. Gatekeeper *refuses* an
+  unsigned installer rather than merely warning about it, so this is not optional.
+  `pack.ps1` takes the identities and a `notarytool` profile, and requires all
+  three or none: a partially signed build looks like it worked and is still
+  refused.
+- **Windows** — not signed. SmartScreen warns until download reputation builds.
+  An Authenticode certificate removes it (~$200–400/year OV; EV skips the
+  reputation period), though Azure Trusted Signing is worth pricing first. `vpk`
+  accepts `--signParams` or `--azureTrustedSignFile`.
 
-- **Windows** — SmartScreen warns until download reputation builds. An
-  Authenticode certificate (~$200–400/year OV; EV skips the reputation period)
-  removes it. `vpk` accepts `--signParams`.
-- **macOS**, when it ships — unsigned apps need a Gatekeeper bypass; proper
-  notarization needs an Apple Developer account at $99/year.
+Windows is the less urgent of the two: it warns, where macOS refuses.
 
-Both are paid, which is why the first releases ship unsigned. Deliberate and
-documented, but the first thing to fix if the app gets an audience.
+`docs/releasing.md` has the setup, the entitlements, and the CI secrets.
 
 ---
 

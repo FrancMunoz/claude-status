@@ -18,17 +18,25 @@ name: release
 on:
   workflow_dispatch:
 
-# Two jobs, and only because macOS packages cannot be built anywhere else.
+# Three jobs, and every split is forced by something.
 #
-# Tagging and publishing still happen exactly once, in the second job, for the
-# reason the first version of this workflow was one job: a tag pushed by one
-# workflow does not trigger another (GitHub blocks that to prevent recursion),
-# so a second workflow reacting to the release would silently never fire.
+# The platform splits are the obvious two: vpk builds a macOS .app and .pkg only on
+# macOS - it shells out to pkgbuild - and a Windows Setup.exe only on Windows. So
+# the macOS artifacts are built first and handed to the Windows job as a workflow
+# artifact, which uploads everything under one tag. Tagging and publishing happen
+# exactly once, in the last job, for the reason the first version of this workflow
+# was a single job: a tag pushed by one workflow does not trigger another (GitHub
+# blocks that to prevent recursion), so a second workflow reacting to the release
+# would silently never fire.
 #
-# vpk builds a macOS .app and .pkg only on macOS - it shells out to pkgbuild -
-# and a Windows Setup.exe only on Windows. So the macOS artifacts are built
-# first and handed to the Windows job as a workflow artifact, which uploads
-# everything under one tag.
+# The third split is about the signing key, not the platform. Deciding the version
+# means running semantic-release, which npx installs at run time from a dependency
+# tree of hundreds of packages. The macOS job holds a Developer ID private key in a
+# keychain for the length of the build, and those two things must not share a
+# runner: anything in that tree executes with the same access to the keychain as
+# codesign, and a stolen Developer ID key lets someone ship malware signed as us.
+# So the version is decided on its own runner, with no secrets present, and handed
+# over as a job output.
 permissions:
   contents: write
 
@@ -42,15 +50,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Builds the macOS installer, if this run is going to release at all.
+  # Runs npm, holds no secrets. Deliberately in that order.
   #
   # The version has to be known before anything can be packed, and it is
   # semantic-release that decides it from the commit history. Asking it in
-  # --dry-run mode gives the same answer the real run will reach in the next job,
+  # --dry-run mode gives the same answer the real run will reach in the last job,
   # from the same commits and the same config, without tagging anything.
-  package-macos:
-    name: package the macOS installer
-    runs-on: macos-latest
+  decide-version:
+    name: decide the version
+    runs-on: ubuntu-latest
 
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -58,12 +66,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # semantic-release reads the commit history to decide the next version.
+          # That does not work on a shallow clone.
           fetch-depth: 0
           persist-credentials: false
-
-      - uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
 
       - uses: actions/setup-node@v7
         with:
@@ -71,8 +77,7 @@ jobs:
 
       # Empty output when there is no release due - every commit since the last tag
       # was docs: or chore:, which is a perfectly normal thing to dispatch into.
-      # Every later step is skipped, and the Windows job reaches the same
-      # conclusion on its own.
+      # Both later jobs are then skipped by their own `if`.
       #
       # Two things about the grep, and both are load-bearing:
       #
@@ -100,21 +105,154 @@ jobs:
           version=$(grep -oiE 'the next release version is [0-9]+\.[0-9]+\.[0-9]+[^ ]*' semantic-release.log | tail -1 | awk '{print $NF}' || true)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ -z "$version" ]; then
-            echo "No release due; skipping the macOS package."
+            echo "No release due; nothing further will run."
           else
-            echo "Packaging macOS for $version."
+            echo "Releasing $version."
           fi
 
+  # Holds the signing key, runs no npm. The other half of the split above.
+  package-macos:
+    name: sign and package the macOS installer
+    runs-on: macos-latest
+    needs: decide-version
+    if: needs.decide-version.outputs.version != ''
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # Before the build rather than after, because the alternative to failing here
+      # is worse than a failed release: pack.ps1 packs happily without these and
+      # prints a warning, so a missing secret would ship an unsigned .pkg that
+      # nobody notices until a user's Gatekeeper refuses it.
+      - name: Check the signing configuration
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          APP_IDENTITY: ${{ vars.MACOS_SIGN_APP_IDENTITY }}
+          INSTALL_IDENTITY: ${{ vars.MACOS_SIGN_INSTALL_IDENTITY }}
+        run: |
+          missing=0
+          check() {
+            if [ -z "$2" ]; then
+              echo "::error::$1 is not set. See docs/releasing.md."
+              missing=1
+            fi
+          }
+          check 'secrets.MACOS_CERTIFICATE_P12'       "$CERTIFICATE"
+          check 'secrets.MACOS_CERTIFICATE_PASSWORD'  "$CERTIFICATE_PASSWORD"
+          check 'secrets.MACOS_NOTARY_KEY_P8'         "$NOTARY_KEY"
+          check 'secrets.MACOS_NOTARY_KEY_ID'         "$NOTARY_KEY_ID"
+          check 'secrets.MACOS_NOTARY_ISSUER_ID'      "$NOTARY_ISSUER_ID"
+          check 'vars.MACOS_SIGN_APP_IDENTITY'        "$APP_IDENTITY"
+          check 'vars.MACOS_SIGN_INSTALL_IDENTITY'    "$INSTALL_IDENTITY"
+          [ "$missing" -eq 0 ]
+
+      # A keychain of its own, created here and destroyed at the end of the job,
+      # rather than the runner's login keychain. It keeps the private key out of
+      # every later step's reach by default, and makes the cleanup a single delete
+      # that cannot miss anything.
+      - name: Import the signing certificates
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          # -lut 21600 and no -l: do not relock on sleep, and time out well past the
+          # length of a build. Notarisation waits on Apple and "usually takes
+          # minutes, but could take hours"; a keychain that relocks underneath it
+          # fails the sign step with a message about the user cancelling, which is
+          # not a thing that happened on a runner nobody is sitting at.
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          CERTIFICATE_PATH="$RUNNER_TEMP/certificates.p12"
+          printf '%s' "$CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
+
+          # -T names the only two tools allowed to use these keys without a prompt.
+          # Both are needed and they are not interchangeable: codesign signs the
+          # .app with the Application certificate, productsign signs the .pkg with
+          # the Installer one.
+          security import "$CERTIFICATE_PATH" -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productsign
+          rm -f "$CERTIFICATE_PATH"
+
+          # Without this, every codesign call blocks on a GUI confirmation dialog
+          # that nobody can answer, and the job hangs until the runner times out
+          # rather than failing with anything that names the cause.
+          security set-key-partition-list \
+            -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+
+          # notarytool reads credentials from a named profile, so the API key has to
+          # be stored as one. --keychain puts it in the temporary keychain with the
+          # certificates instead of the runner's login keychain.
+          NOTARY_KEY_PATH="$RUNNER_TEMP/notary.p8"
+          printf '%s' "$NOTARY_KEY" | base64 --decode > "$NOTARY_KEY_PATH"
+          chmod 600 "$NOTARY_KEY_PATH"
+          xcrun notarytool store-credentials 'claude-status-notary' \
+            --key "$NOTARY_KEY_PATH" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" \
+            --keychain "$KEYCHAIN"
+          rm -f "$NOTARY_KEY_PATH"
+
+          # vpk reads VPK_KEYCHAIN and passes it to both codesign and notarytool, so
+          # neither has to be found on the default search list. The keychain is
+          # never made the default and never added to it.
+          echo "VPK_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+
+      # vpk, from .config/dotnet-tools.json, pinned to the same version as the
+      # Velopack package the app links against.
       - name: Restore tools
-        if: steps.version.outputs.version != ''
         run: dotnet tool restore
 
+      # The identities are repository variables rather than secrets on purpose. They
+      # are not secret - the certificate's common name and team id are embedded in
+      # every binary we sign and `codesign -dv` prints them from any download - and
+      # making them secrets would mask them in this job's log, so a mismatch between
+      # the configured name and the imported certificate would show up as
+      # "*** not found" instead of naming what it looked for.
       - name: Pack
-        if: steps.version.outputs.version != ''
-        run: pwsh ./build/pack.ps1 -Version '${{ steps.version.outputs.version }}' -Runtime osx-arm64
+        env:
+          MAC_SIGN_APP_IDENTITY: ${{ vars.MACOS_SIGN_APP_IDENTITY }}
+          MAC_SIGN_INSTALL_IDENTITY: ${{ vars.MACOS_SIGN_INSTALL_IDENTITY }}
+          MAC_NOTARY_PROFILE: claude-status-notary
+        run: pwsh ./build/pack.ps1 -Version '${{ needs.decide-version.outputs.version }}' -Runtime osx-arm64
+
+      # Proves the artifacts are what they claim before they leave this runner. vpk
+      # already runs spctl, but it checks what it just built in a temporary
+      # directory; this checks the files actually being uploaded.
+      - name: Verify the signature and notarisation
+        run: |
+          set -euo pipefail
+          spctl -a -vvv -t install artifacts/releases/ClaudeStatus-osx-Setup.pkg
+          xcrun stapler validate artifacts/releases/ClaudeStatus-osx-Setup.pkg
+
+          # ditto, not unzip. unzip does not preserve the symlinks and extended
+          # attributes inside a .app, and the copy it produces fails validation with
+          # "no usable signature" even when the archive is perfectly signed.
+          ditto -x -k artifacts/releases/ClaudeStatus-osx-Portable.zip "$RUNNER_TEMP/verify"
+          spctl -a -vvv -t exec "$RUNNER_TEMP/verify/ClaudeStatus.app"
+          xcrun stapler validate "$RUNNER_TEMP/verify/ClaudeStatus.app"
 
       - name: Upload
-        if: steps.version.outputs.version != ''
         uses: actions/upload-artifact@v7
         with:
           name: macos-release
@@ -122,12 +260,21 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      # always(), because the interesting case is the failed build: a job that dies
+      # during notarisation would otherwise leave the key on the runner.
+      - name: Remove the signing keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/certificates.p12" "$RUNNER_TEMP/notary.p8" || true
+
   release:
     name: package Windows, tag and publish every platform
     # Windows, because vpk builds the Setup.exe natively here. The macOS
     # artifacts are carried in from the job above.
     runs-on: windows-latest
-    needs: package-macos
+    needs: [decide-version, package-macos]
+    if: needs.decide-version.outputs.version != ''
 
     steps:
       - uses: actions/checkout@v7
@@ -167,12 +314,15 @@ jobs:
       # pack.ps1 creates that directory but never empties it, so the macOS files
       # are still there when the Windows ones land beside them.
       - name: Download the macOS release
-        if: needs.package-macos.outputs.version != ''
         uses: actions/download-artifact@v8
         with:
           name: macos-release
           path: artifacts/releases
 
+      # No MAC_SIGN_* here, and not by omission: pack.ps1 throws if they are set for
+      # a win-x64 runtime, because vpk rejects macOS signing arguments on a Windows
+      # build rather than ignoring them.
+      #
       # semantic-release decides from the Conventional Commits whether there is a
       # release at all. If there is, its prepare step runs build/pack.ps1 with the
       # computed version and its github step tags, writes the notes and uploads

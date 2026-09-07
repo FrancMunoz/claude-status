@@ -24,7 +24,7 @@ session left to start this?" is already on screen. Click it for the detail.
 run it. It installs per-user, needs no administrator rights, and updates itself.
 
 > Windows SmartScreen will warn you the first time: **More info → Run anyway**.
-> The installer is not code-signed — see [why](docs/releasing.md#signing--read-before-the-first-public-release).
+> The installer is not code-signed — see [why](docs/releasing.md#signing).
 
 A `ClaudeStatus-win-Portable.zip` is also published for anyone who would rather
 not install anything. It does not update itself.
@@ -34,11 +34,8 @@ not install anything. It does not update itself.
 open it. It installs to `/Applications`, needs no administrator rights, and
 updates itself.
 
-> macOS will refuse it on the first run: **the installer is not signed or
-> notarised**, so Gatekeeper reports it as coming from an unidentified developer.
-> Right-click the `.pkg` → **Open** → **Open** to run it anyway. Same reason as
-> the Windows warning above — see
-> [why](docs/releasing.md#signing--read-before-the-first-public-release).
+> The installer is **signed with a Developer ID certificate and notarised by
+> Apple**, so it opens normally — no Gatekeeper bypass, no right-click → Open.
 
 A `ClaudeStatus-osx-Portable.zip` is also published. It does not update itself.
 Intel Macs are not packaged yet: the build is `osx-arm64` only.
@@ -226,8 +223,9 @@ In particular:
   subject to Anthropic's terms, and staying within them is on you.
 - The Windows taskbar widget rides on **undocumented OS internals** and may break
   with any Windows update. It falls back to the tray icon when it can.
-- Releases are **not code-signed or notarised**. Check what you download and
-  install it only if you are comfortable doing so.
+- The **Windows** installer is **not code-signed**, so SmartScreen warns about it.
+  The macOS installer is signed and notarised. Check what you download either way
+  and install it only if you are comfortable doing so.
 
 ## Licence
 

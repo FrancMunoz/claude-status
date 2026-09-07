@@ -27,8 +27,43 @@
 .PARAMETER OutputDir
     Where the installer and packages are written.
 
+.PARAMETER MacSignAppIdentity
+    The "Developer ID Application" certificate that signs the .app bundle.
+
+    Defaults to $env:MAC_SIGN_APP_IDENTITY so that CI passes it as an environment
+    variable rather than on a command line, where it would be echoed into the
+    build log.
+
+    An "Apple Development" certificate is NOT a substitute, even though it carries
+    the Code Signing EKU and codesign accepts it without complaint. Gatekeeper
+    admits only the Developer ID chain for software distributed outside the App
+    Store, so signing with it produces the same "unidentified developer" refusal as
+    not signing at all - just later, and after notarisation has been rejected.
+
+.PARAMETER MacSignInstallIdentity
+    The "Developer ID Installer" certificate that signs the .pkg.
+
+    A different certificate from the one above, not the same one reused: pkgbuild
+    and codesign trust different EKUs, and the Application certificate is rejected
+    for an installer package.
+
+.PARAMETER MacNotaryProfile
+    The name of a notarytool credential profile, stored beforehand with
+    `xcrun notarytool store-credentials`.
+
+    Signing without notarising is not a half-measure that gets a half-result. Since
+    macOS 10.15 Gatekeeper refuses a signed-but-unnotarised app much as it refuses
+    an unsigned one, so the three parameters are required as a set - see the check
+    below.
+
 .EXAMPLE
     ./build/pack.ps1 -Version 0.1.0
+
+.EXAMPLE
+    ./build/pack.ps1 -Version 0.1.0 -Runtime osx-arm64 `
+        -MacSignAppIdentity 'Developer ID Application: Example (TEAMID1234)' `
+        -MacSignInstallIdentity 'Developer ID Installer: Example (TEAMID1234)' `
+        -MacNotaryProfile 'claude-status-notary'
 #>
 [CmdletBinding()]
 param(
@@ -38,7 +73,13 @@ param(
 
     [string] $Runtime = 'win-x64',
 
-    [string] $OutputDir = 'artifacts/releases'
+    [string] $OutputDir = 'artifacts/releases',
+
+    [string] $MacSignAppIdentity = $env:MAC_SIGN_APP_IDENTITY,
+
+    [string] $MacSignInstallIdentity = $env:MAC_SIGN_INSTALL_IDENTITY,
+
+    [string] $MacNotaryProfile = $env:MAC_NOTARY_PROFILE
 )
 
 $ErrorActionPreference = 'Stop'
@@ -67,6 +108,77 @@ try {
     # want the runtime being *built for*, which on CI is the same machine only by
     # coincidence - the whole point of -Runtime is that they can differ.
     $packForMac = $Runtime.StartsWith('osx-')
+
+    # All three or none of the three, decided before anything is built.
+    #
+    # Every partial combination produces something that looks like it worked and is
+    # not shippable: the app signed but the .pkg not, so the installer is still
+    # refused; or both signed but nothing notarised, which Gatekeeper treats as
+    # unsigned. Nothing is required, though - an unsigned build is the normal way to
+    # test packaging, and a contributor without a paid Apple account has to be able
+    # to run this script.
+    #
+    # Checked here rather than beside the vpk arguments it feeds, because the publish
+    # step sits between the two and takes minutes. A mistyped parameter should cost a
+    # second, not a full build that fails at the very end.
+    $signing = [ordered] @{
+        MacSignAppIdentity     = $MacSignAppIdentity
+        MacSignInstallIdentity = $MacSignInstallIdentity
+        MacNotaryProfile       = $MacNotaryProfile
+    }
+    $missing = @($signing.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object { $_.Key })
+    $signPackage = $missing.Count -eq 0
+
+    if ($missing.Count -gt 0 -and $missing.Count -lt $signing.Count) {
+        throw "macOS signing needs all of $($signing.Keys -join ', '), or none of them. Missing: $($missing -join ', ')."
+    }
+
+    # Signing arguments are macOS-only; vpk rejects them on a Windows build rather
+    # than ignoring them, so a shell that exports them globally would break win-x64.
+    if ($signPackage -and -not $packForMac) {
+        throw "macOS signing parameters were supplied for runtime '$Runtime'. They apply only to an osx- runtime."
+    }
+
+    # Notarisation requires the hardened runtime, whose defaults kill a .NET app on
+    # startup, so the bundle is signed with an explicit entitlements file. Its five
+    # keys are Velopack's own vendor/Velopack.entitlements, copied deliberately:
+    # passing --signEntitlements REPLACES that fallback rather than adding to it, so
+    # dropping a key here silently removes it from the signature.
+    #
+    #   allow-jit + allow-unsigned-executable-memory
+    #       Both, however redundant they read. RyuJIT (libclrjit.dylib) emits code at
+    #       runtime; the first grants the MAP_JIT mapping it asks for, the second
+    #       covers paths in libcoreclr.dylib that write executable pages without it.
+    #       With only the first the process still dies, and the crash report names
+    #       CODESIGNING rather than the JIT.
+    #
+    #   disable-library-validation
+    #       Avalonia's renderer is three NuGet-supplied natives - libAvaloniaNative,
+    #       libSkiaSharp, libHarfBuzzSharp - signed by someone who is not this team.
+    #       Validation admits only same-team or Apple libraries, so dyld refuses all
+    #       three and no window ever appears.
+    #
+    #   allow-dyld-environment-variables + automation.apple-events
+    #       For the update path, which is the worst place to lose an entitlement: a
+    #       failed update is silent by nature - the running app carries on and simply
+    #       never moves version, which looks identical to no release being out.
+    #
+    # That file must contain NO XML comments, however much the rest of this
+    # repository argues otherwise. codesign hands entitlements to AMFI, whose parser
+    # is stricter than plutil's and rejects them outright:
+    #
+    #   Failed to parse entitlements: AMFIUnserializeXML: syntax error near line 11
+    #
+    # `plutil -lint` passes on a commented file, so the only thing that catches it is
+    # a real signing run. Hence the explanation living here instead.
+    $entitlements = Join-Path $repoRoot 'build/macos/ClaudeStatus.entitlements'
+    if ($signPackage -and -not (Test-Path $entitlements)) {
+        throw "Entitlements file not found at $entitlements."
+    }
+
+    if ($packForMac -and -not $signPackage) {
+        Write-Host "==> Unsigned macOS build; Gatekeeper will refuse it on another machine." -ForegroundColor Yellow
+    }
 
     Write-Host "==> Publishing $Runtime at $Version" -ForegroundColor Cyan
     dotnet publish src/ClaudeStatus.App/ClaudeStatus.App.csproj `
@@ -128,6 +240,14 @@ try {
         # declared in the template instead, and pkgbuild derives the package
         # identifier from it.
         $extraArgs += '--plist', $plistPath
+
+        if ($signPackage) {
+            Write-Host "==> Signing as $MacSignAppIdentity and notarising via $MacNotaryProfile" -ForegroundColor Cyan
+            $extraArgs += '--signAppIdentity', $MacSignAppIdentity
+            $extraArgs += '--signInstallIdentity', $MacSignInstallIdentity
+            $extraArgs += '--signEntitlements', $entitlements
+            $extraArgs += '--notaryProfile', $MacNotaryProfile
+        }
     }
 
     # vpk refuses to package a build whose Main does not call VelopackApp.Run(),

@@ -55,7 +55,23 @@ handed the version explicitly (see below).
 
 **Each platform packs on itself.** `vpk` shells out to the host's own tools - a
 `.pkg` needs `pkgbuild`, a `Setup.exe` needs the Windows toolchain - so neither
-can be cross-built. That is the only reason the release workflow has two jobs.
+can be cross-built. That is two of the three reasons the release workflow is split
+into jobs; the third is the signing key, and is explained under Signing below.
+
+Both commands above produce an **unsigned** build, which is the right default: it
+is how packaging is tested, and it is the only thing a contributor without a paid
+Apple account can run. To produce what a release actually ships, add the three
+macOS signing parameters - all three, or none, enforced before anything is built:
+
+```pwsh
+$env:MAC_SIGN_APP_IDENTITY     = 'Developer ID Application: NAME (TEAMID)'
+$env:MAC_SIGN_INSTALL_IDENTITY = 'Developer ID Installer: NAME (TEAMID)'
+$env:MAC_NOTARY_PROFILE        = 'claude-status-notary'
+./build/pack.ps1 -Version 0.1.0 -Runtime osx-arm64
+```
+
+Notarisation uploads to Apple and waits, so that run takes minutes rather than
+seconds.
 
 Produces, in `artifacts/releases/`:
 
@@ -80,17 +96,28 @@ rather than only visible in a failed workflow.
 
 ## How the macOS package reaches the release
 
-`release.yml` has two jobs, and tagging still happens exactly once.
+`release.yml` has three jobs, and tagging still happens exactly once.
 
-1. **`macos`** asks semantic-release, in `--dry-run` mode, what the next version
-   would be. Same commits and same config as the real run, so it reaches the same
-   answer without tagging anything. If there is no release due it outputs nothing
-   and every later step is skipped. Otherwise it runs `pack.ps1 -Runtime
-   osx-arm64` and uploads `artifacts/releases/` as a workflow artifact.
-2. **`release`** downloads that artifact into `artifacts/releases/`, then runs
+1. **`decide-version`** asks semantic-release, in `--dry-run` mode, what the next
+   version would be. Same commits and same config as the real run, so it reaches
+   the same answer without tagging anything. If there is no release due it outputs
+   an empty version and the other two jobs skip themselves.
+2. **`package-macos`** imports the Developer ID certificates into a keychain it
+   creates for the job, runs `pack.ps1 -Runtime osx-arm64`, verifies the result
+   with `spctl` and `stapler`, uploads `artifacts/releases/` as a workflow
+   artifact, and deletes the keychain on the way out - including when the build
+   failed, which is the case that matters.
+3. **`release`** downloads that artifact into `artifacts/releases/`, then runs
    semantic-release for real. Its prepare step packs Windows into the same folder
    - `pack.ps1` creates the folder but never empties it - and the GitHub plugin
    uploads everything it finds under one tag.
+
+The first two are separate jobs because of the **signing key**, not the platform.
+Deciding the version means running semantic-release, which `npx` installs at run
+time from a dependency tree of hundreds of packages. Anything in that tree runs
+with the same access to the keychain that `codesign` has, and a stolen Developer
+ID key lets someone ship malware signed as this project. So the version is decided
+on a runner that holds no secrets, and handed over as a job output.
 
 The obvious alternative, a second workflow reacting to the published release,
 **silently never fires**: a tag pushed with `GITHUB_TOKEN` does not trigger
@@ -161,39 +188,138 @@ staged, and taking it is optional.
   installed, the service reports `Unsupported`, and the UI shows nothing rather
   than a check that fails forever.
 
-## Signing — read before the first public release
+## Signing
 
-Nothing is signed. `vpk` says so on every run:
+**macOS is signed and notarised. Windows is not yet.** The two platforms are at
+different stages, so they are described separately.
 
+### macOS
+
+Every release is signed with a Developer ID certificate and notarised by Apple,
+then the notarisation ticket is stapled to both the `.pkg` and the `.app`. Without
+that, Gatekeeper refuses the installer outright - it does not merely warn, the way
+Windows does - so this is not optional for anything a user downloads.
+
+Three things have to line up, and `pack.ps1` refuses to build unless all three are
+present or all three are absent. A partial set is the dangerous case: an app signed
+but a `.pkg` unsigned still gets refused, and anything signed but not notarised is
+treated by Gatekeeper as if it were not signed at all. The check runs **before**
+`dotnet publish`, so a mistake costs a second rather than a full build.
+
+| parameter | what it is |
+| --- | --- |
+| `-MacSignAppIdentity` | the **Developer ID Application** certificate, signs the `.app` |
+| `-MacSignInstallIdentity` | the **Developer ID Installer** certificate, signs the `.pkg` |
+| `-MacNotaryProfile` | a `notarytool` credential profile name |
+
+Each also reads an environment variable - `MAC_SIGN_APP_IDENTITY`,
+`MAC_SIGN_INSTALL_IDENTITY`, `MAC_NOTARY_PROFILE` - which is how CI passes them
+without putting them on a command line that gets echoed into a log.
+
+An **Apple Development** certificate is not a substitute for either Developer ID
+one, however much `codesign` accepts it: it carries the Code Signing EKU and signs
+without complaint, but Gatekeeper admits only the Developer ID chain for software
+distributed outside the App Store, so the result is refused exactly as an unsigned
+build is. Note also that the two Developer ID certificates are **different
+certificates**, not one reused - `productsign` rejects the Application one.
+
+#### Entitlements
+
+`build/macos/ClaudeStatus.entitlements` is passed to `codesign`, and its contents
+are explained where it is referenced in `build/pack.ps1`. Two things about it are
+worth knowing before editing it:
+
+- Passing `--signEntitlements` **replaces** Velopack's own default file rather than
+  adding to it, so removing a key here silently removes it from the signature.
+- It must contain **no XML comments**. `codesign` hands entitlements to AMFI, whose
+  parser is stricter than `plutil`'s and fails with
+  `AMFIUnserializeXML: syntax error`. `plutil -lint` passes on a commented file, so
+  only a real signing run catches it.
+
+#### First-time setup on a machine
+
+1. Create **Developer ID Application** and **Developer ID Installer** certificates
+   for the team, choosing the **G2 Sub-CA** profile. The previous Sub-CA expires in
+   February 2027 and Apple truncates any certificate issued under it to that date,
+   however recently it was created.
+2. Create an App Store Connect API key (Users and Access → Integrations) with
+   Developer access. The `.p8` downloads exactly once.
+3. Store the notary credentials under the profile name the build expects:
+
+   ```sh
+   xcrun notarytool store-credentials 'claude-status-notary' \
+     --key path/to/AuthKey_XXXXXXXXXX.p8 --key-id XXXXXXXXXX --issuer <issuer-uuid>
+   ```
+
+Verify a finished build the way CI does:
+
+```sh
+spctl -a -vvv -t install artifacts/releases/ClaudeStatus-osx-Setup.pkg
+xcrun stapler validate artifacts/releases/ClaudeStatus-osx-Setup.pkg
 ```
-[WRN] No signing parameters provided, 114 file(s) will not be signed.
+
+`source=Notarized Developer ID` is the answer you want. To check the `.app` inside
+the portable zip, extract it with **`ditto -x -k`** and not `unzip`: `unzip` does
+not preserve the symlinks and extended attributes inside a bundle, and its output
+fails validation with `no usable signature` even when the archive is perfectly
+signed.
+
+#### CI configuration
+
+`package-macos` reads five secrets and two variables. It checks all seven before
+building and fails naming whichever is missing, because the alternative - packing
+without them - produces an unsigned installer that nobody notices until a user's
+Gatekeeper refuses it.
+
+| Actions **secret** | contents |
+| --- | --- |
+| `MACOS_CERTIFICATE_P12` | base64 of a `.p12` holding **both** Developer ID identities |
+| `MACOS_CERTIFICATE_PASSWORD` | the password set when exporting that `.p12` |
+| `MACOS_NOTARY_KEY_P8` | base64 of the App Store Connect `.p8` |
+| `MACOS_NOTARY_KEY_ID` | the key id, as in the `.p8` filename |
+| `MACOS_NOTARY_ISSUER_ID` | the Issuer ID UUID from App Store Connect |
+
+| Actions **variable** | contents |
+| --- | --- |
+| `MACOS_SIGN_APP_IDENTITY` | `Developer ID Application: NAME (TEAMID)` |
+| `MACOS_SIGN_INSTALL_IDENTITY` | `Developer ID Installer: NAME (TEAMID)` |
+
+The identities are **variables and not secrets on purpose.** They are not secret -
+the certificate's common name and team id are embedded in every binary signed with
+them, and `codesign -dv --verbose=4` prints both from any download. Marking them
+secret would make GitHub mask them in the job log, so a mismatch between the
+configured name and the imported certificate would appear as `*** not found`
+instead of naming what it looked for.
+
+Export both certificates into one `.p12` from Keychain Access → **My Certificates**
+by selecting both and choosing Export. Convert without printing the value:
+
+```sh
+base64 -i certs.p12 | pbcopy
 ```
 
-The practical consequence, and what to tell users:
+The private keys exist only in that `.p12` and in the keychain that made it. Apple
+can reissue a certificate but has never held the key, so losing both means revoking
+and starting again.
 
-- **Windows.** SmartScreen shows "Windows protected your PC" on the installer.
-  Users click *More info* → *Run anyway*. This fades as the download builds
-  reputation, and disappears with an Authenticode certificate (an OV certificate
-  is roughly $200–400/year; EV bypasses the reputation period entirely). `vpk`
-  takes `--signParams` or `--azureTrustedSignFile` when there is one.
-<<<<<<< Updated upstream
-- **macOS.** The `.pkg` ships unsigned and un-notarised, and `vpk` warns about
-  both on every run. Gatekeeper reports it as coming from an unidentified
-  developer; users right-click the `.pkg` -> **Open** -> **Open**, or run
-  `xattr -dr com.apple.quarantine` on the installed app. Notarisation needs an
-  Apple Developer account at $99/year, after which `vpk pack` takes
-  `--signAppIdentity`, `--signInstallIdentity` and `--notaryProfile` and the
-  warnings go away. This is the more urgent of the two: macOS refuses the
-  installer outright where Windows only warns.
-=======
-- **macOS**, when it ships. Unsigned apps need a Gatekeeper bypass
-  (right-click → Open, or `xattr -dr com.apple.quarantine`). Proper notarization
-  needs an Apple Developer account at $99/year.
->>>>>>> Stashed changes
+The certificates expire in **September 2031**; the API key does not expire but can
+be revoked from App Store Connect. Rotating either means replacing the matching
+secret and nothing else.
 
-Both are **paid certificates**, which is why the first releases ship unsigned.
-This is a deliberate, documented decision, not an oversight — but it is the first
-thing to fix if the app gets an audience.
+### Windows
+
+Not signed. `vpk` says so on every run, and SmartScreen shows "Windows protected
+your PC" on the installer - users click *More info* → *Run anyway*. This fades as
+the download builds reputation.
+
+An Authenticode certificate removes it. An OV certificate is roughly $200-400/year
+and EV bypasses the reputation period entirely, but **Azure Trusted Signing** is
+worth pricing first: it is a subscription an order of magnitude cheaper, and `vpk`
+takes `--azureTrustedSignFile` for it as well as `--signParams` for a local
+certificate. It requires identity validation, so check the current eligibility
+terms before budgeting for it.
+
+Windows is the less urgent of the two: it warns, where macOS refuses.
 
 ## Adding a platform
 
