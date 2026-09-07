@@ -86,7 +86,7 @@ try {
     $icon = if ($packForMac) {
         'src/ClaudeStatus.App/Assets/claude-mark.icns'
     } else {
-        'src/ClaudeStatus.App/Assets/avalonia-logo.ico'
+        'src/ClaudeStatus.App/Assets/claude-mark.ico'
     }
 
     $extraArgs = @()

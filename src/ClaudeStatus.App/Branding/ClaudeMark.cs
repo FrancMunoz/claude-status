@@ -56,9 +56,33 @@ public static class ClaudeMark
     /// </para>
     /// </remarks>
     /// <param name="pixels">The square size to render, in physical pixels.</param>
-    public static byte[] ToPng(int pixels)
+    public static byte[] ToPng(int pixels) => ToPng(pixels, Colors.Black, inset: 0d);
+
+    /// <summary>
+    /// Renders the mark as a PNG in a given colour, inset from the edges.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The application icon, as opposed to the menu bar's template image. That one
+    /// must stay black (see the overload above); this one is drawn in the brand
+    /// colour and is never re-tinted by anything.
+    /// </para>
+    /// <para>
+    /// <paramref name="inset"/> exists because an icon is not a glyph in a text
+    /// run: every platform draws it inside a grid cell it does not tell us about,
+    /// and a mark rendered edge to edge looks larger than its neighbours and gets
+    /// clipped by rounded masks. A small margin is what makes it sit in a Dock or
+    /// a taskbar as though it belongs there.
+    /// </para>
+    /// </remarks>
+    /// <param name="pixels">The square size to render, in physical pixels.</param>
+    /// <param name="colour">The fill.</param>
+    /// <param name="inset">Fraction of the canvas to leave clear on each side, 0 to 0.4.</param>
+    public static byte[] ToPng(int pixels, Color colour, double inset)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(pixels, 1);
+        ArgumentOutOfRangeException.ThrowIfNegative(inset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(inset, 0.4d);
 
         var size = new PixelSize(pixels, pixels);
         using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
@@ -72,9 +96,14 @@ public static class ClaudeMark
                 return [];
             }
 
+            // The box the mark is fitted into, once the margin is taken off both
+            // sides. At inset 0 this is the whole canvas and the maths below is
+            // exactly what it always was.
+            double box = pixels * (1d - (2d * inset));
+
             // Uniform, and centred on whichever axis has room left over: the mark is
             // not square, and stretching it to fill a square box would distort it.
-            double scale = Math.Min(pixels / bounds.Width, pixels / bounds.Height);
+            double scale = Math.Min(box / bounds.Width, box / bounds.Height);
 
             using (context.PushTransform(
                 Matrix.CreateTranslation(-bounds.X, -bounds.Y)
@@ -83,7 +112,7 @@ public static class ClaudeMark
                     (pixels - (bounds.Width * scale)) / 2,
                     (pixels - (bounds.Height * scale)) / 2)))
             {
-                context.DrawGeometry(Brushes.Black, null, Geometry);
+                context.DrawGeometry(new SolidColorBrush(colour), null, Geometry);
             }
         }
 
