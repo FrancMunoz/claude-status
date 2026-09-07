@@ -195,7 +195,39 @@ are derived from git tags by MinVer; never edit a version by hand.
 [`docs/manual.md`](docs/manual.md) is the full handbook: architecture, the rules
 the code follows, packaging, and troubleshooting. Read §8 before opening a PR.
 
+## Disclaimer
+
+ClaudeStatus is an independent, unofficial side project. It is **not affiliated
+with, authorised by, sponsored by or endorsed by Anthropic PBC**. "Claude",
+"Anthropic" and "Fable" are trademarks of their respective owners and are used
+here only to describe what the app reads.
+
+The software is provided **"as is", without warranty of any kind**, express or
+implied — the [licence](LICENSE) holds the binding wording. You use it entirely
+at your own risk, and the author accepts **no liability** for any damage, data
+loss, account problem or cost arising from its use.
+
+In particular:
+
+- The figures come from an **undocumented endpoint** (see above). They may be
+  wrong, stale, or stop arriving altogether, and are not an authoritative record
+  of your account — claude.ai → Settings → Usage is the number that counts.
+- Nothing here promises availability, accuracy or fitness for any purpose, and
+  no support or maintenance is owed.
+- Reading your own usage is your own responsibility: access to that endpoint is
+  subject to Anthropic's terms, and staying within them is on you.
+- The Windows taskbar widget rides on **undocumented OS internals** and may break
+  with any Windows update. It falls back to the tray icon when it can.
+- Releases are **not code-signed or notarised**. Check what you download and
+  install it only if you are comfortable doing so.
+
 ## Licence
 
-[MIT](LICENSE). Built with [Avalonia UI](https://avaloniaui.net) and packaged
-with [Velopack](https://velopack.io).
+Released under the **[MIT Licence](LICENSE)** — Copyright © 2026 Franc
+(ZeroWorks). You are free to use, copy, modify, distribute and sell it, including
+commercially, as long as the copyright notice and the licence text travel with
+the copy. MIT is also where the warranty and liability exclusions quoted in the
+disclaimer above come from.
+
+Built with [Avalonia UI](https://avaloniaui.net) (MIT) and packaged with
+[Velopack](https://velopack.io) (MIT). Dependencies keep their own licences.
