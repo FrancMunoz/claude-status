@@ -209,7 +209,7 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
                 .OfType<Shapes.Path>()
                 .Single(p => p.Classes.Contains("widgetMark"));
 
-            mark.Data.Should().BeSameAs(ClaudeMark.Geometry, "one outline, drawn everywhere");
+            mark.Data.Should().BeSameAs(AppMark.Geometry, "one outline, drawn everywhere");
             mark.Data!.Bounds.Width.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
             mark.Data.Bounds.Height.Should().BeGreaterThan(0d, "an unparsed path is an empty shape");
         });
@@ -229,7 +229,7 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
             var window = new TaskbarHoverWindow { DataContext = viewModel };
 
             Shapes.Path mark = window.GetLogicalDescendants().OfType<Shapes.Path>().Single();
-            mark.Data.Should().BeSameAs(ClaudeMark.Geometry, "one outline, drawn everywhere");
+            mark.Data.Should().BeSameAs(AppMark.Geometry, "one outline, drawn everywhere");
         });
     }
 

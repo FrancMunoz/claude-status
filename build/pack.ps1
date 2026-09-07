@@ -196,9 +196,9 @@ try {
 
     # Each platform reads only its own icon container.
     $icon = if ($packForMac) {
-        'src/ClaudeStatus.App/Assets/claude-mark.icns'
+        'src/ClaudeStatus.App/Assets/app-mark.icns'
     } else {
-        'src/ClaudeStatus.App/Assets/claude-mark.ico'
+        'src/ClaudeStatus.App/Assets/app-mark.ico'
     }
 
     $extraArgs = @()

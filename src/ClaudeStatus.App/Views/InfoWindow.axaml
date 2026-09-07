@@ -19,7 +19,7 @@
         -->
         <StackPanel Spacing="6">
             <StackPanel Orientation="Horizontal" Spacing="9">
-                <Path Data="{x:Static branding:ClaudeMark.Geometry}"
+                <Path Data="{x:Static branding:AppMark.Geometry}"
                       Width="21"
                       Height="21"
                       Stretch="Uniform"

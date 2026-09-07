@@ -81,7 +81,7 @@
                 L is the shared localizer; the indexer re-reads on a language change.
             -->
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <Path Data="{x:Static branding:ClaudeMark.Geometry}"
+                <Path Data="{x:Static branding:AppMark.Geometry}"
                       Width="19"
                       Height="19"
                       Stretch="Uniform"

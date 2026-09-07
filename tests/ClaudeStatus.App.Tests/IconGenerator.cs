@@ -7,7 +7,7 @@ using ClaudeStatus.Theming;
 namespace ClaudeStatus.App.Tests;
 
 /// <summary>
-/// Rebuilds the application icons from <see cref="ClaudeMark"/>.
+/// Rebuilds the application icons from <see cref="AppMark"/>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -15,17 +15,22 @@ namespace ClaudeStatus.App.Tests;
 /// somebody asks for it:
 /// </para>
 /// <code>
-/// $env:CLAUDESTATUS_WRITE_ICONS = 'src/ClaudeStatus.App/Assets'
+/// $env:CLAUDESTATUS_WRITE_ICONS = "$PWD/src/ClaudeStatus.App/Assets"
 /// dotnet test tests/ClaudeStatus.App.Tests --filter-method '*Regenerates*'
 /// </code>
 /// <para>
+/// The path has to be absolute. The test host runs with its own output
+/// directory as the working directory, so a relative one quietly writes the
+/// icons under <c>tests/.../bin/</c> and leaves the shipped ones untouched.
+/// </para>
+/// <para>
 /// It lives here rather than in a build script because the only correct renderer
-/// for this outline is the one the app itself uses. <c>claude-mark.svg</c> cannot
-/// be handed to a general-purpose converter: its 96-unit viewBox contains a group
-/// translated by 19.2 with no matching scale, so the ink sits in roughly the
-/// top-left quarter of the canvas. Rendering it verbatim is exactly how the
-/// previous <c>claude-mark.icns</c> came to be a small mark in the corner of an
-/// otherwise empty square. <see cref="ClaudeMark.ToPng(int, Color, double)"/>
+/// for this outline is the one the app itself uses. The mark does not fill its
+/// own 96-unit viewBox - it is a gauge with a margin around it, and the ring is
+/// wider than it is tall - so a general-purpose converter would hand back an icon
+/// with a border baked in and the figure sitting slightly high. Rendering an SVG
+/// verbatim is exactly how a previous icns came to be a small mark in the corner
+/// of an otherwise empty square. <see cref="AppMark.ToPng(int, Color, double)"/>
 /// fits the path's real bounds instead, which is what every view already does
 /// with <c>Stretch.Uniform</c>.
 /// </para>
@@ -99,15 +104,15 @@ public class IconGenerator
         HeadlessAppFixture.Invoke(() =>
         {
             Directory.CreateDirectory(target!);
-            File.WriteAllBytes(Path.Combine(target!, "claude-mark.ico"), BuildIco());
-            File.WriteAllBytes(Path.Combine(target!, "claude-mark.icns"), BuildIcns());
+            File.WriteAllBytes(Path.Combine(target!, "app-mark.ico"), BuildIco());
+            File.WriteAllBytes(Path.Combine(target!, "app-mark.icns"), BuildIcns());
         });
     }
 
     [Fact]
     public void The_shipped_ico_carries_every_size_Windows_asks_for()
     {
-        byte[] ico = File.ReadAllBytes(Path.Combine(AssetsDirectory(), "claude-mark.ico"));
+        byte[] ico = File.ReadAllBytes(Path.Combine(AssetsDirectory(), "app-mark.ico"));
 
         ico.Length.Should().BeGreaterThan(6, "an icon with no directory is not an icon");
         BinaryPrimitives.ReadUInt16LittleEndian(ico.AsSpan(2)).Should().Be(1, "type 1 is an icon, 2 is a cursor");
@@ -126,7 +131,7 @@ public class IconGenerator
     [Fact]
     public void The_shipped_icns_carries_every_type_macOS_looks_for()
     {
-        byte[] icns = File.ReadAllBytes(Path.Combine(AssetsDirectory(), "claude-mark.icns"));
+        byte[] icns = File.ReadAllBytes(Path.Combine(AssetsDirectory(), "app-mark.icns"));
 
         System.Text.Encoding.ASCII.GetString(icns, 0, 4).Should().Be("icns");
 
@@ -151,14 +156,14 @@ public class IconGenerator
     [Fact]
     public void The_mark_fills_the_icon_rather_than_sitting_in_a_corner()
     {
-        // The regression that shipped: claude-mark.icns was a small mark in the
-        // top-left of an empty square, because the SVG was rendered verbatim and
-        // its ink occupies about a quarter of its own viewBox. Measuring the ink
-        // is the only check that would have failed on it - the file was a valid
-        // icns of the right dimensions the whole time.
+        // The regression that shipped: the icns was a small mark in the top-left
+        // of an empty square, because an SVG was rendered verbatim and its ink
+        // did not fill its own viewBox. Measuring the ink is the only check that
+        // would have failed on it - the file was a valid icns of the right
+        // dimensions the whole time.
         HeadlessAppFixture.Invoke(() =>
         {
-            byte[] png = ClaudeMark.ToPng(256, Coral, Inset);
+            byte[] png = AppMark.ToPng(256, Coral, Inset);
             Rect ink = InkBounds(png, 256);
 
             // Centred: the margins on opposite sides match.
@@ -188,7 +193,7 @@ public class IconGenerator
         // and the only test that covered it asserted that some PNG came out.
         HeadlessAppFixture.Invoke(() =>
         {
-            byte[] png = ClaudeMark.ToPng(64);
+            byte[] png = AppMark.ToPng(64);
             byte[] pixels = Pixels(png, 64);
 
             for (int i = 0; i < pixels.Length; i += 4)
@@ -261,7 +266,7 @@ public class IconGenerator
     /// </remarks>
     private static byte[] BuildIco()
     {
-        byte[][] images = [.. IcoSizes.Select(size => ClaudeMark.ToPng(size, Coral, Inset))];
+        byte[][] images = [.. IcoSizes.Select(size => AppMark.ToPng(size, Coral, Inset))];
 
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
@@ -306,7 +311,7 @@ public class IconGenerator
         byte[] length = new byte[4];
         foreach ((string type, int pixels) in IcnsEntries)
         {
-            byte[] png = ClaudeMark.ToPng(pixels, Coral, Inset);
+            byte[] png = AppMark.ToPng(pixels, Coral, Inset);
 
             body.Write(System.Text.Encoding.ASCII.GetBytes(type));
 

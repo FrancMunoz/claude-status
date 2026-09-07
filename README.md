@@ -199,13 +199,10 @@ with, authorised by, sponsored by or endorsed by Anthropic PBC**. "Claude",
 "Anthropic" and "Fable" are trademarks of their respective owners and are used
 here only to describe what the app reads.
 
-That applies to the Claude mark as much as to the names. The mark used as the
-application icon, in the installer, in the macOS menu bar and inside the app
-itself is Anthropic's, not ours, and no rights in it are claimed here. It
-appears to identify the service whose usage is being displayed — it does not
-indicate the origin of this software and is not a sign of any endorsement,
-sponsorship or association. If Anthropic would rather it were not used this
-way, open an issue and it will be replaced.
+The application icon, the installer, the macOS menu bar and the app itself use
+our own mark — a gauge — and no third-party logo. The Claude mark was used for
+this until 2026-09-07 and was removed; nothing in this repository claims any
+rights in it.
 
 The software is provided **"as is", without warranty of any kind**, express or
 implied — the [licence](LICENSE) holds the binding wording. You use it entirely
