@@ -59,7 +59,7 @@ own colour — so it follows dark and light mode, and the menu bar's own tint ov
 dark desktop picture, with nothing to keep in sync:
 
 <p align="center">
-  <img src="docs/screenshots/macos-menu-bar.png" alt="The menu bar item showing 5h 45% · 7d 5% beside the system icons" width="420">
+  <img src="docs/screenshots/macos-menu-bar.png" alt="The menu bar item showing 5h 46% · 7d 13% beside the system icons" width="374">
 </p>
 
 - **Left click** — the details popup, opened directly under the item.
@@ -149,7 +149,8 @@ See [`docs/data-source.md`](docs/data-source.md) for the full write-up.
 ClaudeStatus is built so the credential is never the weak link:
 
 - By default it **stores no token at all** — it reads Claude Code's existing
-  login at poll time and keeps nothing.
+  login and writes nothing to disk. On macOS it holds that token in memory until
+  it expires, so reading it need not cost a Keychain prompt on every poll.
 - If you do paste a token manually (the "advanced" fallback), it is encrypted
   with an **OS-bound key**: DPAPI on Windows, the Keychain on macOS, libsecret
   on Linux. A copied config folder is useless on another machine or user account.
@@ -234,3 +235,9 @@ disclaimer above come from.
 
 Built with [Avalonia UI](https://avaloniaui.net) (MIT) and packaged with
 [Velopack](https://velopack.io) (MIT). Dependencies keep their own licences.
+
+---
+
+<p align="center">
+  Made with ❤ in Menorca
+</p>
