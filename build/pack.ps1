@@ -125,7 +125,8 @@ try {
             Set-Content -NoNewline -Path $plistPath
 
         # --plist and --bundleId are mutually exclusive in vpk; the identifier is
-        # declared in the template instead.
+        # declared in the template instead, and pkgbuild derives the package
+        # identifier from it.
         $extraArgs += '--plist', $plistPath
     }
 
