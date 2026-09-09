@@ -59,11 +59,11 @@ own colour — so it follows dark and light mode, and the menu bar's own tint ov
 dark desktop picture, with nothing to keep in sync:
 
 <p align="center">
-  <img src="docs/screenshots/macos-menu-bar.png" alt="The menu bar item showing 5h 46% · 7d 13% beside the system icons" width="374">
+  <img src="docs/screenshots/macos-menu-bar.png" alt="The menu bar item showing 5h (2:36) 29% · 7d 58% beside the system icons" width="420">
 </p>
 
-The session pair carries the time left in the window with it — `5h (2:11) 56% ·
-7d 18%` — the same countdown, in the same shape, as the taskbar widget's.
+The session pair carries the time left in the window with it — the `(2:36)`
+above — the same countdown, in the same shape, as the taskbar widget's.
 
 - **Left click** — the details popup, opened directly under the item.
 - **Right click** — the menu.
