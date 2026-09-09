@@ -158,6 +158,12 @@
   <data name="Bar_Percent" xml:space="preserve">
     <value>{0:0.#} %</value>
   </data>
+  <data name="Bar_PercentNumber" xml:space="preserve">
+    <value>{0:0.#}</value>
+  </data>
+  <data name="Bar_PercentSign" xml:space="preserve">
+    <value>%</value>
+  </data>
   <data name="Bar_NoData" xml:space="preserve">
     <value>aucune donnée</value>
   </data>

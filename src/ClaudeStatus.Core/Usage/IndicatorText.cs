@@ -54,6 +54,48 @@ public static class IndicatorText
     }
 
     /// <summary>
+    /// The longest countdown worth showing as a clock.
+    /// </summary>
+    /// <remarks>
+    /// A five-hour window counts down in hours and minutes, which is what
+    /// <c>h:mm</c> says. A seven-day one would read <c>(139:12)</c>, a number
+    /// nobody converts back into "Thursday", so the weekly windows get none.
+    /// </remarks>
+    public static readonly TimeSpan CountdownCeiling = TimeSpan.FromDays(1);
+
+    /// <summary>
+    /// How long is left of a window, as a bracketed clock: <c>(2:11)</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The brackets are part of the token, not decoration a caller adds: this sits
+    /// between a label and a percentage - <c>5h (2:11) 56%</c> - and without them
+    /// the row is three numbers in a line, one of which is not a percentage.
+    /// </para>
+    /// <para>
+    /// Empty for anything <see cref="CountdownCeiling"/> or longer, and for a
+    /// window the source gave no reset time for. Invariant digits, like
+    /// <see cref="FormatPercent"/>: this is a readout, not prose, and the widget
+    /// and the macOS menu bar must not disagree about its shape.
+    /// </para>
+    /// </remarks>
+    public static string FormatCountdown(TimeSpan? remaining)
+    {
+        if (remaining is not { } left || left >= CountdownCeiling)
+        {
+            return string.Empty;
+        }
+
+        if (left < TimeSpan.Zero)
+        {
+            left = TimeSpan.Zero;
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture, $"({(int)left.TotalHours}:{left.Minutes:00})");
+    }
+
+    /// <summary>
     /// What one window contributes to an indicator, as a short token.
     /// </summary>
     /// <remarks>
@@ -108,16 +150,30 @@ public static class IndicatorText
     /// </remarks>
     /// <param name="labels">The short labels, in session, week, Fable order.</param>
     /// <param name="separator">What goes between pairs.</param>
+    /// <param name="now">
+    /// The current time, which adds the session countdown - <c>5h (2:11) 56%</c>.
+    /// Omitted, the row is labels and percentages as before. Only the session
+    /// carries one; see <see cref="FormatCountdown"/> for why the weekly ones do
+    /// not, and note that an alert or a missing window replaces the percentage
+    /// with a symbol, at which point a countdown beside it would be dressing up
+    /// the absence of a reading as one.
+    /// </param>
     public static string ComposeRow(
         UsageSnapshot? snapshot,
         IndicatorAlert alert,
         (string Session, string Week, string WeekFable) labels,
         bool showWeekFable,
-        string separator = " · ")
+        string separator = " · ",
+        DateTimeOffset? now = null)
     {
+        string countdown = now is { } at && alert == IndicatorAlert.None && snapshot?.Session is { } session
+            ? FormatCountdown(session.TimeUntilReset(at))
+            : string.Empty;
+
         var parts = new List<string>(3)
         {
-            $"{labels.Session} {WindowValue(snapshot?.Session, alert, withSign: true)}",
+            $"{labels.Session} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
+                + WindowValue(snapshot?.Session, alert, withSign: true),
             $"{labels.Week} {WindowValue(snapshot?.Week, alert, withSign: true)}",
         };
 

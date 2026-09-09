@@ -170,7 +170,8 @@ public sealed class NativeStatusIndicator : IStatusIndicator
                 snapshot,
                 alert,
                 (_l["Widget_Session"], _l["Widget_Week"], _l["Tray_Row_Fable"]),
-                _showWeekFable);
+                _showWeekFable,
+                now: _clock.GetUtcNow());
         }
 
         (string Label, UsageWindow? Window) single = mode switch
@@ -180,7 +181,15 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             _ => (_l["Widget_Session"], snapshot?.Session),
         };
 
-        return $"{single.Label} {IndicatorText.WindowValue(single.Window, alert, withSign: true)}";
+        // The same countdown as the row, so switching to one metric does not lose
+        // it. Only the session window is short enough for one; FormatCountdown
+        // returns nothing for the others, which is why this needs no mode check.
+        string countdown = alert == IndicatorAlert.None
+            ? IndicatorText.FormatCountdown(single.Window?.TimeUntilReset(_clock.GetUtcNow()))
+            : string.Empty;
+
+        return $"{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
+            + IndicatorText.WindowValue(single.Window, alert, withSign: true);
     }
 
     /// <summary>Picks the colour, or leaves it to the menu bar.</summary>

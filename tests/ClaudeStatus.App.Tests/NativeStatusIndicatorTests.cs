@@ -79,11 +79,15 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         }
     }
 
+    /// <summary>
+    /// A reading whose windows reset at plausible times rather than at
+    /// <see cref="Now"/>, so the session countdown in the title is a real one.
+    /// </summary>
     private static UsageSnapshot Snapshot(
         double session = 42d, double week = 18d, double? fable = 3d, bool stale = false) => new(
-            UsageWindow.Create(session, Now),
-            UsageWindow.Create(week, Now),
-            fable is null ? null : UsageWindow.Create(fable.Value, Now),
+            UsageWindow.Create(session, Now + TimeSpan.FromHours(2) + TimeSpan.FromMinutes(11)),
+            UsageWindow.Create(week, Now + TimeSpan.FromDays(2)),
+            fable is null ? null : UsageWindow.Create(fable.Value, Now + TimeSpan.FromDays(2)),
             new Dictionary<string, UsageWindow>(),
             Now,
             stale);
@@ -206,7 +210,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
             });
         }
 
-        item.Title.Should().Be("5h 42% · 7d 18%");
+        item.Title.Should().Be("5h (2:11) 42% · 7d 18%");
     }
 
     [Fact]
@@ -224,7 +228,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
             });
         }
 
-        item.Title.Should().Be("5h 42% · 7d 18% · F 3%");
+        item.Title.Should().Be("5h (2:11) 42% · 7d 18% · F 3%");
     }
 
     [Fact]
@@ -432,7 +436,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
             });
         }
 
-        item.Title.Should().Be("5h 42%");
+        item.Title.Should().Be("5h (2:11) 42%");
     }
 
     [Fact]

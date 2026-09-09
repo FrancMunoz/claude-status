@@ -138,6 +138,152 @@ public class TaskbarWidgetViewModelTests
     }
 
     [Fact]
+    public void The_second_bar_is_how_much_of_the_window_has_elapsed_not_how_much_was_spent()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        // An hour left of five, and a day left of seven: the clock is far ahead of
+        // the spend in the session and behind it in the week, which is the whole
+        // point of drawing the two bars together.
+        vm.Update(
+            new UsageSnapshot(
+                UsageWindow.Create(20, Now + TimeSpan.FromHours(1)),
+                UsageWindow.Create(90, Now + TimeSpan.FromDays(1)),
+                null,
+                new Dictionary<string, UsageWindow>(),
+                Now,
+                false),
+            IndicatorAlert.None,
+            Now);
+
+        vm.Session.HasTimeProgress.Should().BeTrue();
+        vm.Session.TimePercent.Should().BeApproximately(80d, 0.001);
+        vm.Session.Percent.Should().Be(20d, "the usage bar above it is unaffected");
+
+        vm.Week.TimePercent.Should().BeApproximately(100d * 6 / 7, 0.001);
+    }
+
+    [Fact]
+    public void Only_the_session_carries_a_clock_and_it_reads_h_mm()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        vm.Update(
+            new UsageSnapshot(
+                UsageWindow.Create(29, Now + TimeSpan.FromHours(2) + TimeSpan.FromMinutes(37)),
+                UsageWindow.Create(58, Now + TimeSpan.FromDays(2)),
+                UsageWindow.Create(88, Now + TimeSpan.FromDays(2)),
+                new Dictionary<string, UsageWindow>(),
+                Now,
+                false),
+            IndicatorAlert.None,
+            Now);
+
+        vm.Session.HasClock.Should().BeTrue();
+        vm.Session.ClockText.Should().Be("(2:37)");
+
+        vm.Week.HasClock.Should().BeFalse("48:00 is not a time anyone converts back into a day");
+        vm.Week.ClockText.Should().BeEmpty();
+
+        // The popup and the hover card were given no span, so they get no clock
+        // either - they have room for the sentence.
+        vm.TooltipSession.HasClock.Should().BeFalse();
+        vm.TooltipSession.ResetText.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void Minutes_are_padded_so_the_clock_cannot_be_misread()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        vm.Update(
+            new UsageSnapshot(
+                UsageWindow.Create(29, Now + TimeSpan.FromMinutes(5)),
+                UsageWindow.Create(58, Now + TimeSpan.FromDays(2)),
+                null,
+                new Dictionary<string, UsageWindow>(),
+                Now,
+                false),
+            IndicatorAlert.None,
+            Now);
+
+        vm.Session.ClockText.Should().Be("(0:05)", "5 would read as five hours");
+    }
+
+    [Fact]
+    public void The_widget_splits_the_number_from_the_sign_and_the_popup_does_not()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        vm.Update(Snapshot(29, 58, 88), IndicatorAlert.None, Now);
+
+        vm.Session.PercentNumberText.Should().Be("29");
+        vm.Session.PercentSign.Should().NotBeNullOrWhiteSpace();
+        vm.Session.PercentText.Should().Be("29 %", "everywhere with room keeps the spacing its language asks for");
+
+        vm.Update(null, IndicatorAlert.None, Now);
+        vm.Session.Update(null, ThresholdState.Normal, Now);
+        vm.Session.IsKnown.Should().BeFalse("the view hides the sign on this, not on an empty string");
+        vm.Session.PercentNumberText.Should().Be(vm.Session.PercentText, "a dash is a dash either way");
+    }
+
+    [Fact]
+    public void A_window_the_source_gave_no_reset_time_for_draws_no_time_bar()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        vm.Update(
+            new UsageSnapshot(
+                UsageWindow.Create(20, null),
+                UsageWindow.Create(30, null),
+                null,
+                new Dictionary<string, UsageWindow>(),
+                Now,
+                false),
+            IndicatorAlert.None,
+            Now);
+
+        vm.Session.HasTimeProgress.Should().BeFalse();
+        vm.Session.TimePercent.Should().Be(0d, "an empty bar, never a full one");
+    }
+
+    [Fact]
+    public void More_time_left_than_the_window_is_long_shows_an_empty_bar_not_a_negative_one()
+    {
+        // A plan whose session window is not five hours. The assumption is wrong,
+        // and the bar has to fail in the direction that claims nothing.
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        vm.Update(
+            new UsageSnapshot(
+                UsageWindow.Create(20, Now + TimeSpan.FromHours(9)),
+                UsageWindow.Create(30, Now + TimeSpan.FromDays(30)),
+                null,
+                new Dictionary<string, UsageWindow>(),
+                Now,
+                false),
+            IndicatorAlert.None,
+            Now);
+
+        vm.Session.TimePercent.Should().Be(0d);
+        vm.Week.TimePercent.Should().Be(0d);
+    }
+
+    [Fact]
+    public void The_hover_card_and_the_popup_keep_a_countdown_and_no_time_bar()
+    {
+        // The elapsed share rests on an assumed window length; the countdown does
+        // not. Only the widget's own bars make that assumption.
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+
+        vm.Update(Snapshot(20, 30, 40), IndicatorAlert.None, Now);
+
+        vm.TooltipSession.HasTimeProgress.Should().BeFalse();
+        vm.TooltipWeek.HasTimeProgress.Should().BeFalse();
+        vm.TooltipSession.ResetText.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
     public void No_data_yet_is_a_dash_not_an_error()
     {
         var vm = new TaskbarWidgetViewModel(new Localizer());

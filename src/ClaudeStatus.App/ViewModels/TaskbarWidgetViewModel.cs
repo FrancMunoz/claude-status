@@ -22,6 +22,25 @@ namespace ClaudeStatus.App.ViewModels;
 /// </remarks>
 public partial class TaskbarWidgetViewModel : ObservableObject
 {
+    /// <summary>
+    /// How long the two windows run for, which is what lets the widget draw the
+    /// second bar: how much of the window has elapsed, under the percentage of it
+    /// that has been spent. Between them a glance says whether usage is ahead of
+    /// the clock or behind it.
+    /// </summary>
+    /// <remarks>
+    /// An assumption about the plan, not something the endpoint reports - it gives
+    /// a reset time and no length - and it is confined to this pair of bars for
+    /// that reason. Every countdown, threshold and velocity alert in the app still
+    /// works off <see cref="UsageWindow.ResetsAt"/> alone, so a plan whose windows
+    /// are not five hours and seven days shows a slightly wrong second bar and
+    /// nothing else.
+    /// </remarks>
+    private static readonly TimeSpan SessionSpan = TimeSpan.FromHours(5);
+
+    /// <inheritdoc cref="SessionSpan" />
+    private static readonly TimeSpan WeekSpan = TimeSpan.FromDays(7);
+
     private readonly ILocalizer _l;
 
     [ObservableProperty]
@@ -75,9 +94,9 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     {
         _l = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
-        Session = new UsageBarViewModel(_l, "Widget_Session");
-        Week = new UsageBarViewModel(_l, "Widget_Week");
-        WeekFable = new UsageBarViewModel(_l, "Widget_Fable");
+        Session = new UsageBarViewModel(_l, "Widget_Session", SessionSpan);
+        Week = new UsageBarViewModel(_l, "Widget_Week", WeekSpan);
+        WeekFable = new UsageBarViewModel(_l, "Widget_Fable", WeekSpan);
 
         TooltipSession = new UsageBarViewModel(_l, "Details_Metric_Session");
         TooltipWeek = new UsageBarViewModel(_l, "Details_Metric_Week");

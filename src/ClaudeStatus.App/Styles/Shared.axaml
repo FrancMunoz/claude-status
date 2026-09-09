@@ -9,16 +9,24 @@
            literal. A StaticResource would resolve once and the theme picker would
            appear to do nothing until the window was reopened.
         2. Sizes come from the scale below rather than from whatever looked right
-           in the view being edited at the time. Five type sizes and two radii are
+           in the view being edited at the time. Seven type sizes and two radii are
            what keeps four windows written weeks apart looking like one app.
     -->
 
     <Styles.Resources>
         <!--
-            The type scale: 11 / 12 / 13 / 15 / 26. The jump from 15 to 26 is
+            The type scale: 9 / 10 / 11 / 12 / 13 / 15 / 26. The jump from 15 to 26 is
             deliberate - a usage percentage is the one thing this app exists to
             show, so it gets a size nothing else is allowed to use.
+
+            The bottom two are the taskbar's alone. Unit is for a mark that is not
+            read at all, only recognised - the per-cent sign, which the eye skips
+            on its way to the number in front of it. Micro is for something still
+            read but never first: the widget's countdown. Nothing that carries
+            meaning on its own may use either.
         -->
+        <x:Double x:Key="Size.Unit">9</x:Double>
+        <x:Double x:Key="Size.Micro">10</x:Double>
         <x:Double x:Key="Size.Caption">11</x:Double>
         <x:Double x:Key="Size.Body">12</x:Double>
         <x:Double x:Key="Size.Strong">13</x:Double>
@@ -357,8 +365,15 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
+    <!--
+        Every metric the same width, including the ones with nothing extra to put
+        in it. The session column has to hold "5h (2:37) 29%" and the others only
+        "7d 58%", but sizing each to its own content would give the two bars
+        different lengths, and two bars of different lengths cannot be compared at
+        a glance - which is the only thing they are there for.
+    -->
     <Style Selector="StackPanel.widgetMetric">
-        <Setter Property="Width" Value="64" />
+        <Setter Property="Width" Value="82" />
     </Style>
 
     <!-- A stale reading fades exactly as the tray icon does, so the two agree. -->
@@ -388,6 +403,33 @@
         <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
     </Style>
 
+    <!--
+        The per-cent sign after the number. A step down the type scale: it is a
+        unit, not a word, and the number is what the eye is looking for. Declared
+        after .widgetValue because it shares that class - equal specificity, so the
+        later font size is the one that wins.
+
+        The margin is a pixel of air before it and a pixel of lift off the
+        baseline. Bottom-aligned, 9 px sits level with the digits' feet and reads
+        as if it had fallen off them; raised one pixel it sits where a superscript
+        unit belongs. Both are single pixels because the whole mark is nine.
+    -->
+    <Style Selector="TextBlock.widgetValue.widgetSign">
+        <Setter Property="FontSize" Value="{StaticResource Size.Unit}" />
+        <Setter Property="Margin" Value="1,0,0,1" />
+    </Style>
+
+    <!--
+        The countdown beside the "5h" label: how long is left of that window, as a
+        bare clock. Muted and micro on purpose - it is the answer to "and how long
+        have I got", asked after the percentage, never before it.
+    -->
+    <Style Selector="TextBlock.widgetClock">
+        <Setter Property="FontSize" Value="{StaticResource Size.Micro}" />
+        <Setter Property="FontFeatures" Value="+tnum" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
+    </Style>
+
     <!-- The "!", "⊘" or "—" when there is nothing to show. -->
     <Style Selector="TextBlock.widgetGlyph">
         <Setter Property="FontSize" Value="{StaticResource Size.Heading}" />
@@ -397,6 +439,24 @@
 
     <Style Selector="controls|UsageBar.widgetBar">
         <Setter Property="Height" Value="3" />
+    </Style>
+
+    <!--
+        The time bar, drawn flush under the usage bar: how much of the window has
+        elapsed, against how much of it has been spent.
+
+        It carries the same groove as the bar above it, so the pair reads as two
+        measurements of one window rather than as a bar with a smear under it: the
+        track is what says where 100 % is, and without it the elapsed share had no
+        end to be a share of. One pixel of air keeps the two from fusing into a
+        single fat bar; the fill is muted because this one is context, and the
+        question it answers is only whether the bar above is ahead of the clock.
+    -->
+    <Style Selector="controls|UsageBar.widgetTimeBar">
+        <Setter Property="Height" Value="3" />
+        <Setter Property="Margin" Value="0,1,0,0" />
+        <Setter Property="Track" Value="{DynamicResource Theme.Track}" />
+        <Setter Property="Fill" Value="{DynamicResource Theme.Muted}" />
     </Style>
 
     <!--
@@ -437,6 +497,10 @@
         <Setter Property="Foreground" Value="{DynamicResource Widget.InkMuted}" />
     </Style>
 
+    <Style Selector="Border.widget.system TextBlock.widgetClock">
+        <Setter Property="Foreground" Value="{DynamicResource Widget.InkMuted}" />
+    </Style>
+
     <Style Selector="Border.widget.system TextBlock.widgetValue">
         <Setter Property="Foreground" Value="{DynamicResource Widget.Ink}" />
     </Style>
@@ -451,6 +515,15 @@
 
     <Style Selector="Border.widget.system controls|UsageBar.widgetBar">
         <Setter Property="Track" Value="{DynamicResource Widget.Track}" />
+    </Style>
+
+    <!--
+        Blended, the time bar takes the taskbar's own muted ink - the same
+        relationship to the value above it as the "5h" label has to the number.
+    -->
+    <Style Selector="Border.widget.system controls|UsageBar.widgetTimeBar">
+        <Setter Property="Track" Value="{DynamicResource Widget.Track}" />
+        <Setter Property="Fill" Value="{DynamicResource Widget.InkMuted}" />
     </Style>
 
 </Styles>

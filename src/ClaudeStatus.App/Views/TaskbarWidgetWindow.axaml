@@ -37,24 +37,77 @@
     <Window.Resources>
         <!-- One template for all three metrics, so they cannot drift apart. -->
         <DataTemplate x:Key="WidgetMetricTemplate" DataType="vm:UsageBarViewModel">
-            <StackPanel Classes="widgetMetric" Spacing="4" VerticalAlignment="Center">
+            <!--
+                Spacing is 0 and the two bars touch on purpose. The usage bar and
+                the time bar under it are one reading of two quantities - percent
+                spent against percent of the window elapsed - and a gap between
+                them would invite reading them as two unrelated things. Space here
+                is also the scarcest thing the widget has: the taskbar's height is
+                fixed and every pixel of padding is one the bars cannot use.
+            -->
+            <StackPanel Classes="widgetMetric" Spacing="0" VerticalAlignment="Center">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                    <TextBlock Grid.Column="0"
-                               Classes="widgetLabel"
-                               VerticalAlignment="Center"
-                               Text="{Binding Label}" />
-                    <TextBlock Grid.Column="1"
-                               Classes="widgetValue"
-                               HorizontalAlignment="Right"
-                               VerticalAlignment="Center"
-                               Classes.exceeded="{Binding IsExceeded}"
-                               Classes.unknown="{Binding !IsKnown}"
-                               Text="{Binding PercentText}" />
+                    <!--
+                        The label, and after it the countdown for windows short
+                        enough to have one - only the 5h in practice. It is bound
+                        on every metric rather than only the session because the
+                        view model decides which windows get a clock, not the view;
+                        the weekly bars simply hide it.
+                    -->
+                    <StackPanel Grid.Column="0"
+                                Orientation="Horizontal"
+                                Spacing="4"
+                                VerticalAlignment="Center">
+                        <TextBlock Classes="widgetLabel"
+                                   VerticalAlignment="Bottom"
+                                   Text="{Binding Label}" />
+                        <TextBlock Classes="widgetClock"
+                                   VerticalAlignment="Bottom"
+                                   IsVisible="{Binding HasClock}"
+                                   Text="{Binding ClockText}" />
+                    </StackPanel>
+                    <!--
+                        Number and sign as two blocks, not one string: the sign is
+                        set smaller and hard against the digits, which is worth a
+                        few pixels of a strip this size and is the shape people
+                        already read on a phone's battery. Both halves come from
+                        the view model, so a language can still say what its sign
+                        is - see UsageBarViewModel.PercentNumberText. The sign goes
+                        with the number when there is no reading: a lone "%" after
+                        a dash reads as a broken string.
+                    -->
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                        <TextBlock Classes="widgetValue"
+                                   VerticalAlignment="Bottom"
+                                   Classes.exceeded="{Binding IsExceeded}"
+                                   Classes.unknown="{Binding !IsKnown}"
+                                   Text="{Binding PercentNumberText}" />
+                        <TextBlock Classes="widgetValue widgetSign"
+                                   VerticalAlignment="Bottom"
+                                   IsVisible="{Binding IsKnown}"
+                                   Classes.exceeded="{Binding IsExceeded}"
+                                   Text="{Binding PercentSign}" />
+                    </StackPanel>
                 </Grid>
                 <controls:UsageBar Classes="widgetBar"
                                    Percent="{Binding Percent}"
                                    Classes.exceeded="{Binding IsExceeded}"
                                    Classes.unknown="{Binding !IsKnown}" />
+
+                <!--
+                    The clock, under the spend. It keeps its height when there is
+                    no reset time to draw it from (IsVisible would make the row
+                    above jump as windows come and go); with nothing to show it
+                    draws nothing, because it has no track and a zero percent
+                    fills none of it. It never takes the exceeded red either: a
+                    window 100 % through its time has simply reset, which is good
+                    news, and colouring it like an exhausted budget says the
+                    opposite.
+                -->
+                <controls:UsageBar Classes="widgetTimeBar" Percent="{Binding TimePercent}" />
             </StackPanel>
         </DataTemplate>
     </Window.Resources>

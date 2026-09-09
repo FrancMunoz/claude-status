@@ -62,6 +62,9 @@ dark desktop picture, with nothing to keep in sync:
   <img src="docs/screenshots/macos-menu-bar.png" alt="The menu bar item showing 5h 46% · 7d 13% beside the system icons" width="374">
 </p>
 
+The session pair carries the time left in the window with it — `5h (2:11) 56% ·
+7d 18%` — the same countdown, in the same shape, as the taskbar widget's.
+
 - **Left click** — the details popup, opened directly under the item.
 - **Right click** — the menu.
 
@@ -75,7 +78,11 @@ Dock icon — the app is a menu bar utility and quits from its own menu.
 ### Taskbar widget — Windows only
 
 On Windows the default indicator is not the icon but a small card in the taskbar
-beside the clock, showing the session and weekly limits at once. Everything in
+beside the clock, showing the session and weekly limits at once. Under each
+percentage bar a second, fainter one fills with the window's own clock — how much
+of the five hours or the seven days has gone — so a spend bar running ahead of
+the time bar is the warning, without reading a single number. The session also
+carries the time left as a small `(h:mm)` beside its label. Everything in
 this section is Windows-only: macOS has the menu bar item above, and Linux uses
 the tray icon.
 
