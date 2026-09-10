@@ -148,8 +148,18 @@ signing credential on one runner the moment Windows was signed too. Both platfor
 now arrive already signed, and the publishing job cannot produce a binary at all.
 
 `permissions` is declared per job for the same reason rather than once at the top.
-The workflow default is read-only; only `release` can write a tag, and only
-`package-windows` can mint an OIDC token.
+The workflow default is read-only. The two npm jobs, `decide-version` and
+`release`, can write to the repository; only `package-windows` can mint an OIDC
+token; no job holds both.
+
+`decide-version` needs write access even though it writes nothing:
+semantic-release checks it could push - `git push --dry-run` - before analysing a
+single commit, and `--dry-run` does not skip that check. Read-only, it stops with
+`EGITNOPERMISSION`. That shipped once, and it was invisible, because the step also
+used to swallow semantic-release's exit code and read "no version in the log" as
+"no release due": the run went green and skipped everything. The step now fails on
+a non-zero exit, and only an empty version from a successful run means there is
+nothing to release.
 
 The github plugin only *warns* about an asset path that matches nothing, so with
 packing moved out of that job a half-empty release could otherwise be tagged
