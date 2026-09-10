@@ -51,20 +51,28 @@
 
                         <TextBlock Classes="heading" Text="{Binding L[Config_Section_Source]}" />
 
-                        <StackPanel Spacing="6">
-                            <RadioButton GroupName="source"
-                                         IsChecked="{Binding UseClaudeCodeLogin}"
-                                         Content="{Binding L[Config_Source_ClaudeCode]}" />
-                            <TextBlock Classes="caption"
-                                       Margin="24,0,0,0"
-                                       Text="{Binding L[Config_Source_ClaudeCode_Help]}" />
+                        <!--
+                            Each option and its sentence are one block, and the gap
+                            between blocks is wider than the gap inside one - that
+                            difference is the only thing telling the reader which
+                            sentence belongs to which option.
+                        -->
+                        <StackPanel Spacing="10">
+                            <StackPanel>
+                                <RadioButton GroupName="source"
+                                             IsChecked="{Binding UseClaudeCodeLogin}"
+                                             Content="{Binding L[Config_Source_ClaudeCode]}" />
+                                <TextBlock Classes="caption option-help"
+                                           Text="{Binding L[Config_Source_ClaudeCode_Help]}" />
+                            </StackPanel>
 
-                            <RadioButton GroupName="source"
-                                         IsChecked="{Binding !UseClaudeCodeLogin}"
-                                         Content="{Binding L[Config_Source_Manual]}" />
-                            <TextBlock Classes="caption"
-                                       Margin="24,0,0,0"
-                                       Text="{Binding L[Config_Source_Manual_Help]}" />
+                            <StackPanel>
+                                <RadioButton GroupName="source"
+                                             IsChecked="{Binding !UseClaudeCodeLogin}"
+                                             Content="{Binding L[Config_Source_Manual]}" />
+                                <TextBlock Classes="caption option-help"
+                                           Text="{Binding L[Config_Source_Manual_Help]}" />
+                            </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="8" IsEnabled="{Binding !UseClaudeCodeLogin}">
@@ -125,34 +133,40 @@
                         <StackPanel Spacing="6" IsVisible="{Binding CanUseTaskbarWidget}">
                             <TextBlock Classes="label" Text="{Binding L[Config_Section_Indicator]}" />
 
-                            <RadioButton GroupName="indicator"
-                                         IsChecked="{Binding UseTaskbarWidget}"
-                                         Content="{Binding L[Config_Indicator_Widget]}" />
-                            <TextBlock Classes="caption"
-                                       Margin="24,0,0,0"
-                                       Text="{Binding L[Config_Indicator_Widget_Help]}" />
+                            <StackPanel Spacing="10">
+                                <StackPanel>
+                                    <RadioButton GroupName="indicator"
+                                                 IsChecked="{Binding UseTaskbarWidget}"
+                                                 Content="{Binding L[Config_Indicator_Widget]}" />
+                                    <TextBlock Classes="caption option-help"
+                                               Text="{Binding L[Config_Indicator_Widget_Help]}" />
+                                </StackPanel>
 
-                            <RadioButton GroupName="indicator"
-                                         IsChecked="{Binding !UseTaskbarWidget}"
-                                         Content="{Binding L[Config_Indicator_Icon]}" />
-                            <TextBlock Classes="caption"
-                                       Margin="24,0,0,0"
-                                       Text="{Binding L[Config_Indicator_Icon_Help]}" />
+                                <StackPanel>
+                                    <RadioButton GroupName="indicator"
+                                                 IsChecked="{Binding !UseTaskbarWidget}"
+                                                 Content="{Binding L[Config_Indicator_Icon]}" />
+                                    <TextBlock Classes="caption option-help"
+                                               Text="{Binding L[Config_Indicator_Icon_Help]}" />
+                                </StackPanel>
 
-                            <CheckBox Margin="0,6,0,0"
-                                      IsEnabled="{Binding UseTaskbarWidget}"
-                                      IsChecked="{Binding ShowFableInWidget}"
-                                      Content="{Binding L[Config_Widget_ShowFable]}" />
-                            <TextBlock Classes="caption"
-                                       Margin="24,0,0,0"
-                                       Text="{Binding L[Config_Widget_ShowFable_Help]}" />
+                                <!-- Both belong to the widget, so they sit under it. -->
+                                <StackPanel Margin="0,2,0,0">
+                                    <CheckBox IsEnabled="{Binding UseTaskbarWidget}"
+                                              IsChecked="{Binding ShowFableInWidget}"
+                                              Content="{Binding L[Config_Widget_ShowFable]}" />
+                                    <TextBlock Classes="caption option-help"
+                                               Text="{Binding L[Config_Widget_ShowFable_Help]}" />
+                                </StackPanel>
 
-                            <CheckBox IsEnabled="{Binding UseTaskbarWidget}"
-                                      IsChecked="{Binding WidgetFollowsSystem}"
-                                      Content="{Binding L[Config_Widget_FollowSystem]}" />
-                            <TextBlock Classes="caption"
-                                       Margin="24,0,0,0"
-                                       Text="{Binding L[Config_Widget_FollowSystem_Help]}" />
+                                <StackPanel>
+                                    <CheckBox IsEnabled="{Binding UseTaskbarWidget}"
+                                              IsChecked="{Binding WidgetFollowsSystem}"
+                                              Content="{Binding L[Config_Widget_FollowSystem]}" />
+                                    <TextBlock Classes="caption option-help"
+                                               Text="{Binding L[Config_Widget_FollowSystem_Help]}" />
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
 
                         <!--
@@ -165,11 +179,12 @@
                         <StackPanel Spacing="6" IsVisible="{Binding CanUseInlineRow}">
                             <TextBlock Classes="label" Text="{Binding L[Config_Section_Indicator]}" />
 
-                            <CheckBox IsChecked="{Binding ShowFableInWidget}"
-                                      Content="{Binding L[Config_Row_ShowFable]}" />
-                            <TextBlock Classes="caption"
-                                       Margin="24,0,0,0"
-                                       Text="{Binding L[Config_Row_ShowFable_Help]}" />
+                            <StackPanel>
+                                <CheckBox IsChecked="{Binding ShowFableInWidget}"
+                                          Content="{Binding L[Config_Row_ShowFable]}" />
+                                <TextBlock Classes="caption option-help"
+                                           Text="{Binding L[Config_Row_ShowFable_Help]}" />
+                            </StackPanel>
                         </StackPanel>
 
                         <StackPanel Spacing="4">
@@ -265,29 +280,32 @@
                             <TextBlock Classes="caption" Text="{Binding L[Config_Interval_Help]}" />
                         </StackPanel>
 
-                        <StackPanel Spacing="4">
-                            <CheckBox Content="{Binding L[Config_Autostart]}"
-                                      IsChecked="{Binding StartWithOperatingSystem}"
-                                      IsEnabled="{Binding IsAutostartSupported}" />
-                            <TextBlock Classes="caption" Text="{Binding AutostartDescription}" />
-                        </StackPanel>
+                        <StackPanel Spacing="10">
+                            <StackPanel>
+                                <CheckBox Content="{Binding L[Config_Autostart]}"
+                                          IsChecked="{Binding StartWithOperatingSystem}"
+                                          IsEnabled="{Binding IsAutostartSupported}" />
+                                <TextBlock Classes="caption option-help"
+                                           Text="{Binding AutostartDescription}" />
+                            </StackPanel>
 
-                        <StackPanel Spacing="4">
-                            <CheckBox Content="{Binding L[Config_AutomaticUpdates]}"
-                                      IsChecked="{Binding AutomaticUpdates}" />
-                            <TextBlock Classes="caption"
-                                       Text="{Binding L[Config_AutomaticUpdates_Help]}" />
-                        </StackPanel>
+                            <StackPanel>
+                                <CheckBox Content="{Binding L[Config_AutomaticUpdates]}"
+                                          IsChecked="{Binding AutomaticUpdates}" />
+                                <TextBlock Classes="caption option-help"
+                                           Text="{Binding L[Config_AutomaticUpdates_Help]}" />
+                            </StackPanel>
 
-                        <StackPanel Spacing="4">
-                            <CheckBox Content="{Binding L[Config_VelocityAlerts]}"
-                                      IsChecked="{Binding VelocityAlerts}" />
-                            <TextBlock Classes="caption"
-                                       Text="{Binding L[Config_VelocityAlerts_Help]}" />
-                        </StackPanel>
+                            <StackPanel>
+                                <CheckBox Content="{Binding L[Config_VelocityAlerts]}"
+                                          IsChecked="{Binding VelocityAlerts}" />
+                                <TextBlock Classes="caption option-help"
+                                           Text="{Binding L[Config_VelocityAlerts_Help]}" />
+                            </StackPanel>
 
-                        <CheckBox Content="{Binding L[Config_FakeData]}"
-                                  IsChecked="{Binding UseFakeProvider}" />
+                            <CheckBox Content="{Binding L[Config_FakeData]}"
+                                      IsChecked="{Binding UseFakeProvider}" />
+                        </StackPanel>
 
                     </StackPanel>
                 </ScrollViewer>

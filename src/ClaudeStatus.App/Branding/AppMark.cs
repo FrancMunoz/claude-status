@@ -36,7 +36,7 @@ public static class AppMark
 {
     /// <summary>The mark's outline, in SVG path syntax.</summary>
     public const string PathData =
-        "M 31.5 76.579 A 33 33 0 1 1 64.5 76.579 L 56.5 62.722 A 17 17 0 1 0 39.5 62.722 Z M 36 40 H 60 V 46 H 36 Z M 40 50 H 56 V 56 H 40 Z";
+        "M 31.5 76.579 A 33 33 0 1 1 64.5 76.579 L 58.5 66.187 A 21 21 0 1 0 37.5 66.187 Z M 36 40 H 60 V 46 H 36 Z M 40 50 H 56 V 56 H 40 Z";
 
     /// <summary>The mark as geometry, parsed once.</summary>
     /// <remarks>

@@ -47,6 +47,16 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
     /// <summary>Gap between the widget and its hover card, in layout units.</summary>
     private const double HoverGap = 10d;
 
+    /// <summary>
+    /// Where the widget waits until it has a slot in the taskbar.
+    /// </summary>
+    /// <remarks>
+    /// Far enough out to be off any monitor in any arrangement, and the value
+    /// Windows itself uses for a window it does not want seen. Nothing is drawn
+    /// there - the window is simply never composited onto a display.
+    /// </remarks>
+    private static readonly PixelPoint OffScreen = new(-32000, -32000);
+
     /// <summary>The taskbar as last measured, so the hover card can be placed from it.</summary>
     private TaskbarMetrics? _lastMetrics;
 
@@ -133,6 +143,16 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        // Parked off-screen first, the way the hover card is placed before it is
+        // shown. Until Reposition has measured the taskbar there is nowhere for
+        // this window to be: it is a top-level window at that point, not yet a
+        // child of the taskbar, so Show would put a floating card wherever the
+        // OS chose - over whatever the user was looking at - and the move into
+        // the taskbar a moment later reads as a flash in the wrong place.
+        //
+        // Avalonia has already created the native window by now, so the position
+        // takes effect without the window ever being seen at it.
+        _window.Position = OffScreen;
         _window.Show();
         Reposition();
         _timer.Start();
@@ -191,7 +211,12 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
                 if (!_warnedNoTaskbar)
                 {
                     _warnedNoTaskbar = true;
-                    _log.LogWarning("The taskbar could not be joined. The widget is floating.");
+                    // Off-screen is where Show parked it, and off-screen is where
+                    // it stays until a retry succeeds. Better than the card it
+                    // used to leave floating over the desktop: the timer tries
+                    // again every second, and Explorer restarting is the usual
+                    // reason to be here.
+                    _log.LogWarning("The taskbar could not be joined. The widget is hidden until it can be.");
                 }
 
                 return;

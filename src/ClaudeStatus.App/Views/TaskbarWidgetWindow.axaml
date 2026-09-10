@@ -46,7 +46,14 @@
                 fixed and every pixel of padding is one the bars cannot use.
             -->
             <StackPanel Classes="widgetMetric" Spacing="0" VerticalAlignment="Center">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                <!--
+                    A pixel of air over the bar, on top of whatever the font
+                    leaves under its own baseline. A fixed distance measured from
+                    the baseline was tried and is worse: it takes the descent back
+                    off fonts that have little of it, and in Georgia the digits
+                    then sat on the bar.
+                -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,0,0,1">
                     <!--
                         The label, and after it the countdown for windows short
                         enough to have one - only the 5h in practice. It is bound
@@ -133,7 +140,17 @@
                 doing that job. For the same reason it does not take the .stale
                 fade - it is not a reading.
             -->
-            <Path Classes="widgetMark" Data="{x:Static branding:AppMark.Geometry}" />
+            <!--
+                Centred by eye, not by box. VerticalAlignment centres the mark's
+                16 px square against the metric column's layout box, but that box
+                starts at the top of a text line and the digits do not - the line's
+                leading is empty, so the ink inside it sits about 2 px lower than
+                the box does, and a geometrically centred mark reads high. The
+                nudge puts the two lots of ink on the same centre instead.
+            -->
+            <Path Classes="widgetMark"
+                  Margin="0,2,0,0"
+                  Data="{x:Static branding:AppMark.Geometry}" />
 
             <Panel>
                 <StackPanel Orientation="Horizontal"

@@ -80,6 +80,23 @@
         <Setter Property="Foreground" Value="{DynamicResource Theme.Muted}" />
     </Style>
 
+    <!--
+        The sentence under a checkbox or a radio button. It hangs off the option's
+        own text, not off its box: the 28 px is the Fluent template's 20 px box
+        plus the 8 px content padding, so the help starts on the same vertical as
+        the word it explains and the boxes stay the only things breaking that edge.
+        Applied on top of .caption, so it only adds the indent.
+
+        The negative top pulls it back up: most of the gap under an option is the
+        two line boxes meeting - the option's descent under its baseline, then the
+        help's own leading over its capitals - and neither is space anybody asked
+        for. This takes about half of it back, which is as close as the pair can
+        sit before the sentence starts to read as a second line of the label.
+    -->
+    <Style Selector="TextBlock.caption.option-help">
+        <Setter Property="Margin" Value="28,-3,0,0" />
+    </Style>
+
     <Style Selector="TextBlock.metric">
         <Setter Property="FontSize" Value="{StaticResource Size.Strong}" />
         <Setter Property="FontWeight" Value="SemiBold" />
@@ -360,8 +377,8 @@
     <Style Selector="Path.widgetMark">
         <Setter Property="Fill" Value="{DynamicResource Theme.Primary}" />
         <Setter Property="Stretch" Value="Uniform" />
-        <Setter Property="Width" Value="16" />
-        <Setter Property="Height" Value="16" />
+        <Setter Property="Width" Value="19" />
+        <Setter Property="Height" Value="19" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 

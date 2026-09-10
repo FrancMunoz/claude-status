@@ -78,6 +78,16 @@ public sealed partial class WindowsTaskbarHost : ITaskbarHost
             return false;
         }
 
+        // Alt+Tab lists the widget otherwise. Re-parenting into the taskbar does
+        // not set WS_CHILD, so as far as the shell is concerned this is still a
+        // top-level window with a title, and ShowInTaskbar="False" only removes
+        // the taskbar button - the switcher reads WS_EX_TOOLWINDOW instead. The
+        // flag has to go on while the window is hidden or the entry already in
+        // the switcher stays there; Move() shows it again straight after.
+        _ = ShowWindow(windowHandle, SwHide);
+        int style = GetWindowLongW(windowHandle, GwlExStyle);
+        _ = SetWindowLongW(windowHandle, GwlExStyle, style | WsExToolWindow);
+
         // SetParent returns the previous parent, or 0 on failure. A window that
         // had no parent also yields 0 on success, so check the result instead -
         // and with GetAncestor, because GetParent answers "owner" for a popup
@@ -136,6 +146,9 @@ public sealed partial class WindowsTaskbarHost : ITaskbarHost
     private const uint GaParent = 1;
     private const uint SwpNoActivate = 0x0010;
     private const uint SwpShowWindow = 0x0040;
+    private const int GwlExStyle = -20;
+    private const int WsExToolWindow = 0x0000_0080;
+    private const int SwHide = 0;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Rect
@@ -173,4 +186,17 @@ public sealed partial class WindowsTaskbarHost : ITaskbarHost
 
     [LibraryImport("user32.dll")]
     private static partial uint GetDpiForWindow(nint hwnd);
+
+    // The 32-bit form of the window-long pair, not the Ptr one: an extended
+    // style is an int on every architecture, and these two are exported by
+    // 32-bit Windows as well.
+    [LibraryImport("user32.dll")]
+    private static partial int GetWindowLongW(nint hwnd, int index);
+
+    [LibraryImport("user32.dll")]
+    private static partial int SetWindowLongW(nint hwnd, int index, int value);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool ShowWindow(nint hwnd, int command);
 }
