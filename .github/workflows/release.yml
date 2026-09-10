@@ -18,27 +18,31 @@ name: release
 on:
   workflow_dispatch:
 
-# Three jobs, and every split is forced by something.
+# Four jobs, and every split is forced by something.
 #
 # The platform splits are the obvious two: vpk builds a macOS .app and .pkg only on
 # macOS - it shells out to pkgbuild - and a Windows Setup.exe only on Windows. So
-# the macOS artifacts are built first and handed to the Windows job as a workflow
-# artifact, which uploads everything under one tag. Tagging and publishing happen
-# exactly once, in the last job, for the reason the first version of this workflow
-# was a single job: a tag pushed by one workflow does not trigger another (GitHub
-# blocks that to prevent recursion), so a second workflow reacting to the release
-# would silently never fire.
+# each platform packs on a runner of its own and hands the result over as a workflow
+# artifact. Tagging and publishing then happen exactly once, in the last job, for the
+# reason the first version of this workflow was a single job: a tag pushed by one
+# workflow does not trigger another (GitHub blocks that to prevent recursion), so a
+# second workflow reacting to the release would silently never fire.
 #
-# The third split is about the signing key, not the platform. Deciding the version
-# means running semantic-release, which npx installs at run time from a dependency
-# tree of hundreds of packages. The macOS job holds a Developer ID private key in a
-# keychain for the length of the build, and those two things must not share a
-# runner: anything in that tree executes with the same access to the keychain as
-# codesign, and a stolen Developer ID key lets someone ship malware signed as us.
-# So the version is decided on its own runner, with no secrets present, and handed
-# over as a job output.
+# The other split is about the signing credentials, not the platform. semantic-release
+# is what decides the version and what publishes, and npx installs it at run time from
+# a dependency tree of hundreds of packages. The two packaging jobs each hold a
+# credential that signs code as this project - a Developer ID private key in a keychain
+# on macOS, an Azure access token for the length of the job on Windows - and those two
+# things must not share a runner: anything in that tree executes with the same access
+# to those credentials as codesign and signtool have, and a signature is worth exactly
+# as much as the difficulty of obtaining one. So npm runs in the first and last jobs,
+# which hold nothing, and the two signing jobs between them run no npm at all.
+#
+# Permissions are declared per job for the same reason rather than once here. The
+# default below is read-only: only `release` can write a tag, and only the Windows job
+# can mint a token.
 permissions:
-  contents: write
+  contents: read
 
 env:
   DOTNET_NOLOGO: true
@@ -77,7 +81,7 @@ jobs:
 
       # Empty output when there is no release due - every commit since the last tag
       # was docs: or chore:, which is a perfectly normal thing to dispatch into.
-      # Both later jobs are then skipped by their own `if`.
+      # Every later job is then skipped by its own `if`.
       #
       # Two things about the grep, and both are load-bearing:
       #
@@ -99,7 +103,6 @@ jobs:
           set -o pipefail
           npx --yes \
             -p semantic-release@24 \
-            -p @semantic-release/exec@6 \
             -p @semantic-release/github@11 \
             semantic-release --dry-run | tee semantic-release.log || true
           version=$(grep -oiE 'the next release version is [0-9]+\.[0-9]+\.[0-9]+[^ ]*' semantic-release.log | tail -1 | awk '{print $NF}' || true)
@@ -110,7 +113,7 @@ jobs:
             echo "Releasing $version."
           fi
 
-  # Holds the signing key, runs no npm. The other half of the split above.
+  # Holds a signing key, runs no npm. The other half of the split above.
   package-macos:
     name: sign and package the macOS installer
     runs-on: macos-latest
@@ -291,19 +294,33 @@ jobs:
           security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP/certificates.p12" "$RUNNER_TEMP/notary.p8" || true
 
-  release:
-    name: package Windows, tag and publish every platform
-    # Windows, because vpk builds the Setup.exe natively here. The macOS
-    # artifacts are carried in from the job above.
+  # Holds a signing credential, runs no npm. The Windows counterpart of the job
+  # above, and separate from `release` for the same reason.
+  package-windows:
+    name: sign and package the Windows installer
     runs-on: windows-latest
-    needs: [decide-version, package-macos]
+    needs: decide-version
     if: needs.decide-version.outputs.version != ''
+    # Not GitHub's default of six hours, for the macOS job's reason: a signing step
+    # that hangs does so silently, and for as long as it does a token that signs as
+    # this project is live on the runner. A normal run is build, test and pack.
+    timeout-minutes: 60
+
+    # id-token, and otherwise nothing that is not read-only. This is the whole of the
+    # authentication story, and the reason there is no Azure secret in this
+    # repository: the job asks GitHub for a short-lived OIDC token describing this
+    # repository and ref, and a federated credential on the app registration trades it
+    # for an Azure access token. Nothing durable exists here to leak, and revoking the
+    # ability to sign is a change in Azure rather than a rotation in these settings.
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v7
         with:
-          # semantic-release reads the commit history to decide the next version,
-          # and MinVer reads tags. Neither works on a shallow clone.
+          # MinVer reads tags, and the gate below builds with -warnaserror. A shallow
+          # clone has none for it to read.
           fetch-depth: 0
           persist-credentials: false
 
@@ -311,9 +328,42 @@ jobs:
         with:
           global-json-file: global.json
 
-      - uses: actions/setup-node@v7
+      # The signing library that talks to Azure is a .NET 8 program, and the SDK in
+      # global.json neither is nor implies that runtime. Installing it costs seconds;
+      # leaving it out fails inside signtool, after a full build, with a
+      # missing-framework error that names nothing belonging to this project.
+      - uses: actions/setup-dotnet@v6
         with:
-          node-version: 24
+          dotnet-version: 8.0.x
+
+      # Before the build rather than after, for the reason the macOS job checks its
+      # own: pack.ps1 packs happily without these and prints a warning, so a missing
+      # value would ship an unsigned installer that nobody notices until SmartScreen
+      # stops a user.
+      - name: Check the signing configuration
+        shell: bash
+        env:
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ENDPOINT: ${{ vars.WINDOWS_SIGN_ENDPOINT }}
+          ACCOUNT: ${{ vars.WINDOWS_SIGN_ACCOUNT }}
+          PROFILE: ${{ vars.WINDOWS_SIGN_PROFILE }}
+        run: |
+          missing=0
+          check() {
+            if [ -z "$2" ]; then
+              echo "::error::$1 is not set. See docs/releasing.md."
+              missing=1
+            fi
+          }
+          check 'secrets.AZURE_CLIENT_ID'        "$CLIENT_ID"
+          check 'secrets.AZURE_TENANT_ID'        "$TENANT_ID"
+          check 'secrets.AZURE_SUBSCRIPTION_ID'  "$SUBSCRIPTION_ID"
+          check 'vars.WINDOWS_SIGN_ENDPOINT'     "$ENDPOINT"
+          check 'vars.WINDOWS_SIGN_ACCOUNT'      "$ACCOUNT"
+          check 'vars.WINDOWS_SIGN_PROFILE'      "$PROFILE"
+          [ "$missing" -eq 0 ]
 
       - name: Restore
         run: dotnet restore
@@ -333,33 +383,136 @@ jobs:
       - name: Restore tools
         run: dotnet tool restore
 
-      # Into the directory pack.ps1 writes to and the github plugin uploads from.
-      # pack.ps1 creates that directory but never empties it, so the macOS files
-      # are still there when the Windows ones land beside them.
+      # Last of the setup steps, and deliberately so: everything above runs on a
+      # runner that cannot sign anything, and the token this obtains is live for the
+      # rest of the job.
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # The endpoint, account and profile are repository variables rather than
+      # secrets, exactly as the macOS identities are. They are not secret - signtool
+      # prints all three from any signed download - and marking them so would make
+      # GitHub mask them here, turning a mismatch between the configured profile and
+      # the real one into "*** not found" instead of naming what it looked for.
+      - name: Pack
+        env:
+          WIN_SIGN_ENDPOINT: ${{ vars.WINDOWS_SIGN_ENDPOINT }}
+          WIN_SIGN_ACCOUNT: ${{ vars.WINDOWS_SIGN_ACCOUNT }}
+          WIN_SIGN_PROFILE: ${{ vars.WINDOWS_SIGN_PROFILE }}
+        run: pwsh ./build/pack.ps1 -Version '${{ needs.decide-version.outputs.version }}' -Runtime win-x64
+
+      # Proves the artifacts are what they claim before they leave this runner. vpk
+      # signs what it builds in a directory of its own; this checks the files actually
+      # being uploaded, the one inside the portable zip included - that one is signed
+      # by a separate vpk pass and nothing else would notice if it were missed.
+      #
+      # Get-AuthenticodeSignature rather than signtool because it needs no Windows SDK
+      # on the PATH, and it validates the chain against the machine's root store, so
+      # Valid means a user's machine will agree.
+      - name: Verify the signatures
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $verifyDir = Join-Path $env:RUNNER_TEMP 'verify'
+          Expand-Archive artifacts/releases/ClaudeStatus-win-Portable.zip -DestinationPath $verifyDir -Force
+
+          $portable = Get-ChildItem $verifyDir -Recurse -Filter 'ClaudeStatus.exe' | Select-Object -First 1
+          if (-not $portable) { throw 'ClaudeStatus.exe was not found in the portable zip.' }
+
+          foreach ($file in @('artifacts/releases/ClaudeStatus-win-Setup.exe', $portable.FullName)) {
+              $signature = Get-AuthenticodeSignature -FilePath $file
+              '{0}: {1} - {2}' -f (Split-Path -Leaf $file), $signature.Status, $signature.SignerCertificate.Subject | Write-Host
+              if ($signature.Status -ne 'Valid') {
+                  throw "$file is not validly signed: $($signature.StatusMessage)"
+              }
+          }
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-release
+          path: artifacts/releases/
+          if-no-files-found: error
+          retention-days: 1
+
+  # Runs npm, holds no signing credential. Nothing here can build a binary: both
+  # installers arrive as artifacts, already signed on the runners above, and this job
+  # only tags them and attaches them to a release.
+  release:
+    name: tag and publish every platform
+    # Ubuntu, because nothing here compiles or packs any more. semantic-release needs
+    # node and a full clone, and neither is platform-specific.
+    runs-on: ubuntu-latest
+    needs: [decide-version, package-macos, package-windows]
+    if: needs.decide-version.outputs.version != ''
+
+    permissions:
+      # The tag and the GitHub Release. The only write this workflow makes.
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # semantic-release reads the commit history to decide the version and to
+          # generate the notes. Neither works on a shallow clone.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Both into artifacts/releases, side by side, which is where .releaserc.json
+      # points the github plugin.
       - name: Download the macOS release
         uses: actions/download-artifact@v8
         with:
           name: macos-release
           path: artifacts/releases
 
-      # No MAC_SIGN_* here, and not by omission: pack.ps1 throws if they are set for
-      # a win-x64 runtime, because vpk rejects macOS signing arguments on a Windows
-      # build rather than ignoring them.
-      #
+      - name: Download the Windows release
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-release
+          path: artifacts/releases
+
+      # The github plugin logs a warning for an asset path that matches nothing and
+      # then publishes the release regardless. Now that packing happens in an earlier
+      # job, that is the way a half-empty release could be tagged without anything
+      # failing - so the assets are checked against the same list that will upload
+      # them, before the tag exists rather than after.
+      - name: Check that every asset arrived
+        run: |
+          set -euo pipefail
+          missing=0
+          while read -r pattern; do
+            if ! compgen -G "$pattern" > /dev/null; then
+              echo "::error::No file matches $pattern, which .releaserc.json expects to upload."
+              missing=1
+            fi
+          done < <(jq -r '.plugins[]
+            | select(type == "array" and .[0] == "@semantic-release/github")
+            | .[1].assets[].path' .releaserc.json)
+          [ "$missing" -eq 0 ]
+
       # semantic-release decides from the Conventional Commits whether there is a
-      # release at all. If there is, its prepare step runs build/pack.ps1 with the
-      # computed version and its github step tags, writes the notes and uploads
-      # the installer. If there is not, it does nothing and exits zero.
+      # release at all - the same question decide-version already asked in --dry-run
+      # mode, from the same commits and the same config, so it reaches the same answer
+      # here. If there is one it tags, writes the notes and uploads what the earlier
+      # jobs built. If there is not, it does nothing and exits zero.
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Each package needs its own -p. Without them npx would treat the plugin
-        # packages as command-line arguments to semantic-release rather than as
-        # things to install, and @semantic-release/exec - the plugin that runs
-        # build/pack.ps1 - would not be there at all.
+        # package as a command-line argument to semantic-release rather than as
+        # something to install, and @semantic-release/github - the plugin that does
+        # all of the above - would not be there at all.
         run: >
           npx --yes
           -p semantic-release@24
-          -p @semantic-release/exec@6
           -p @semantic-release/github@11
           semantic-release

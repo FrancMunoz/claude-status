@@ -23,8 +23,9 @@ session left to start this?" is already on screen. Click it for the detail.
 [latest release](https://github.com/FrancMunoz/claude-status/releases/latest) and
 run it. It installs per-user, needs no administrator rights, and updates itself.
 
-> Windows SmartScreen will warn you the first time: **More info → Run anyway**.
-> The installer is not code-signed — see [why](docs/releasing.md#signing).
+> The installer is code-signed, but SmartScreen may still warn the first time
+> until the signature builds reputation: **More info → Run anyway**. See
+> [signing](docs/releasing.md#signing).
 
 A `ClaudeStatus-win-Portable.zip` is also published for anyone who would rather
 not install anything. It does not update itself.
@@ -228,9 +229,10 @@ In particular:
   subject to Anthropic's terms, and staying within them is on you.
 - The Windows taskbar widget rides on **undocumented OS internals** and may break
   with any Windows update. It falls back to the tray icon when it can.
-- The **Windows** installer is **not code-signed**, so SmartScreen warns about it.
-  The macOS installer is signed and notarised. Check what you download either way
-  and install it only if you are comfortable doing so.
+- Both installers are code-signed — Windows with Azure Artifact Signing, macOS
+  with a Developer ID certificate and notarised by Apple. A signature says who
+  built it, not that it is any good: check what you download either way and
+  install it only if you are comfortable doing so.
 
 ## Licence
 

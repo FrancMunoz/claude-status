@@ -6,6 +6,14 @@
     "installed copy checks the other - and the only symptom is that updates",
     "silently never arrive. ReleaseConfigTests asserts they are equal."
   ],
+  "_comment_packaging": [
+    "There is no prepare step and no @semantic-release/exec. Packing used to happen",
+    "here, which meant the release job both packed - signing as this project - and",
+    "ran an npx dependency tree of hundreds of packages on the same runner. Both",
+    "installers are now built and signed on runners of their own in release.yml, and",
+    "this configuration only tags and uploads what those jobs produced. See the",
+    "comment at the top of release.yml."
+  ],
   "repositoryUrl": "https://github.com/FrancMunoz/claude-status",
   "branches": [
     "master"
@@ -14,12 +22,6 @@
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
-    [
-      "@semantic-release/exec",
-      {
-        "prepareCmd": "pwsh ./build/pack.ps1 -Version ${nextRelease.version}"
-      }
-    ],
     [
       "@semantic-release/github",
       {
