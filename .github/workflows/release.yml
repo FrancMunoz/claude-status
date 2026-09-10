@@ -301,6 +301,10 @@ jobs:
     runs-on: windows-latest
     needs: decide-version
     if: needs.decide-version.outputs.version != ''
+    # Not GitHub's default of six hours, for the macOS job's reason: a signing step
+    # that hangs does so silently, and for as long as it does a token that signs as
+    # this project is live on the runner. A normal run is build, test and pack.
+    timeout-minutes: 60
 
     # id-token, and otherwise nothing that is not read-only. This is the whole of the
     # authentication story, and the reason there is no Azure secret in this
