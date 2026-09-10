@@ -39,8 +39,9 @@ on:
 # which hold nothing, and the two signing jobs between them run no npm at all.
 #
 # Permissions are declared per job for the same reason rather than once here. The
-# default below is read-only: only `release` can write a tag, and only the Windows job
-# can mint a token.
+# default below is read-only. The two npm jobs can write to the repository - both run
+# semantic-release, which will not start without push access - and only the Windows
+# job can mint a token. No job holds both.
 permissions:
   contents: read
 
@@ -64,6 +65,15 @@ jobs:
     name: decide the version
     runs-on: ubuntu-latest
 
+    # Write, although nothing here writes. semantic-release proves it could push
+    # before it analyses a single commit - `git push --dry-run` to the branch - and
+    # --dry-run does not skip that check. With read-only contents it stops there with
+    # EGITNOPERMISSION, and every release is lost to a check about a push that was
+    # never going to happen. This job holds no signing credential, so the write
+    # token here is the same one `release` holds, on the same kind of runner.
+    permissions:
+      contents: write
+
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -83,28 +93,39 @@ jobs:
       # was docs: or chore:, which is a perfectly normal thing to dispatch into.
       # Every later job is then skipped by its own `if`.
       #
-      # Two things about the grep, and both are load-bearing:
+      # "No release due" and "semantic-release failed" must not look alike, and they
+      # used to. Both left no version line in the log, and the `|| true` that
+      # tolerated the first swallowed the second, so a run that could not even
+      # authenticate finished green, skipped everything, and read exactly like a
+      # dispatch with nothing to release. semantic-release itself tells the two
+      # apart: it exits zero when there are no relevant commits or the branch is not
+      # a release branch, and non-zero on any error. So its exit status decides
+      # whether the job fails, and only then does the log decide the version.
       #
-      # -i, because semantic-release words the line differently for the very first
-      # release. With a previous tag it says "The next release version is X.Y.Z";
-      # with none it says "There is no previous release, the next release version
-      # is X.Y.Z" - lower-case, because it is mid-sentence. A case-sensitive match
-      # therefore finds nothing on exactly the release that has never been made,
-      # which is the one release nobody can test by repeating.
+      # -i on the grep, because semantic-release words the line differently for the
+      # very first release. With a previous tag it says "The next release version is
+      # X.Y.Z"; with none it says "There is no previous release, the next release
+      # version is X.Y.Z" - lower-case, because it is mid-sentence. A case-sensitive
+      # match therefore finds nothing on exactly the release that has never been
+      # made, which is the one release nobody can test by repeating.
       #
-      # || true, because "no match" is a legitimate answer meaning "no release
-      # due", and this step runs under set -e with pipefail: grep exiting 1 would
-      # otherwise fail the job rather than leave `version` empty as intended.
+      # || true on the grep alone, because there no match really does mean no
+      # release due, and grep exiting 1 under pipefail would otherwise fail the job.
       - name: Decide the version
         id: version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -o pipefail
+          status=0
           npx --yes \
             -p semantic-release@24 \
             -p @semantic-release/github@11 \
-            semantic-release --dry-run | tee semantic-release.log || true
+            semantic-release --dry-run | tee semantic-release.log || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::semantic-release failed with exit code $status - see its output above. This is not the same as no release being due."
+            exit "$status"
+          fi
           version=$(grep -oiE 'the next release version is [0-9]+\.[0-9]+\.[0-9]+[^ ]*' semantic-release.log | tail -1 | awk '{print $NF}' || true)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ -z "$version" ]; then
