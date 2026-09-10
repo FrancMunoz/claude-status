@@ -8,6 +8,12 @@ namespace ClaudeStatus.Platform.Tests;
 /// <summary>
 /// Checks that hold on whichever OS the suite happens to run on.
 /// </summary>
+/// <remarks>
+/// Several of these rewrite environment variables - <c>XDG_CONFIG_HOME</c>,
+/// <c>DISPLAY</c>, <c>WAYLAND_DISPLAY</c>, <c>XDG_CURRENT_DESKTOP</c> - so they run in
+/// <see cref="ProcessEnvironmentTests"/>, which runs nothing alongside them. See there.
+/// </remarks>
+[Collection(ProcessEnvironmentTests.Name)]
 public class PlatformInfoTests
 {
     private static IPlatformInfo Current()
