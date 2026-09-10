@@ -116,6 +116,10 @@ jobs:
     runs-on: macos-latest
     needs: decide-version
     if: needs.decide-version.outputs.version != ''
+    # Not GitHub's default of six hours. A signing tool stuck on a keychain dialog
+    # hangs silently rather than failing, and for as long as it does the key sits
+    # unlocked on the runner. Two hours still leaves notarisation room to be slow.
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v7
@@ -186,12 +190,15 @@ jobs:
           CERTIFICATE_PATH="$RUNNER_TEMP/certificates.p12"
           printf '%s' "$CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
 
-          # -T names the only two tools allowed to use these keys without a prompt.
-          # Both are needed and they are not interchangeable: codesign signs the
-          # .app with the Application certificate, productsign signs the .pkg with
-          # the Installer one.
+          # -T names the only tools allowed to use these keys without a prompt.
+          # codesign signs the .app with the Application certificate; the .pkg is
+          # signed with the Installer one by productbuild, which is what vpk calls
+          # (`productbuild --sign`), not productsign - leave productbuild out and
+          # it waits forever on a keychain dialog nobody can see, with the log
+          # stopped at "Creating installer '.pkg'". productsign stays for anyone
+          # re-signing a .pkg by hand.
           security import "$CERTIFICATE_PATH" -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" \
-            -T /usr/bin/codesign -T /usr/bin/productsign
+            -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/productsign
           rm -f "$CERTIFICATE_PATH"
 
           # Without this, every codesign call blocks on a GUI confirmation dialog
