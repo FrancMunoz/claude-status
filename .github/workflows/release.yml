@@ -157,8 +157,8 @@ jobs:
           [ "$missing" -eq 0 ]
 
       # A keychain of its own, created here and destroyed at the end of the job,
-      # rather than the runner's login keychain. It keeps the private key out of
-      # every later step's reach by default, and makes the cleanup a single delete
+      # rather than the runner's login keychain. It keeps the private key apart
+      # from anything else on the runner, and makes the cleanup a single delete
       # that cannot miss anything.
       - name: Import the signing certificates
         env:
@@ -213,9 +213,25 @@ jobs:
             --keychain "$KEYCHAIN"
           rm -f "$NOTARY_KEY_PATH"
 
-          # vpk reads VPK_KEYCHAIN and passes it to both codesign and notarytool, so
-          # neither has to be found on the default search list. The keychain is
-          # never made the default and never added to it.
+          # On the user search list, ahead of what is already there. It has to be:
+          # vpk 1.2.0 passes --keychain to codesign and `notarytool submit`, but
+          # not to `productbuild --sign` or `notarytool log`, which can only look
+          # on the search list - and codesign itself answers "no identity found"
+          # for a keychain given by path that is not on it. Being listed grants
+          # nothing new: the keychain is already unlocked for any process that
+          # names its path, and the partition list still limits the keys to
+          # Apple's tools. It is never made the default, and deleting it at the
+          # end of the job takes it off the list again.
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+
+          # Names the identities codesign and productbuild will be asked for, so a
+          # mismatch with vars.MACOS_SIGN_*_IDENTITY is visible here rather than
+          # as "no identity found" three steps later. Not secret - see Pack below.
+          security find-identity -v -p codesigning "$KEYCHAIN"
+          security find-identity -v -p basic "$KEYCHAIN"
+
+          # Still set, so codesign and notarytool look in this keychain first
+          # rather than in whatever else is on the list.
           echo "VPK_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
 
       # vpk, from .config/dotnet-tools.json, pinned to the same version as the

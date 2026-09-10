@@ -103,7 +103,10 @@ rather than only visible in a failed workflow.
    the same answer without tagging anything. If there is no release due it outputs
    an empty version and the other two jobs skip themselves.
 2. **`package-macos`** imports the Developer ID certificates into a keychain it
-   creates for the job, runs `pack.ps1 -Runtime osx-arm64`, verifies the result
+   creates for the job and puts on the user search list - vpk cannot point
+   `productbuild` at it any other way, and `codesign` reports "no identity found"
+   for a keychain off the list even when given its path - runs
+   `pack.ps1 -Runtime osx-arm64`, verifies the result
    with `spctl` and `stapler`, uploads `artifacts/releases/` as a workflow
    artifact, and deletes the keychain on the way out - including when the build
    failed, which is the case that matters.
