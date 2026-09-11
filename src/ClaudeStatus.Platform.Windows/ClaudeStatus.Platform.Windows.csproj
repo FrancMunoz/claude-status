@@ -16,4 +16,8 @@
     <ProjectReference Include="../ClaudeStatus.Core/ClaudeStatus.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ClaudeStatus.Platform.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -136,8 +136,9 @@ public sealed class TrayIconIndicator : IStatusIndicator
             return;
         }
 
-        // Read the theme on every render rather than caching it, so switching the
-        // system theme takes effect on the next poll with no notification plumbing.
+        // Read the theme on every render rather than caching it. A switch of the
+        // system theme triggers a render of its own (ITrayThemeProvider.Changed,
+        // wired in the controller), so this is always the current background.
         //
         // Row is not drawable here and never reaches this tray by choice: an
         // Avalonia status item is square on every backend, so the row belongs to

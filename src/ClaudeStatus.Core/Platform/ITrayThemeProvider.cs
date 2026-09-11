@@ -41,11 +41,22 @@ public interface ITrayThemeProvider
     /// The current tray background.
     /// </summary>
     /// <remarks>
-    /// Read on every render rather than cached, so switching the system theme
-    /// takes effect on the next poll without any change notification plumbing.
-    /// Implementations must therefore be cheap and must never throw.
+    /// Read on every render rather than cached, so a render always draws against
+    /// the background as it is now. Implementations must therefore be cheap and
+    /// must never throw.
     /// </remarks>
     TrayBackground Current { get; }
+
+    /// <summary>
+    /// Raised when <see cref="Current"/> has changed.
+    /// </summary>
+    /// <remarks>
+    /// Without it a light/dark switch waited for the next poll - up to a minute of
+    /// ink drawn for the old background, which on the new one is barely there.
+    /// Raised on whatever thread noticed the change, so a subscriber that touches
+    /// UI must marshal. A provider with no signal never raises it.
+    /// </remarks>
+    event EventHandler? Changed;
 }
 
 /// <summary>
@@ -59,4 +70,12 @@ public sealed class StaticTrayThemeProvider(TrayBackground background) : ITrayTh
 {
     /// <inheritdoc />
     public TrayBackground Current { get; } = background;
+
+    /// <inheritdoc />
+    /// <remarks>Never raised: nothing here can change.</remarks>
+    public event EventHandler? Changed
+    {
+        add { }
+        remove { }
+    }
 }

@@ -234,6 +234,8 @@ public sealed class TrayApplicationController : IDisposable
         ApplyLanguage();
         ApplyTheme();
 
+        _services.GetRequiredService<ITrayThemeProvider>().Changed += OnTaskbarThemeChanged;
+
         _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
             "ClaudeStatus starting. Source: {Source}. Poll interval: {Interval}.",
             _settings.CredentialSource,
@@ -285,8 +287,8 @@ public sealed class TrayApplicationController : IDisposable
     /// <remarks>
     /// The "system" theme follows the same signal the tray icon uses for its own
     /// contrast, so the app and its icon agree about whether the desktop is dark.
-    /// Reading it fresh here means a theme change on the OS is picked up the next
-    /// time settings are applied.
+    /// Reading it fresh here, and running again on <see cref="ITrayThemeProvider.Changed"/>,
+    /// means a theme change on the OS is picked up as it happens.
     /// </remarks>
     private void ApplyTheme()
     {
@@ -315,6 +317,26 @@ public sealed class TrayApplicationController : IDisposable
         // Runs on every settings change, which is exactly when these can move.
         _indicator.Configure(IndicatorOptionsFrom(_settings));
     }
+
+    /// <summary>
+    /// Redraws everything drawn against the taskbar the moment it changes colour.
+    /// </summary>
+    /// <remarks>
+    /// Both indicators and the "system" theme already read the provider on every
+    /// render; this only makes that render happen now instead of at the next poll.
+    /// The provider raises it off the UI thread.
+    /// </remarks>
+    private void OnTaskbarThemeChanged(object? sender, EventArgs e)
+        => Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            ApplyTheme();
+            RenderIndicator(_monitor?.Latest);
+        });
 
     /// <summary>
     /// Starts, restarts or stops the update checker to match the settings.
@@ -967,6 +989,7 @@ public sealed class TrayApplicationController : IDisposable
         }
 
         _disposed = true;
+        _services.GetRequiredService<ITrayThemeProvider>().Changed -= OnTaskbarThemeChanged;
         _updateTimer?.Dispose();
         _updates.Dispose();
         _monitor?.Dispose();

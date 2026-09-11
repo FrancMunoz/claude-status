@@ -173,8 +173,9 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         _lastSnapshot = snapshot;
         _lastAlert = alert;
 
-        // Re-read the taskbar's appearance on every render, as the icon does, so a
-        // light/dark switch takes effect on the next poll. Cheap: three brushes.
+        // Re-read the taskbar's appearance on every render, as the icon does. A
+        // light/dark switch triggers a render of its own (ITrayThemeProvider.Changed,
+        // wired in the controller). Cheap: three brushes.
         TaskbarInk.Apply(_window.Resources, _taskbarTheme.Current);
         _viewModel.Update(snapshot, alert, _clock.GetUtcNow());
 
