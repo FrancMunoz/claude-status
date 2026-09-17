@@ -41,7 +41,7 @@ public static class PlatformServices
         services.AddSingleton(provider =>
             new SessionSpool(provider.GetRequiredService<IPlatformInfo>().ConfigDirectory));
 
-        services.AddSingleton(_ => CreateNotifier());
+        services.AddSingleton(provider => CreateNotifier(provider.GetService<ILoggerFactory>()));
         services.AddSingleton(_ => CreateTerminalFocus());
 
         services.AddSingleton(provider =>
@@ -62,16 +62,27 @@ public static class PlatformServices
     /// Builds the OS notifier for the running OS.
     /// </summary>
     /// <remarks>
-    /// Windows only so far, where <see cref="WindowsNotifier"/> picks a toast or the
-    /// shell icon. macOS and Linux each have a native path -
-    /// <c>UNUserNotification</c> and <c>org.freedesktop.Notifications</c> - and
-    /// neither can be written or verified from here, so they get the honest no-op
-    /// and keep showing the app's own card (<c>CLAUDE.md</c> §8).
+    /// On Windows <see cref="WindowsNotifier"/> picks a toast or the shell icon; on
+    /// macOS <see cref="MacNotifier"/> posts through <c>UNUserNotificationCenter</c>
+    /// when running as a bundle, and refuses outside one. Linux has a native path,
+    /// <c>org.freedesktop.Notifications</c>, not written yet, so it gets the honest
+    /// no-op and keeps showing the app's own card.
     /// </remarks>
-    public static INotifier CreateNotifier()
-        => OperatingSystem.IsWindows()
-            ? WindowsNotifier.Create()
-            : new NullNotifier();
+    /// <param name="loggerFactory">Where the macOS notifier reports permission and failed posts.</param>
+    public static INotifier CreateNotifier(ILoggerFactory? loggerFactory = null)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return WindowsNotifier.Create();
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return new MacNotifier(loggerFactory?.CreateLogger<MacNotifier>());
+        }
+
+        return new NullNotifier();
+    }
 
     /// <summary>
     /// Builds the helper that finds and focuses a session's terminal window.

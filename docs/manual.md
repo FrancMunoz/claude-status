@@ -68,18 +68,40 @@ run it.
 A `ClaudeStatus-win-Portable.zip` is also published. Unzip and run — but it
 **does not update itself**, and you will have to repeat this for every version.
 
+### macOS 13+ (Apple Silicon)
+
+Download `ClaudeStatus-osx-Setup.pkg` from the
+[latest release](https://github.com/FrancMunoz/claude-status/releases/latest) and
+open it.
+
+- Installs to `/Applications`. No administrator rights.
+- **Signed with a Developer ID certificate and notarised by Apple**, so it opens
+  normally: no Gatekeeper warning, no right-click → Open. See [§7](#code-signing).
+- Lives in the menu bar, with no Dock icon. The first launch asks for Keychain
+  access to read Claude Code's login, and the first finished Claude Code turn
+  asks whether ClaudeStatus may send notifications.
+- Updates itself. See [§3](#updates).
+
+A `ClaudeStatus-osx-Portable.zip` is also published: the `.app` in a zip, which
+**does not update itself**. Intel Macs are not packaged; the build is
+`osx-arm64` only.
+
 ### Uninstalling
 
-Windows Settings → Apps → ClaudeStatus → Uninstall. The config directory is left
-behind on purpose; delete it by hand if you want it gone (see
-[§4](#4-where-your-data-lives)).
+- **Windows:** Settings → Apps → ClaudeStatus → Uninstall.
+- **macOS:** quit from the menu bar item's menu, then move
+  `/Applications/ClaudeStatus.app` to the Bin. If autostart was on, also delete
+  `~/Library/LaunchAgents/com.zeroworks.claudestatus.plist`.
 
-### macOS and Linux
+Either way the config directory is left behind on purpose; delete it by hand if
+you want it gone (see [§4](#4-where-your-data-lives)).
 
-Not packaged. The code for both exists behind interfaces and compiles, but
-**neither has ever been executed**, so there is nothing honest to hand you yet.
-You can still build and run from source ([§5](#5-building-from-source)) if you
-are willing to be the first.
+### Linux
+
+Not packaged. The code exists behind interfaces, compiles and is tested in CI,
+but **has never been executed** on a Linux desktop, so there is nothing honest to
+hand you yet. You can still build and run from source
+([§5](#5-building-from-source)) if you are willing to be the first.
 
 ---
 
@@ -130,6 +152,12 @@ is nothing there to fix.
   events at once and is recounted at every poll, so a session killed mid-turn
   drops off once it has been silent for two hours. It is never shown beside the
   no-reading words. No animation: the menu bar title is plain text.
+- When a session finishes a turn or closes, macOS shows a notification (after
+  asking permission once). The same session's next notification replaces the
+  last one instead of stacking. Clicking it opens the details popup. With
+  notifications turned off in **System Settings → Notifications**, or when run
+  outside the `.app` bundle (`dotnet run`), the message falls back to the card
+  under the menu bar.
 
 ### Clicks
 
@@ -585,9 +613,10 @@ attaching one to a bug report is safe.
 Stated plainly, because a manual that only lists what works is not much of a
 manual.
 
-- **macOS and Linux have never been executed.** Not the secret stores, not
-  autostart, not the tray menu. The code compiles and is tested where it can be,
-  and that is all anyone can currently claim for it.
+- **Linux has never been executed.** Not the secret store, not autostart, not
+  the tray menu. The code compiles and is tested where it can be, and that is all
+  anyone can currently claim for it. macOS is packaged and runs; its manual QA
+  pass is still incomplete (see the macOS notes in the checklist).
 - **No workflow has ever run.** The release pipeline is written and verified as
   far as is possible without a git remote — `semantic-release --dry-run` loads
   every plugin and stops exactly at `repositoryUrl`.
@@ -599,7 +628,6 @@ manual.
 - **Memory.** ~101 MB working set for the trimmed release build, down from
   ~135 MB untrimmed. The original 60 MB target is unreachable by construction — a
   bare Avalonia app with no UI at all already uses 86 MB.
-- **Nothing is code-signed.** See [§7](#code-signing).
 
 Roadmap and status: [`../PLAN.md`](../PLAN.md). Engineering diary, including why
 particular decisions went the way they did:

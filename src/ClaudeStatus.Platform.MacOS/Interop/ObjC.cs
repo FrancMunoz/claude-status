@@ -60,6 +60,27 @@ internal static partial class ObjC
     [return: MarshalAs(UnmanagedType.U1)]
     internal static partial bool class_addMethod(nint cls, nint selector, nint implementation, string types);
 
+    /// <summary>Looks a protocol up by name, or zero when nothing loaded declares it.</summary>
+    [LibraryImport(Runtime, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial nint objc_getProtocol(string name);
+
+    /// <summary>Declares that a class built at runtime conforms to a protocol.</summary>
+    [LibraryImport(Runtime)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    internal static partial bool class_addProtocol(nint cls, nint protocol);
+
+    /// <summary>Opens an autorelease pool on the current thread.</summary>
+    /// <remarks>
+    /// For work done off AppKit's own event handling - a thread with no pool
+    /// leaks every autoreleased object it touches.
+    /// </remarks>
+    [LibraryImport(Runtime)]
+    internal static partial nint objc_autoreleasePoolPush();
+
+    /// <summary>Drains the pool <see cref="objc_autoreleasePoolPush"/> returned.</summary>
+    [LibraryImport(Runtime)]
+    internal static partial void objc_autoreleasePoolPop(nint pool);
+
     [LibraryImport(Runtime, EntryPoint = "objc_msgSend")]
     internal static partial nint Send(nint receiver, nint selector);
 
@@ -141,4 +162,10 @@ internal static partial class ObjC
     /// </remarks>
     internal static nint NSString(string value)
         => SendUtf8(Class("NSString"), sel_registerName("stringWithUTF8String:"), value);
+
+    /// <summary>
+    /// Reads an <c>NSString</c> back into a managed string, or null for nil.
+    /// </summary>
+    internal static string? ManagedString(nint nsString)
+        => nsString == 0 ? null : Marshal.PtrToStringUTF8(Send(nsString, "UTF8String"));
 }

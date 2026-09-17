@@ -57,6 +57,13 @@ public partial class App : Application, IDisposable
                 return;
             }
 
+            // Before the main loop starts, not when session watch first needs it. On
+            // macOS the notifier sets itself as the notification center's delegate,
+            // and that has to happen before the app finishes launching - which
+            // Avalonia does inside the main loop - or a click that launched the app
+            // is never delivered. Elsewhere this only builds the notifier early.
+            _ = _services.GetRequiredService<INotifier>();
+
             _controller = new TrayApplicationController(_services, desktop);
 
             desktop.ShutdownRequested += (_, _) => Dispose();

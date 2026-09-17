@@ -209,7 +209,19 @@ Record the date, OS version and app version next to each run.
     appearance, or use a light and a dark wallpaper).
   - [ ] Signed out of Claude Code while a turn runs: `! No credential` in red,
     with no count beside it.
-  - [ ] When a turn ends, the "waiting for you" card appears under the menu bar.
+  - [ ] First launch of a signed build: macOS asks whether ClaudeStatus may send
+    notifications. The log reads `Launch already finished: False` for the
+    notification delegate.
+  - [ ] Allowed: when a turn ends a notification appears, and **no** card. The log
+    says `MacNotifier accepted it`.
+  - [ ] Two turns of the same session end: Notification Center holds one
+    notification for it, not two.
+  - [ ] Clicking the notification opens the details popup.
+  - [ ] With the popup open (the app in front), a turn ending still shows a banner.
+  - [ ] Denied, or turned off later in System Settings → Notifications: the
+    "waiting for you" card appears under the menu bar instead, and the log says
+    `MacNotifier refused it`.
+  - [ ] Under `dotnet run` (no bundle): no crash, the card appears.
 
 ### Linux
 - Test at least KDE and GNOME.

@@ -2406,3 +2406,51 @@ three platforms. Both halves of that are fixed.
   own hook entry point: `●1`, `●2`, `●1`, then the plain row, logged and
   screenshotted. Legible with white menu bar text (dark wallpaper); a dark-text
   menu bar is not yet checked.
+
+## 2026-09-17 — Real notifications on macOS
+
+- **`MacNotifier`** (`ClaudeStatus.Platform.MacOS`) posts through
+  `UNUserNotificationCenter`. Permission is requested once at construction and
+  never waited for; every `Notify` re-reads the current setting (the user can turn
+  it off in System Settings) and returns false unless it is authorised, so the
+  controller's card stays the fallback. Settings read and post each complete on a
+  background queue and are waited for at most 1 s and 2 s.
+- **Tag = request identifier**, so a session's newer notification replaces its
+  older one; the tag also travels in `userInfo` and comes back in `Activated`.
+- **No bundle, no center.** `currentNotificationCenter` raises an Objective-C
+  exception without a bundle identifier (`dotnet run`, the test host), which would
+  end the process, so the bundle is checked first and nothing else is touched.
+- **Delegate before launch finishes.** Read in Avalonia 12.1.2's native source
+  (`app.mm`, `platformthreading.mm`): `applicationDidFinishLaunching:` happens inside
+  `[NSApp run]`, which starts after `OnFrameworkInitializationCompleted` returns.
+  `App` now resolves `INotifier` there, before the controller exists. The
+  controller only subscribes to `Activated` after loading settings, so a click
+  that arrives first is held and handed to the first subscriber. Verified on the
+  built app: `Launch already finished: False`.
+- `willPresentNotification` answers banner + list + sound, or macOS shows nothing
+  while the popup has the app in front.
+- **`Interop/ObjCBlock`**: a hand-built global block (Clang blocks ABI) with one
+  captured context slot, and calls into blocks macOS hands us. Blocks are freed
+  from a queue at the next post, never inside their own callback - the runtime
+  reads the block again in `Block_release` after the invoke returns. A test that
+  freed one itself caused a double free that crashed the test host about one run
+  in two; fixed, six clean runs after.
+- No Info.plist or entitlement change: local notifications need neither under the
+  hardened runtime.
+- Clicking opens the details window: sessions have no terminal origin on macOS
+  until `MacTerminalFocus` exists.
+- Found while reading `app.mm`: `applicationShouldTerminate:` returns
+  `NSTerminateCancel` whenever Avalonia's `TryShutdown()` is false, which is the
+  likely source of the `-128` a quit Apple Event gets back.
+- Screenshot: `docs/screenshots/macos-menu-bar-working.png`, the menu bar with
+  two sessions working, captured from the built app.
+- **Seen end to end** on a locally Developer ID-signed, not notarised build. The
+  first permission answer was `granted=False` ("Notifications are not allowed for
+  this application"), which exercised the card path; with notifications enabled
+  in System Settings a real Claude Code turn posted one, `usernoted` logged the
+  same session's older notification deleted and the new one delivered, and a
+  click opened the details window.
+- **Banners are silenced while the display is shared or mirrored.** Notification
+  Center logs `muted by display state (displayShared)` and files the notification
+  in history only - macOS's own rule, unless "Allow notifications when mirroring or
+  sharing the display" is on. `Notify` still returns true, so no card is shown.

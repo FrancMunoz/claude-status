@@ -66,11 +66,9 @@ public sealed class NotificationActivatedEventArgs(string? tag) : EventArgs
 
 /// <summary>The notifier for a platform that has none yet.</summary>
 /// <remarks>
-/// macOS and Linux both have a native path - <c>UNUserNotification</c> and
-/// <c>org.freedesktop.Notifications</c> - and neither can be written or tested
-/// from a Windows machine, so they are honestly absent rather than half done.
-/// The caller shows its own card there, which is what every platform did before
-/// any of this existed.
+/// Linux has a native path - <c>org.freedesktop.Notifications</c> - not written
+/// yet, so it is honestly absent rather than half done. The caller shows its own
+/// card there, which is what every platform did before any of this existed.
 /// </remarks>
 public sealed class NullNotifier : INotifier
 {
