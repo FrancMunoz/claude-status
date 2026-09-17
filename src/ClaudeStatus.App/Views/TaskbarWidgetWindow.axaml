@@ -148,9 +148,29 @@
                 the box does, and a geometrically centred mark reads high. The
                 nudge puts the two lots of ink on the same centre instead.
             -->
-            <Path Classes="widgetMark"
-                  Margin="0,2,0,0"
-                  Data="{x:Static branding:AppMark.Geometry}" />
+            <!--
+                The working badge rides on the mark's corner rather than taking a
+                slot of its own. The widget sizes to its content and is placed
+                from that width, so a badge beside the mark would shove the whole
+                strip sideways every time a turn started or ended. Overlapping the
+                mark it costs no width at all - and a badge on a corner is the
+                shape Windows already uses on taskbar buttons.
+
+                It carries the number of busy sessions, from one.
+            -->
+            <Panel VerticalAlignment="Center">
+                <Path Classes="widgetMark"
+                      Margin="0,2,0,0"
+                      Data="{x:Static branding:AppMark.Geometry}" />
+                <Border Classes="workingBadge"
+                        Classes.active="{Binding IsWorking}"
+                        Classes.counted="{Binding HasWorkingCount}"
+                        IsVisible="{Binding IsWorking}">
+                    <TextBlock Classes="workingCount"
+                               IsVisible="{Binding HasWorkingCount}"
+                               Text="{Binding WorkingCountText}" />
+                </Border>
+            </Panel>
 
             <Panel>
                 <StackPanel Orientation="Horizontal"

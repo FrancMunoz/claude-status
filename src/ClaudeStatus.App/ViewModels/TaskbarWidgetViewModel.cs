@@ -137,11 +137,34 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     [ObservableProperty]
     private bool _showSessions;
 
+    /// <summary>How many sessions have a turn in progress - see <see cref="SessionActivity"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsWorking))]
+    [NotifyPropertyChangedFor(nameof(WorkingCountText))]
+    [NotifyPropertyChangedFor(nameof(HasWorkingCount))]
+    private int _workingCount;
+
+    /// <summary>Whether the working badge is up.</summary>
+    public bool IsWorking => WorkingCount > 0;
+
+    /// <summary>
+    /// Whether the badge carries a number - always, while it is up, including a
+    /// "1": the badge answers "how many", and a bare dot for one answered only "any".
+    /// </summary>
+    public bool HasWorkingCount => WorkingCount > 0;
+
+    /// <summary>The number in the badge. Capped, because the badge is one digit wide.</summary>
+    public string WorkingCountText => WorkingCount > 9 ? "9+" : WorkingCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>The last list handed over, kept so the working count can age without a new event.</summary>
+    private IReadOnlyList<ClaudeSession> _lastSessions = [];
+
     /// <summary>Replaces the session list.</summary>
     public void UpdateSessions(IReadOnlyList<ClaudeSession> sessions, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(sessions);
 
+        _lastSessions = sessions;
         Sessions.Clear();
         foreach (ClaudeSession session in sessions)
         {
@@ -149,6 +172,7 @@ public partial class TaskbarWidgetViewModel : ObservableObject
         }
 
         HasSessions = Sessions.Count > 0;
+        WorkingCount = SessionActivity.CountWorking(sessions, now);
     }
 
     public UsageBarViewModel Session { get; }
@@ -198,6 +222,10 @@ public partial class TaskbarWidgetViewModel : ObservableObject
         _snapshot = snapshot;
         _alert = alert;
         _now = now;
+
+        // Every poll, not only on a session event: a session killed mid-turn sends
+        // no further event, and this is what eventually takes its badge down.
+        WorkingCount = SessionActivity.CountWorking(_lastSessions, now);
         Refresh();
     }
 
