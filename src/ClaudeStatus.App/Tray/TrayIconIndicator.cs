@@ -334,16 +334,18 @@ public sealed class TrayIconIndicator : IStatusIndicator
     {
         ArgumentNullException.ThrowIfNull(localizer);
 
-        if (alert == IndicatorAlert.NeedsCredential)
+        // The rule the widget and the macOS menu bar use, so the three cannot
+        // disagree about which reason wins.
+        if (IndicatorText.Absence(snapshot, alert) is { } absence)
         {
-            return localizer["Tray_Tooltip_NeedsCredential"];
+            return localizer[absence.TooltipKey];
         }
 
+        // Absence already answers for a missing snapshot; this only tells the
+        // compiler so.
         if (snapshot is null)
         {
-            return localizer[alert == IndicatorAlert.Unreachable
-                ? "Tray_Tooltip_Unreachable"
-                : "Tray_Tooltip_NoData"];
+            return localizer["Tray_Tooltip_NoData"];
         }
 
         string session = Describe(localizer, snapshot.Session);

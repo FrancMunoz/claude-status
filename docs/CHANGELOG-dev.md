@@ -2365,3 +2365,22 @@ three platforms. Both halves of that are fixed.
 - Consequence: an interrupted turn clears about a minute later, not at once.
   Nothing faster exists without reading the transcript, which we do not open.
 - The badge shows its number from one session, not a bare dot.
+
+## 2026-09-17 — The macOS menu bar says why there are no numbers
+
+- **`5h ! · 7d !` named two problems where there was one.** With no credential
+  the menu bar put a `!` beside every label; with no reading at all, a `--`. It
+  now does what the taskbar widget always did: one symbol and one word -
+  `! No credential`, `⊘ Offline`, `— No data` - in every mode.
+- **`IndicatorText.Absence`** (Core) holds that rule, and the widget's view model
+  now uses it too, so the two cannot drift. Same precedence as before: a missing
+  credential wins even over a cached reading; an unreachable endpoint only shows
+  when there is no reading to fall back on. It returns resource keys, which were
+  already translated in all five languages. `! No credential` is still drawn in
+  the alert colour.
+- Not seen on a Mac: built and unit-tested on Windows only. `NativeStatusIndicator`
+  change is the composition of the title string; nothing native changed.
+- The tray icon's tooltip (Linux, and the Windows fallback) now takes its reason
+  from `IndicatorText.Absence` too - `IndicatorAbsence.TooltipKey` - so all three
+  indicators share one precedence. The sentences are unchanged; `AlertTests`
+  still covers them.

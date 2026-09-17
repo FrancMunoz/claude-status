@@ -77,6 +77,9 @@ That split is the reason for the native status item: Avalonia's tray icon hands
 its menu *every* click, so a left click could never mean "show me the details".
 The same layer is why the row can be wider than it is tall.
 
+When there are no numbers to show, it says why instead, as the taskbar widget
+does: `! No credential`, `⊘ Offline` or `— No data`.
+
 **Show Fable** in Config adds the weekly Fable limit as a third pair. There is no
 Dock icon — the app is a menu bar utility and quits from its own menu.
 

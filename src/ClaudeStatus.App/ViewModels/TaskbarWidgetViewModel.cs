@@ -231,20 +231,19 @@ public partial class TaskbarWidgetViewModel : ObservableObject
 
     private void Refresh()
     {
-        // Same precedence as the tray icon: a missing credential is actionable
-        // and wins over everything; an unreachable endpoint only matters when
-        // there is no reading at all to fall back on.
-        if (_alert == IndicatorAlert.NeedsCredential)
+        // The shared rule, so the macOS menu bar says the same thing: a missing
+        // credential wins over everything; an unreachable endpoint only matters
+        // when there is no reading at all to fall back on.
+        if (IndicatorText.Absence(_snapshot, _alert) is { } absence)
         {
-            ShowAlert("!", _l["Widget_NeedsCredential"]);
+            ShowAlert(absence.Glyph, _l[absence.MessageKey]);
             return;
         }
 
+        // Absence already answers for a missing snapshot; this only tells the
+        // compiler so.
         if (_snapshot is null)
         {
-            ShowAlert(
-                _alert == IndicatorAlert.Unreachable ? "⊘" : "—",
-                _l[_alert == IndicatorAlert.Unreachable ? "Widget_Offline" : "Widget_NoData"]);
             return;
         }
 

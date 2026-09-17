@@ -141,6 +141,46 @@ public static class IndicatorText
     }
 
     /// <summary>
+    /// What an indicator with room for words shows instead of the readings, or
+    /// null when there are readings to show.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The taskbar widget's rule, shared so the macOS menu bar says the same thing.
+    /// A row of labels with a symbol beside each - <c>5h ! · 7d !</c> - repeats one
+    /// fact per window and names none of them: there is no session problem and no
+    /// weekly problem, there is one missing credential. One symbol and one word say
+    /// that.
+    /// </para>
+    /// <para>
+    /// Same precedence as the tray icon. A missing credential is actionable and wins
+    /// even over a cached reading, which can never be refreshed until the user acts.
+    /// An unreachable endpoint only matters when there is no reading at all: a
+    /// cached one is shown, faded, as the best information there is.
+    /// </para>
+    /// <para>
+    /// The message is a resource key, not a sentence (<c>CLAUDE.md</c> §5b); the
+    /// view model or indicator turns it into words.
+    /// </para>
+    /// </remarks>
+    public static IndicatorAbsence? Absence(UsageSnapshot? snapshot, IndicatorAlert alert)
+    {
+        if (alert == IndicatorAlert.NeedsCredential)
+        {
+            return new IndicatorAbsence("!", "Widget_NeedsCredential", "Tray_Tooltip_NeedsCredential");
+        }
+
+        if (snapshot is null)
+        {
+            return alert == IndicatorAlert.Unreachable
+                ? new IndicatorAbsence("⊘", "Widget_Offline", "Tray_Tooltip_Unreachable")
+                : new IndicatorAbsence("—", "Widget_NoData", "Tray_Tooltip_NoData");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Composes the whole row: every headline window as a labelled percentage.
     /// </summary>
     /// <remarks>
@@ -185,3 +225,12 @@ public static class IndicatorText
         return string.Join(separator, parts);
     }
 }
+
+/// <summary>What stands in for the readings when there are none to show.</summary>
+/// <param name="Glyph">The symbol: <c>!</c>, <c>⊘</c> or <c>—</c>.</param>
+/// <param name="MessageKey">The resource key of the word beside it.</param>
+/// <param name="TooltipKey">
+/// The resource key of the sentence for an indicator that has a symbol and a
+/// tooltip but no room for a word: the tray icon.
+/// </param>
+public sealed record IndicatorAbsence(string Glyph, string MessageKey, string TooltipKey);

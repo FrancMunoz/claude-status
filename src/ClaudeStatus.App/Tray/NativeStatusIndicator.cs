@@ -216,6 +216,15 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     /// </remarks>
     private string Compose(UsageSnapshot? snapshot, IndicatorMode mode, IndicatorAlert alert)
     {
+        // No readings: say why in one symbol and one word, as the taskbar widget
+        // does, rather than a label with a "!" beside each window - "5h ! · 7d !"
+        // names two problems where there is one. Every mode, because the reason is
+        // the same whichever window the user picked.
+        if (IndicatorText.Absence(snapshot, alert) is { } absence)
+        {
+            return $"{absence.Glyph} {_l[absence.MessageKey]}";
+        }
+
         if (mode == IndicatorMode.Row)
         {
             return IndicatorText.ComposeRow(
