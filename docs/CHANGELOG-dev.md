@@ -2320,3 +2320,48 @@ three platforms. Both halves of that are fixed.
   tab: a session in a background tab of the focused terminal is also held back.
 - The controller logs each notification decision: which notifier, accepted or
   refused, or held back for focus.
+
+## 2026-09-17 — The widget shows when Claude is working
+
+- **`SessionActivity`** (Core): a session counts as busy while its turn is in
+  progress, it has not ended, and it was heard from within `StuckAfter` (2 h).
+  The cap is for a session killed mid-turn, which never sends the end; it is
+  long because the hooks are silent for the whole length of an agentic turn.
+- **Taskbar widget**: a badge on the mark's top-right corner while any session
+  works - a pill with the number of busy sessions, from one (`9+`). Primary colour,
+  kept when the widget blends into the taskbar, breathing (opacity 1 → 0.45,
+  1.2 s, alternating). It overlaps the mark instead of taking a slot, because the
+  widget is placed from its own width and a slot would shift it every turn.
+- The count is re-evaluated on every usage poll too, not only on session events,
+  so a stuck session's badge eventually goes away with nothing else happening.
+- macOS menu bar and the Linux tray icon: not done, see `PLAN.md` 9.5b.
+
+## 2026-09-17 — The widget no longer lands in the wrong place and jumps
+
+- **It was placed from the window's width before the window had one.** Straight
+  after `Show` a `SizeToContent` window still reports its default size - 1632 px
+  logged, against a 229 px card - so the first slot was 2856 px wide at x = 660,
+  and the one-second timer moved it into place a second later. The off-screen park
+  (a74e510) hid the floating window, not this. `Reposition` now sizes the slot
+  from the `Card`'s desired width, which is right from the first measure.
+- **Width changes move it at once.** The widget is right-anchored against the
+  tray, so a new width - the first reading replacing "no data", Fable toggled, a
+  language change - shifts its left edge; that used to wait for the next tick.
+  The card's `SizeChanged` now repositions, but only after `Show` has returned:
+  inside `Show` it attached the window, `Show` undid it, and it attached again.
+- Verified live, two launches: one attach, one move, straight to x = 3115 / 401 px.
+
+## 2026-09-17 — An interrupted turn stops showing as working; the badge counts from one
+
+- **Esc left a session "working".** Claude Code fires no `Stop` for a user
+  interrupt (its hooks reference: "never on user interrupts") and has no
+  interrupt event. We now also install a `Notification` hook and take its
+  `idle_prompt` - sent after about a minute at the prompt - as
+  `SessionEventKind.Idled`: the session goes back to waiting, with no toast (after
+  an ordinary turn `Stop` has already announced it; after an interrupt the user is
+  the one who stopped it). Any other `notification_type` is ignored, a permission
+  prompt above all - that is Claude waiting in the middle of a turn.
+  `ClaudeCodeHooks.KindFor(event, notificationType)` decides, in Core.
+- Consequence: an interrupted turn clears about a minute later, not at once.
+  Nothing faster exists without reading the transcript, which we do not open.
+- The badge shows its number from one session, not a bare dot.

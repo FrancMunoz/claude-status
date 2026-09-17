@@ -314,6 +314,19 @@ public class ClaudeCodeHookTests : IDisposable
     }
 
     [Fact]
+    public void A_notification_counts_only_when_it_is_the_idle_prompt()
+    {
+        ClaudeCodeHooks.KindFor("Notification", "idle_prompt").Should().Be(SessionEventKind.Idled);
+
+        // A permission prompt is Claude waiting in the middle of a turn, not after one.
+        ClaudeCodeHooks.KindFor("Notification", "permission_prompt").Should().BeNull();
+        ClaudeCodeHooks.KindFor("Notification", null).Should().BeNull();
+
+        // Every other event ignores the notification type.
+        ClaudeCodeHooks.KindFor("Stop", null).Should().Be(SessionEventKind.Progressed);
+    }
+
+    [Fact]
     public void An_unknown_event_maps_to_nothing_rather_than_guessing()
     {
         ClaudeCodeHooks.KindFor("PreToolUse").Should().BeNull();

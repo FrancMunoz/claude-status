@@ -117,6 +117,26 @@ public sealed class SessionRegistry
                 };
                 return SessionChange.Finished;
 
+            case SessionEventKind.Idled:
+                if (known is null)
+                {
+                    _sessions[report.Id] = new ClaudeSession(
+                        report.Id, report.Folder ?? string.Empty, report.At, report.At, null, false, report.Origin);
+                    return SessionChange.None;
+                }
+
+                // Nothing to announce: after an ordinary turn Stop already did, and
+                // after an interrupt the user is the one who just stopped it. This
+                // only corrects the state.
+                _sessions[report.Id] = known with
+                {
+                    LastSeenAt = report.At,
+                    IsWorking = false,
+                    EndedAt = null,
+                    Origin = SessionOrigin.Merge(known.Origin, report.Origin),
+                };
+                return SessionChange.None;
+
             case SessionEventKind.Started:
             case SessionEventKind.Submitted:
             case SessionEventKind.Progressed:

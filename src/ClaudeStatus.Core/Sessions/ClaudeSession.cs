@@ -33,6 +33,18 @@ public enum SessionEventKind
 
     /// <summary>A session closed.</summary>
     Ended = 2,
+
+    /// <summary>A session has sat at its prompt for a while, waiting for its user.</summary>
+    /// <remarks>
+    /// The only way to learn that a turn stopped when the user interrupted it.
+    /// Claude Code fires no <c>Stop</c> for an Esc - its documentation says so - and
+    /// has no interrupt event, so without this an interrupted session stayed
+    /// "working" until <see cref="SessionActivity.StuckAfter"/>. Late by design
+    /// (Claude Code waits about a minute before calling a prompt idle) and silent:
+    /// it also arrives a minute after every ordinary turn, which has already been
+    /// announced.
+    /// </remarks>
+    Idled = 4,
 }
 
 /// <summary>What a session is doing right now.</summary>

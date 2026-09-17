@@ -50,12 +50,19 @@ internal static class HookEntryPoint
             int marker = Array.IndexOf(args, ClaudeCodeHooks.Marker);
             string? hookEvent = marker + 1 < args.Length ? args[marker + 1] : null;
 
-            if (ClaudeCodeHooks.KindFor(hookEvent) is not { } kind)
+            if (ClaudeCodeHooks.KindFor(hookEvent) is null)
             {
                 return true;
             }
 
-            (string? id, string? folder) = Parse(ReadPayload());
+            (string? id, string? folder, string? notificationType) = Parse(ReadPayload());
+
+            // Decided again with the payload in hand: a Notification only counts when
+            // it is the idle prompt, and the type is inside the payload.
+            if (ClaudeCodeHooks.KindFor(hookEvent, notificationType) is not { } kind)
+            {
+                return true;
+            }
 
             if (!string.IsNullOrWhiteSpace(id))
             {
@@ -110,7 +117,7 @@ internal static class HookEntryPoint
     }
 
     /// <summary>
-    /// Pulls the session id and the folder out of Claude Code's payload.
+    /// Pulls the session id, the folder and the notification type out of Claude Code's payload.
     /// </summary>
     /// <remarks>
     /// Read field by field rather than deserialized into a type, and every field
@@ -119,20 +126,23 @@ internal static class HookEntryPoint
     /// notifications stop. Nothing else in the payload is read - notably not
     /// <c>transcript_path</c>, which we are handed and have no business opening.
     /// </remarks>
-    private static (string? Id, string? Folder) Parse(string payload)
+    private static (string? Id, string? Folder, string? NotificationType) Parse(string payload)
     {
         if (string.IsNullOrWhiteSpace(payload))
         {
-            return (null, null);
+            return (null, null, null);
         }
 
         using JsonDocument document = JsonDocument.Parse(payload);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
         {
-            return (null, null);
+            return (null, null, null);
         }
 
-        return (Text(document.RootElement, "session_id"), Text(document.RootElement, "cwd"));
+        return (
+            Text(document.RootElement, "session_id"),
+            Text(document.RootElement, "cwd"),
+            Text(document.RootElement, "notification_type"));
     }
 
     private static string? Text(JsonElement element, string name)

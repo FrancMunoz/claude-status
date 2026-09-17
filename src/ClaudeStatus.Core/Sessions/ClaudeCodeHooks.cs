@@ -48,10 +48,14 @@ public static class ClaudeCodeHooks
     /// <remarks>
     /// <c>SessionStart</c> and <c>SessionEnd</c> bracket a session;
     /// <c>Stop</c> is both the heartbeat that keeps it on the list and the moment
-    /// worth telling the user about.
+    /// worth telling the user about. <c>Notification</c> is there for its
+    /// <c>idle_prompt</c> only - see <see cref="SessionEventKind.Idled"/>.
     /// </remarks>
     public static readonly IReadOnlyList<string> Events =
-        ["SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"];
+        ["SessionStart", "UserPromptSubmit", "Stop", "Notification", "SessionEnd"];
+
+    /// <summary>The <c>notification_type</c> that means a session is waiting at its prompt.</summary>
+    public const string IdlePromptNotification = "idle_prompt";
 
     /// <summary>Maps a Claude Code event name to what it means to us.</summary>
     public static SessionEventKind? KindFor(string? hookEvent) => hookEvent switch
@@ -59,9 +63,24 @@ public static class ClaudeCodeHooks
         "SessionStart" => SessionEventKind.Started,
         "UserPromptSubmit" => SessionEventKind.Submitted,
         "Stop" => SessionEventKind.Progressed,
+        "Notification" => SessionEventKind.Idled,
         "SessionEnd" => SessionEventKind.Ended,
         _ => null,
     };
+
+    /// <summary>
+    /// What one hook invocation means, given its payload's <c>notification_type</c>.
+    /// </summary>
+    /// <remarks>
+    /// <c>Notification</c> covers several things, and most of them do not mean the
+    /// turn is over: a permission prompt is Claude waiting in the middle of one, and
+    /// calling that idle would take the badge down while the work carries on after
+    /// the user approves. Only <see cref="IdlePromptNotification"/> is taken.
+    /// </remarks>
+    public static SessionEventKind? KindFor(string? hookEvent, string? notificationType)
+        => KindFor(hookEvent) is SessionEventKind.Idled && notificationType != IdlePromptNotification
+            ? null
+            : KindFor(hookEvent);
 
     /// <summary>
     /// Whether this event's hook may be fired and forgotten.

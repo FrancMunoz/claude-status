@@ -205,4 +205,29 @@ public class SessionRegistryTests
 
         registry.Snapshot(T0.AddHours(1)).Should().BeEmpty();
     }
+
+    [Fact]
+    public void An_idle_prompt_clears_a_turn_that_was_interrupted_and_announces_nothing()
+    {
+        var registry = new SessionRegistry();
+        registry.Apply(Event(SessionEventKind.Submitted, "a", 0));
+        registry.Find("a")!.State.Should().Be(SessionState.Working);
+
+        // Esc: Claude Code sends no Stop. A minute later the prompt is idle.
+        registry.Apply(Event(SessionEventKind.Idled, "a", 2)).Should().Be(SessionChange.None);
+
+        ClaudeSession session = registry.Find("a")!;
+        session.State.Should().Be(SessionState.Waiting);
+        session.LastSeenAt.Should().Be(T0.AddMinutes(2));
+    }
+
+    [Fact]
+    public void An_idle_prompt_from_a_session_never_seen_lists_it_as_waiting_without_a_notice()
+    {
+        var registry = new SessionRegistry();
+
+        registry.Apply(Event(SessionEventKind.Idled, "a", 0)).Should().Be(SessionChange.None);
+
+        registry.Find("a")!.State.Should().Be(SessionState.Waiting);
+    }
 }
