@@ -119,6 +119,18 @@ is nothing there to fix.
 - Follows your taskbar's light/dark appearance. It is deliberately **not**
   themed — the taskbar is not ours to colour.
 
+### The macOS menu bar
+
+- Text beside the mark, drawn by the OS: `5h (2:11) 56% · 7d 18%` in the row mode,
+  one labelled reading in the others. Red past the threshold, faded when stale.
+- With no reading it says why in one symbol and one word: `! No credential`
+  (red), `⊘ Offline`, `— No data`.
+- While Claude Code sessions have a turn in progress the row is led by a dot and
+  their count, from one: `●2 5h (2:11) 56% · 7d 18%`. The count follows session
+  events at once and is recounted at every poll, so a session killed mid-turn
+  drops off once it has been silent for two hours. It is never shown beside the
+  no-reading words. No animation: the menu bar title is plain text.
+
 ### Clicks
 
 | | |

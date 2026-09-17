@@ -100,4 +100,18 @@ public class IndicatorTextTests
         IndicatorText.Absence(Reading(), IndicatorAlert.Unreachable).Should().BeNull();
         IndicatorText.Absence(Reading(), IndicatorAlert.None).Should().BeNull();
     }
+
+    [Fact]
+    public void Nothing_leads_the_row_while_no_session_is_working()
+    {
+        IndicatorText.WorkingPrefix(0).Should().BeEmpty("the row must read exactly as it did before sessions");
+        IndicatorText.WorkingPrefix(-1).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(1, "●1 ")]
+    [InlineData(2, "●2 ")]
+    [InlineData(12, "●12 ")]
+    public void A_working_count_is_the_glyph_the_number_and_a_space(int working, string expected)
+        => IndicatorText.WorkingPrefix(working).Should().Be(expected, "the count is shown from one, like the badge");
 }

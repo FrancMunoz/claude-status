@@ -1,5 +1,6 @@
 using ClaudeStatus.App.Tray;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace ClaudeStatus.App.Tests;
@@ -462,6 +463,147 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         indicator.Dispose();
 
         item.Disposed.Should().BeTrue();
+    }
+
+    private static ClaudeSession Session(string id, bool working, DateTimeOffset? lastSeen = null)
+        => new(id, "/Users/someone/" + id, Now, lastSeen ?? Now, EndedAt: null, IsWorking: working);
+
+    /// <summary>Renders <paramref name="snapshot"/> and then pushes <paramref name="sessions"/>.</summary>
+    private static void RenderThenPush(
+        NativeStatusIndicator indicator,
+        UsageSnapshot? snapshot,
+        IndicatorAlert alert,
+        IReadOnlyList<ClaudeSession> sessions,
+        IndicatorMode mode = IndicatorMode.Row)
+        => OnUi(() =>
+        {
+            indicator.Render(snapshot, mode, ThresholdState.Normal, alert);
+            indicator.ShowSessions(sessions);
+            return 0;
+        });
+
+    [Fact]
+    public void Working_sessions_lead_the_row_with_their_count_from_one()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+            item.Title.Should().Be("●1 5h (2:11) 42% · 7d 18%");
+
+            RenderThenPush(
+                indicator,
+                Snapshot(),
+                IndicatorAlert.None,
+                [Session("a", working: true), Session("b", working: false), Session("c", working: true)]);
+            item.Title.Should().Be("●2 5h (2:11) 42% · 7d 18%", "a waiting session is not counted");
+        }
+    }
+
+    [Fact]
+    public void A_session_event_repaints_the_row_without_waiting_for_a_poll()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+
+            OnUi(() =>
+            {
+                indicator.ShowSessions([Session("a", working: false)]);
+                return 0;
+            });
+
+            item.Title.Should().Be("5h (2:11) 42% · 7d 18%", "the turn ended and no poll has happened since");
+        }
+    }
+
+    [Fact]
+    public void Sessions_arriving_before_any_reading_write_nothing()
+    {
+        // There is no row yet to put a count in front of; the first render does it.
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            OnUi(() =>
+            {
+                indicator.ShowSessions([Session("a", working: true)]);
+                return 0;
+            });
+
+            item.Title.Should().BeNull();
+
+            OnUi(() =>
+            {
+                indicator.Render(Snapshot(), IndicatorMode.Row, ThresholdState.Normal, IndicatorAlert.None);
+                return 0;
+            });
+
+            item.Title.Should().Be("●1 5h (2:11) 42% · 7d 18%");
+        }
+    }
+
+    [Theory]
+    [InlineData(IndicatorAlert.NeedsCredential, true, "! No credential")]
+    [InlineData(IndicatorAlert.Unreachable, false, "⊘ Offline")]
+    [InlineData(IndicatorAlert.None, false, "— No data")]
+    public void The_no_reading_words_never_get_a_count_beside_them(
+        IndicatorAlert alert, bool withReading, string expected)
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(
+                indicator, withReading ? Snapshot() : null, alert, [Session("a", working: true)]);
+
+            item.Title.Should().Be(expected);
+        }
+    }
+
+    [Fact]
+    public void A_session_killed_mid_turn_drops_off_the_count_at_a_later_render()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build(out FakeTimeProvider clock);
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+            item.Title.Should().StartWith("●1 ");
+
+            // No further session event: only the clock moves, as it does between polls.
+            clock.SetUtcNow(Now + SessionActivity.StuckAfter + TimeSpan.FromMinutes(1));
+            OnUi(() =>
+            {
+                indicator.Render(Snapshot(), IndicatorMode.Row, ThresholdState.Normal, IndicatorAlert.None);
+                return 0;
+            });
+
+            item.Title.Should().NotStartWith(IndicatorText.WorkingGlyph);
+        }
+    }
+
+    [Fact]
+    public void A_single_metric_mode_carries_the_count_too()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(
+                indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)], IndicatorMode.WeekPercent);
+
+            item.Title.Should().Be("●1 7d 18%");
+        }
+    }
+
+    [Fact]
+    public void The_count_sits_before_the_label_and_never_touches_a_spent_window()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(session: 100d), IndicatorAlert.None, [Session("a", working: true)]);
+
+            item.Title.Should().Be("●1 5h (2:11) x · 7d 18%");
+        }
     }
 
     [Fact]

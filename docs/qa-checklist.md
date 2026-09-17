@@ -198,6 +198,18 @@ Record the date, OS version and app version next to each run.
 - First run prompts for Keychain access when reading Claude Code's login. That
   prompt is correct and must not be suppressed. Check that declining it produces
   "no credential", not a crash.
+- **Claude Code sessions** (run the built `.app`, not `dotnet run`; session watch on):
+  - [ ] Launch: `~/.claude/settings.json` gains five hooks whose `command` is the
+    executable inside the bundle. Quit from the menu: they are gone.
+  - [ ] A prompt in Claude Code: the menu bar row gains `●1 ` in front within a
+    second or two, and the details popup lists the session as working.
+  - [ ] A second session working at once: `●2 `. Both turns end: the prefix goes
+    and the row reads exactly as before.
+  - [ ] The prefix is legible on a light menu bar and on a dark one (switch
+    appearance, or use a light and a dark wallpaper).
+  - [ ] Signed out of Claude Code while a turn runs: `! No credential` in red,
+    with no count beside it.
+  - [ ] When a turn ends, the "waiting for you" card appears under the menu bar.
 
 ### Linux
 - Test at least KDE and GNOME.

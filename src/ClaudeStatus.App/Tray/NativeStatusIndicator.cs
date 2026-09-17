@@ -64,6 +64,15 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     private TimeSpan _staleAfter = StalePolicy.Floor;
     private bool _disposed;
 
+    /// <summary>The sessions last pushed, counted again at every render.</summary>
+    private IReadOnlyList<ClaudeSession> _sessions = [];
+
+    /// <summary>
+    /// The last reading rendered, so a session event can repaint the row without
+    /// waiting for the next poll.
+    /// </summary>
+    private (UsageSnapshot? Snapshot, IndicatorMode Mode, ThresholdState State, IndicatorAlert Alert)? _lastRender;
+
     /// <summary>
     /// The card the menu bar borrows when it has a sentence to say.
     /// </summary>
@@ -156,6 +165,8 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             return;
         }
 
+        _lastRender = (snapshot, mode, state, alert);
+
         string text = Compose(snapshot, mode, alert);
         StatusTint tint = TintFor(snapshot, state, alert);
 
@@ -200,11 +211,29 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Repaints the row straight away, so the working count changes when a turn
+    /// starts or ends rather than at the next poll, a minute or more later.
+    /// </remarks>
     public void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => ShowSessions(sessions));
+            return;
+        }
+
+        _sessions = sessions;
         _cardViewModel.UpdateSessions(sessions, _clock.GetUtcNow());
         _cardViewModel.ShowSessions = true;
+
+        if (_lastRender is { } last)
+        {
+            Render(last.Snapshot, last.Mode, last.State, last.Alert);
+        }
     }
 
     /// <summary>Builds the text for a mode.</summary>
@@ -225,9 +254,15 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             return $"{absence.Glyph} {_l[absence.MessageKey]}";
         }
 
+        // Counted here, on every render, not only when sessions are pushed: a
+        // session killed mid-turn sends nothing more, and it is the passing of
+        // StuckAfter at some later poll that takes it off the count.
+        string working = IndicatorText.WorkingPrefix(
+            SessionActivity.CountWorking(_sessions, _clock.GetUtcNow()));
+
         if (mode == IndicatorMode.Row)
         {
-            return IndicatorText.ComposeRow(
+            return working + IndicatorText.ComposeRow(
                 snapshot,
                 alert,
                 (_l["Widget_Session"], _l["Widget_Week"], _l["Tray_Row_Fable"]),
@@ -249,7 +284,7 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             ? IndicatorText.FormatCountdown(single.Window?.TimeUntilReset(_clock.GetUtcNow()))
             : string.Empty;
 
-        return $"{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
+        return $"{working}{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
             + IndicatorText.WindowValue(single.Window, alert, withSign: true);
     }
 

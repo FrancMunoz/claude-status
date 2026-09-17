@@ -141,6 +141,33 @@ public static class IndicatorText
     }
 
     /// <summary>
+    /// The glyph that leads a text indicator while Claude Code sessions are working.
+    /// </summary>
+    public const string WorkingGlyph = "●";
+
+    /// <summary>
+    /// What leads a text indicator while sessions are working: <c>●2 </c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The menu bar's answer to the taskbar widget's badge. A text item has no
+    /// corner to put a badge in, so the count goes in front of the row instead, and
+    /// is shown from one for the same reason the badge is: "one session is busy" is
+    /// exactly the fact that tells the user not to walk away yet.
+    /// </para>
+    /// <para>
+    /// Empty when nothing is working, trailing space included, so a caller can
+    /// prepend it unconditionally. The count is whatever
+    /// <see cref="ClaudeStatus.Sessions.SessionActivity.CountWorking"/> says; this
+    /// only formats it. Invariant digits, like every other token here.
+    /// </para>
+    /// </remarks>
+    public static string WorkingPrefix(int working)
+        => working > 0
+            ? string.Create(CultureInfo.InvariantCulture, $"{WorkingGlyph}{working} ")
+            : string.Empty;
+
+    /// <summary>
     /// What an indicator with room for words shows instead of the readings, or
     /// null when there are readings to show.
     /// </summary>

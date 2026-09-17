@@ -2384,3 +2384,25 @@ three platforms. Both halves of that are fixed.
   from `IndicatorText.Absence` too - `IndicatorAbsence.TooltipKey` - so all three
   indicators share one precedence. The sentences are unchanged; `AlertTests`
   still covers them.
+
+## 2026-09-17 — The macOS menu bar shows when Claude is working
+
+- **`IndicatorText.WorkingPrefix`** (Core): `●N ` from one working session, empty
+  otherwise. `WorkingGlyph` is the dot. Formatting only; the count still comes
+  from `SessionActivity.CountWorking`.
+- **`NativeStatusIndicator`** leads the title with it in every mode:
+  `●2 5h (2:11) 56% · 7d 18%`, `●1 7d 18%`. It keeps the last sessions and the
+  last render, so `ShowSessions` repaints the title at once instead of waiting a
+  poll, and every `Render` recounts against the clock, which is what takes a
+  session killed mid-turn off after `StuckAfter`. `ShowSessions` now marshals to
+  the UI thread itself, as `Render` does.
+- **No count beside `! No credential`, `⊘ Offline`, `— No data`.** Those replace
+  the readings, and a count beside a word reads as part of it.
+- **A spent window keeps the count** (`●1 5h (2:11) x · 7d 18%`): the count sits
+  before the first label, so it never touches the `x`.
+- The prefix takes the row's tint. No animation - the title is plain text, and a
+  pulse would mean rewriting it on a timer.
+- Verified on a Mac with the built `.app`, sessions simulated through the bundle's
+  own hook entry point: `●1`, `●2`, `●1`, then the plain row, logged and
+  screenshotted. Legible with white menu bar text (dark wallpaper); a dark-text
+  menu bar is not yet checked.
