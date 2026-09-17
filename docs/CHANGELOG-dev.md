@@ -2515,3 +2515,11 @@ three platforms. Both halves of that are fixed.
   ever clickable. Seen working on macOS in Terminal.app; not yet run on Windows.
 - The Windows hover card's session list is unchanged: it lives in a tooltip that
   closes when the pointer reaches it.
+
+## 2026-09-17 — Screenshot of a macOS notification
+
+- `docs/screenshots/macos-notification.png`, in the README's sessions table. Taken
+  by hand (⌘⇧4, Space, click) from the signed build with the app set to English:
+  `screencapture` on this macOS does not capture notification banners, so no
+  script can take it. The generated screenshots were not regenerated on the Mac -
+  fonts substitute and every image changes without any content change.
