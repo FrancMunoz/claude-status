@@ -79,6 +79,7 @@ Record the date, OS version and app version next to each run.
       nothing silently.
 - [ ] **Session rows** (Windows and macOS, session watch on, a prompt sent from
       a terminal, then another app in front):
+      *Windows: passed 2026-09-17. macOS: not yet recorded.*
   - [ ] Hovering a running session's row shows a fill, a hand cursor and the
         "Show its terminal" tooltip.
   - [ ] Clicking it brings that terminal forward and the popup closes. The log
