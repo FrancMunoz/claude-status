@@ -33,6 +33,66 @@ public sealed class SessionSwitchTests : IDisposable
 
     private static ClaudeSession Session(string id) => new(id, "C:\\Proyectos\\" + id, Now, Now);
 
+    private static readonly SessionOrigin Terminal = new(4242, Now, 0, SessionOriginPrecision.Process);
+
+    private static ClaudeSession Focusable(string id) => Session(id) with { Origin = Terminal };
+
+    [Fact]
+    public void Only_a_running_session_with_a_known_terminal_can_be_focused()
+    {
+        using DetailsViewModel details = Build();
+
+        details.ApplySessions(
+            [Focusable("a"), Session("b"), Focusable("c") with { EndedAt = Now }],
+            Now);
+
+        details.Sessions.Select(s => s.CanFocus).Should().Equal(true, false, false);
+    }
+
+    [Fact]
+    public void Clicking_a_row_asks_to_focus_that_session_and_touches_no_switch()
+    {
+        using DetailsViewModel details = Build();
+        var focused = new List<string>();
+        var muted = new List<SessionMuteChangedEventArgs>();
+        details.SessionFocusRequested += (_, id) => focused.Add(id);
+        details.SessionMuteChanged += (_, e) => muted.Add(e);
+        details.ApplySessions([Focusable("a"), Focusable("b")], Now);
+
+        details.FocusSessionCommand.Execute(details.Sessions[1]);
+
+        focused.Should().Equal("b");
+        muted.Should().BeEmpty();
+        details.Sessions.Select(s => s.Notifies).Should().Equal(true, true);
+    }
+
+    [Fact]
+    public void A_row_that_cannot_be_focused_asks_for_nothing()
+    {
+        using DetailsViewModel details = Build();
+        var focused = new List<string>();
+        details.SessionFocusRequested += (_, id) => focused.Add(id);
+        details.ApplySessions([Session("a")], Now);
+
+        details.FocusSessionCommand.Execute(details.Sessions[0]);
+        details.FocusSessionCommand.Execute(null);
+
+        focused.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Flipping_a_switch_does_not_ask_to_focus()
+    {
+        using DetailsViewModel details = Build();
+        var focused = new List<string>();
+        details.SessionFocusRequested += (_, id) => focused.Add(id);
+        details.ApplySessions([Focusable("a")], Now);
+
+        details.Sessions[0].Notifies = false;
+
+        focused.Should().BeEmpty();
+    }
+
     [Fact]
     public void A_row_switch_is_off_for_a_silenced_session_and_building_the_list_reports_nothing()
     {

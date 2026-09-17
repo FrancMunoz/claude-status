@@ -120,6 +120,13 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
     /// <summary>Raised when the user silences or unsilences one session from its switch.</summary>
     public event EventHandler<SessionMuteChangedEventArgs>? SessionMuteChanged;
 
+    /// <summary>Raised when the user clicks a session row. The argument is the session id.</summary>
+    /// <remarks>
+    /// Routed through the controller, which owns the platform's terminal focusing
+    /// and uses the same path a notification click does.
+    /// </remarks>
+    public event EventHandler<string>? SessionFocusRequested;
+
     public DetailsViewModel(
         IUsageMonitor monitor,
         Func<AppSettings> settings,
@@ -187,6 +194,16 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
     /// <summary>Asks the controller to restart into the staged update.</summary>
     [RelayCommand]
     private void ApplyUpdateNow() => UpdateRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Asks the controller to bring a session's terminal forward.</summary>
+    [RelayCommand]
+    private void FocusSession(SessionRowViewModel? row)
+    {
+        if (row is { CanFocus: true })
+        {
+            SessionFocusRequested?.Invoke(this, row.Id);
+        }
+    }
 
     /// <summary>
     /// Shows or clears the "a new version is ready" notice.

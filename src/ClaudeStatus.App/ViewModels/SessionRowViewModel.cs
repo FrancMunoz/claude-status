@@ -23,6 +23,7 @@ public sealed partial class SessionRowViewModel : ObservableObject
 
         Id = session.Id;
         IsRunning = session.IsRunning;
+        CanFocus = session.IsRunning && session.Origin is not null;
         Name = session.Name.Length > 0 ? session.Name : _l["Sessions_Unnamed"];
 
         // Three states, not two. "Open" and "busy" are different things, and
@@ -51,6 +52,14 @@ public sealed partial class SessionRowViewModel : ObservableObject
 
     /// <summary>Whether it is still going, for the styling.</summary>
     public bool IsRunning { get; }
+
+    /// <summary>Whether clicking the row can bring the session's terminal forward.</summary>
+    /// <remarks>
+    /// Only while the session runs and its terminal was recorded. A finished
+    /// session's Claude Code has exited, and a session from before origins were
+    /// recorded - or on a platform that records none - has nothing to focus.
+    /// </remarks>
+    public bool CanFocus { get; }
 
     /// <summary>Whether this session's notifications are silenced.</summary>
     [ObservableProperty]

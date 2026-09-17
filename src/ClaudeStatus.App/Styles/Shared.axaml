@@ -276,6 +276,43 @@
     </Style>
 
     <!--
+        A session in the details list, clickable to bring its terminal forward.
+        It must read as the row it always was: no fill, the body text colour, and
+        a disabled row - a finished session, or one whose terminal is unknown -
+        looks exactly like an enabled one rather than greyed out, because it is
+        not unavailable information, just nothing to click. The hover fill and the
+        hand cursor are the only signs that a row does something.
+    -->
+    <Style Selector="Button.session-row">
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="Margin" Value="-6,0,0,0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+
+    <Style Selector="Button.session-row:not(:disabled)">
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <Style Selector="Button.session-row /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <Style Selector="Button.session-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Theme.Surface}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <Style Selector="Button.session-row:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+    </Style>
+
+    <!--
         Fluent sizes tab headers for a phone-style pivot - 24px, taller than the
         window title. In a 480px settings dialog that makes the tab strip the
         loudest thing on screen and the settings themselves look like a footnote.

@@ -77,6 +77,15 @@ Record the date, OS version and app version next to each run.
 - [ ] **Refresh** updates the numbers.
 - [ ] Pressing Refresh twice quickly explains the cooldown rather than doing
       nothing silently.
+- [ ] **Session rows** (Windows and macOS, session watch on, a prompt sent from
+      a terminal, then another app in front):
+  - [ ] Hovering a running session's row shows a fill, a hand cursor and the
+        "Show its terminal" tooltip.
+  - [ ] Clicking it brings that terminal forward and the popup closes. The log
+        says `Session row clicked for … focused its window`.
+  - [ ] Clicking the row's switch only toggles notifications; it never focuses.
+  - [ ] A finished session's row looks unchanged (not greyed) and does nothing.
+  - [ ] **Linux:** no row reacts to hover or clicks.
 
 ## 5. The Config window
 

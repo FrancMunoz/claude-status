@@ -670,6 +670,7 @@ public sealed class TrayApplicationController : IDisposable
                 _ = ApplySettingsAsync(_settings with { DisableSessionWatch = !on });
 
             _detailsViewModel.SessionMuteChanged += (_, e) => _ = ChangeMuteAsync(e.SessionId, e.IsMuted);
+            _detailsViewModel.SessionFocusRequested += OnSessionFocusRequested;
         }
 
         _detailsViewModel.ApplySessionWatch(_settings.SessionWatch);
@@ -1165,20 +1166,47 @@ public sealed class TrayApplicationController : IDisposable
             return;
         }
 
-        ClaudeSession? session = e.Tag is { } id && _sessions is { } watcher
-            ? watcher.Sessions.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.Ordinal))
-            : null;
-
-        if (session?.Origin is not { } origin)
+        if (FindSession(e.Tag) is not { Origin: not null } session)
         {
             ShowDetails();
             return;
         }
 
+        FocusTerminal(session, "Notification clicked");
+    }
+
+    /// <summary>
+    /// Takes the user to the session they clicked in the details window's list.
+    /// </summary>
+    /// <remarks>
+    /// Inside the click, like a notification's, so Windows still counts it as the
+    /// latest input. A row is only clickable when its terminal is known; the check
+    /// is repeated because the list can be a moment older than the watcher.
+    /// </remarks>
+    private void OnSessionFocusRequested(object? sender, string sessionId)
+    {
+        if (FindSession(sessionId) is { Origin: not null } session)
+        {
+            FocusTerminal(session, "Session row clicked");
+        }
+    }
+
+    private ClaudeSession? FindSession(string? id)
+        => id is not null && _sessions is { } watcher
+            ? watcher.Sessions.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.Ordinal))
+            : null;
+
+    /// <summary>Brings a session's terminal forward and logs how that went.</summary>
+    /// <param name="session">A session whose origin is known.</param>
+    /// <param name="source">What asked, for the log.</param>
+    private void FocusTerminal(ClaudeSession session, string source)
+    {
+        SessionOrigin origin = session.Origin!;
         bool focused = _services.GetRequiredService<ITerminalFocus>().TryFocus(origin);
 
         _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
-            "Notification clicked for {Folder}: {Result} ({Precision}).",
+            "{Source} for {Folder}: {Result} ({Precision}).",
+            source,
             session.Folder,
             focused ? "focused its window" : "window not focused",
             origin.Precision);

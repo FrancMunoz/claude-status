@@ -137,7 +137,7 @@ again.
 | --- | --- |
 | ![Taskbar widget with a badge showing 2 working sessions](docs/screenshots/taskbar-widget-working.png) | **Working badge** *(Windows widget)* — a breathing badge on the mark counts the sessions with a turn in progress. It is gone when none are. |
 | <img src="docs/screenshots/macos-menu-bar-working.png" alt="The macOS menu bar item reading ●2 5h (2:47) 19% · 7d 29%" width="420"> | **Working count** *(macOS menu bar)* — the same count leads the row as text while sessions are working, and is gone when none are. |
-| <img src="docs/screenshots/window-details-sessions.png" alt="The details popup listing three sessions with their state, age and a notify switch each" width="300"> | **Session list** — in the details popup and the hover card: each session's folder, whether it is working or waiting for you, and for how long. One switch watches sessions at all; one per row silences a session you are sitting in front of anyway. |
+| <img src="docs/screenshots/window-details-sessions.png" alt="The details popup listing three sessions with their state, age and a notify switch each" width="300"> | **Session list** — in the details popup and the hover card: each session's folder, whether it is working or waiting for you, and for how long. One switch watches sessions at all; one per row silences a session you are sitting in front of anyway. **Click a running session in the popup to bring its terminal to the front** (Windows and macOS). |
 
 - **Notifications** — when a session finishes a turn or closes, you get told.
   On Windows that is a toast (or a tray balloon on a machine where the app is not

@@ -2488,3 +2488,30 @@ three platforms. Both halves of that are fixed.
   click logged `focused its window (Process)` and brought Terminal forward, and a
   turn that ended with Terminal in front logged `not notified, its terminal has
   focus`. iTerm2, VS Code and Ghostty are in the QA checklist, not yet tried.
+
+## 2026-09-17 — Clicking a session in the details window brings its terminal forward
+
+- **`SessionRowViewModel.CanFocus`**: true while the session runs and its origin
+  is known. **`DetailsViewModel.FocusSessionCommand`** raises
+  `SessionFocusRequested(id)` for such a row, following `SessionMuteChanged`, so
+  the view model never touches platform code.
+- **The controller shares one path with notification clicks.** The focusing half
+  of `OnNotificationActivated` is now `FocusTerminal(session, source)`, used by
+  both; the log reads `Notification clicked for …` or `Session row clicked for …`.
+  A row click with no origin does nothing (the popup is already open), where a
+  notification click still falls back to opening Details.
+- **`DetailsWindow.axaml`**: folder, state and duration form one `Button.session-row`;
+  the notify switch stays in its own column, so the two clicks cannot be confused.
+  The style (`Styles/Shared.axaml`) is modelled on `.ghost`: no fill until hover,
+  `Theme.Surface` on hover, hand cursor only when enabled, and a disabled row
+  painted exactly like an enabled one - a finished session is not unavailable
+  information, just nothing to click.
+- New string `Sessions_Focus` ("Show its terminal"), in all five languages.
+- Tests: which rows can be focused, the command reports the clicked session and
+  flips no switch, a non-focusable row and a null parameter ask for nothing, and a
+  switch flip never focuses.
+- Platforms: Windows uses the existing `WindowsTerminalFocus` (exact window);
+  macOS `MacTerminalFocus` (the application); Linux records no origin, so no row is
+  ever clickable. Seen working on macOS in Terminal.app; not yet run on Windows.
+- The Windows hover card's session list is unchanged: it lives in a tooltip that
+  closes when the pointer reaches it.

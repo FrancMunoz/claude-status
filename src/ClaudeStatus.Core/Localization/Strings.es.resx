@@ -668,6 +668,9 @@
   <data name="Sessions_Notify" xml:space="preserve">
     <value>Avisar cuando esta sesión te necesite</value>
   </data>
+  <data name="Sessions_Focus" xml:space="preserve">
+    <value>Mostrar su terminal</value>
+  </data>
   <data name="Sessions_Mute" xml:space="preserve">
     <value>Silenciar esta sesión</value>
   </data>

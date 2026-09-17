@@ -179,6 +179,16 @@ under each. It closes when it loses focus. **Refresh** forces a poll, subject to
 a 30-second cooldown that exists so leaning on the button cannot get you rate
 limited — if you hit it, the window says so rather than appearing to do nothing.
 
+With session watch on, Details also lists your Claude Code sessions: folder,
+working or waiting, and for how long, with a switch per row that silences that
+session's notifications. **Clicking a running session brings its terminal
+forward** — the same thing clicking its notification does: the exact window on
+Windows, the terminal application on macOS. The popup closes as the terminal
+takes focus. A row is clickable only while the session runs and its terminal was
+recorded, so finished sessions, sessions that started before the app was
+watching, and every session on Linux (which records no terminal) look the same
+but do nothing when clicked.
+
 **Full report** (the *More…* button, or the context menu) is for looking things
 up: every window the endpoint returned, its own severity labels, exact reset
 timestamps, and the pay-as-you-go and prepaid-credit blocks — including when they
