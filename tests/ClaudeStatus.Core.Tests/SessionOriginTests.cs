@@ -106,6 +106,7 @@ public sealed class SessionOriginTests : IDisposable
     [InlineData(0, 16, 2)]
     [InlineData(-5, 16, 2)]
     [InlineData(100, 0, 2)]
+    [InlineData(100, 0, 1)]
     [InlineData(100, 16, 99)]
     public void An_implausible_spooled_origin_becomes_none(int pid, long window, int precision)
     {
@@ -119,6 +120,18 @@ public sealed class SessionOriginTests : IDisposable
             $$$"""{"Kind":"Progressed","Id":"a","Folder":"C:\\A","At":"2026-09-16T09:00:00+00:00","Origin":{"ProcessId":{{{pid}}},"ProcessStartedAt":"2026-09-16T08:00:00+00:00","Window":{{{window}}},"Precision":{{{precision}}}}}""");
 
         spool.Drain(T0).Should().ContainSingle().Which.Origin.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_process_only_origin_without_a_window_survives_the_spool()
+    {
+        // macOS names the terminal application and has no window handle to give.
+        var spool = new SessionSpool(_directory);
+        SessionOrigin origin = Origin(4242, 0, SessionOriginPrecision.Process);
+
+        spool.Write(new SessionEvent(SessionEventKind.Submitted, "a", "/Users/someone/project", T0, origin));
+
+        spool.Drain(T0).Should().ContainSingle().Which.Origin.Should().Be(origin);
     }
 
     [Fact]

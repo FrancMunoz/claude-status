@@ -33,7 +33,11 @@ public enum SessionOriginPrecision
 /// When that process started. A pid is reused once its process exits; the pair is
 /// what identifies a process, and a window is only focused when both still match.
 /// </param>
-/// <param name="Window">The native window handle, widened to 64 bits. Opaque outside the platform code.</param>
+/// <param name="Window">
+/// The native window handle, widened to 64 bits. Opaque outside the platform code.
+/// Zero where the platform identifies only the terminal application (macOS), which
+/// is only valid with <see cref="SessionOriginPrecision.Process"/>.
+/// </param>
 /// <param name="Precision">How the window was found.</param>
 /// <remarks>
 /// Not a secret and not trusted either: it crosses from the hook process through a

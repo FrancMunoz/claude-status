@@ -192,8 +192,17 @@ internal sealed class StoredOrigin
             Precision = (int)origin.Precision,
         };
 
+    /// <remarks>
+    /// A window is required unless the origin only claims a process. macOS records
+    /// the terminal application and has no window handle to give, so there a zero
+    /// window with <see cref="SessionOriginPrecision.Process"/> is the whole answer;
+    /// a <c>Console</c> or <c>Foreground</c> origin names a window and is worthless
+    /// without one.
+    /// </remarks>
     public SessionOrigin? ToOrigin()
-        => ProcessId > 0 && Window != 0 && Enum.IsDefined((SessionOriginPrecision)Precision)
+        => ProcessId > 0
+            && Enum.IsDefined((SessionOriginPrecision)Precision)
+            && (Window != 0 || (SessionOriginPrecision)Precision == SessionOriginPrecision.Process)
             ? new SessionOrigin(ProcessId, ProcessStartedAt, Window, (SessionOriginPrecision)Precision)
             : null;
 }

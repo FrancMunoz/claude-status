@@ -89,12 +89,23 @@ public static class PlatformServices
     /// </summary>
     /// <remarks>
     /// Public and container-free because the hook process calls it before any
-    /// container exists. Windows only; see <see cref="NullTerminalFocus"/> for why.
+    /// container exists. Windows focuses the session's window; macOS its terminal
+    /// application (see <see cref="MacTerminalFocus"/>); Linux has none yet.
     /// </remarks>
     public static ITerminalFocus CreateTerminalFocus()
-        => OperatingSystem.IsWindows()
-            ? new WindowsTerminalFocus()
-            : new NullTerminalFocus();
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new WindowsTerminalFocus();
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return new MacTerminalFocus();
+        }
+
+        return new NullTerminalFocus();
+    }
 
     /// <summary>
     /// Builds the taskbar host for the running OS.

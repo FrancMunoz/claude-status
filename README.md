@@ -144,9 +144,11 @@ again.
   installed), and **clicking it brings that session's terminal window to the
   front**. Nothing is shown while that terminal already has focus.
   On macOS it is a notification in Notification Center; the first one asks for
-  permission, and clicking one opens the details popup. If notifications are
-  turned off for ClaudeStatus — or it runs outside its `.app` — the message
-  appears as a card under the menu bar instead, as it does on Linux.
+  permission, and **clicking it brings that session's terminal app to the
+  front** (Terminal, iTerm2, VS Code, …). Nothing is shown while that app is the
+  one in front. If notifications are turned off for ClaudeStatus — or it runs
+  outside its `.app` — the message appears as a card under the menu bar instead,
+  as it does on Linux.
 - **How it knows** — while it is running, ClaudeStatus adds its own hooks to
   Claude Code's `settings.json` and removes them when it quits. Hooks you wrote
   yourself are never touched. Turn it all off in **Config → Sessions**.
@@ -155,7 +157,9 @@ again.
   its prompt idle, about a minute later.
 
 Focusing moves a window, not a tab: two sessions in tabs of the same terminal
-bring up the same window.
+bring up the same window. On macOS it moves the application, not a window — with
+two Terminal windows open, the one macOS last had in front comes forward, because
+picking a window of another app would need the Accessibility permission.
 
 ### The pace warning
 

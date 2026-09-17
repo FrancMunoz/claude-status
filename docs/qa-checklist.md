@@ -216,7 +216,14 @@ Record the date, OS version and app version next to each run.
     says `MacNotifier accepted it`.
   - [ ] Two turns of the same session end: Notification Center holds one
     notification for it, not two.
-  - [ ] Clicking the notification opens the details popup.
+  - [ ] Clicking the notification brings the session's terminal app forward, in
+    each of: Terminal, iTerm2, VS Code's integrated terminal, Ghostty. The log
+    says `focused its window (Process)`.
+  - [ ] The terminal app in front when a turn ends: no notification, and the log
+    says `not notified, its terminal has focus`.
+  - [ ] The terminal quit before clicking: nothing is focused, nothing crashes.
+  - [ ] A session over ssh, or in tmux started outside a terminal app: the click
+    opens the details popup.
   - [ ] With the popup open (the app in front), a turn ending still shows a banner.
   - [ ] Denied, or turned off later in System Settings → Notifications: the
     "waiting for you" card appears under the menu bar instead, and the log says

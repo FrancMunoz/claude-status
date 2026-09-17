@@ -57,10 +57,8 @@ public interface ITerminalFocus
 
 /// <summary>The focus helper for a platform that has none yet.</summary>
 /// <remarks>
-/// macOS needs <c>proc_pidinfo</c> to walk the parents and
-/// <c>NSRunningApplication.activate</c> to raise the terminal; Linux has no single
-/// answer across X11 and Wayland. Neither can be written or tested from Windows
-/// (<c>CLAUDE.md</c> §8), so both are honestly absent. See <c>PLAN.md</c> Phase 9.6.
+/// Linux has no single answer across X11 and Wayland, so it is honestly absent
+/// rather than half done.
 /// </remarks>
 public sealed class NullTerminalFocus : ITerminalFocus
 {

@@ -154,7 +154,11 @@ is nothing there to fix.
   no-reading words. No animation: the menu bar title is plain text.
 - When a session finishes a turn or closes, macOS shows a notification (after
   asking permission once). The same session's next notification replaces the
-  last one instead of stacking. Clicking it opens the details popup. With
+  last one instead of stacking. Clicking it brings the session's terminal
+  application to the front - the app, not a particular window, since choosing a
+  window of another app needs the Accessibility permission. No notification is
+  posted while that application is the frontmost one. A session whose terminal
+  is unknown or has quit opens the details popup instead. With
   notifications turned off in **System Settings → Notifications**, or when run
   outside the `.app` bundle (`dotnet run`), the message falls back to the card
   under the menu bar.

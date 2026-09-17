@@ -2454,3 +2454,37 @@ three platforms. Both halves of that are fixed.
   Center logs `muted by display state (displayShared)` and files the notification
   in history only - macOS's own rule, unless "Allow notifications when mirroring or
   sharing the display" is on. `Notify` still returns true, so no card is shown.
+
+## 2026-09-17 — Clicking a macOS notification brings the terminal forward
+
+- **`MacTerminalFocus`** (`ClaudeStatus.Platform.MacOS`). `Capture` runs in the hook
+  process and walks up the parents to the terminal application, with syscalls
+  only. `TryFocus` checks the recorded pid's start time, finds the running
+  application and calls `activateWithOptions:`, falling back to reopening it
+  through `NSWorkspace` if that is refused. `IsForeground` compares it with
+  `frontmostApplication`.
+- **An application, not a window.** Picking a window of another app needs the
+  Accessibility permission, so the origin is a process with `Precision = Process`
+  and `Window = 0`, and a click activates the app. `IsForeground` is coarser than
+  on Windows as a result: any window of the terminal app in front holds the
+  notification back.
+- **`MacProcessTree`**: the topmost ancestor inside the first `.app` bundle above
+  the hook. Climbing within the bundle reaches VS Code's main process from the
+  `Code Helper` in its nested bundle; iTerm2's `iTermServer` under launchd still
+  names the bundle, and the app side finds the application by bundle identifier.
+  Pure over two lookups, tested against those trees on every OS.
+- **The spool accepted no macOS origin.** `StoredOrigin.ToOrigin` dropped any
+  origin with `Window == 0`. A window is now required only for `Console` and
+  `Foreground` origins. Windows never records a zero window, so nothing changes
+  there; a test pins the new case.
+- **`login` stopped the walk.** The first build read parents with
+  `proc_pidinfo(PROC_PIDTBSDINFO)`, which refuses another user's process - and
+  every Terminal.app session has `/usr/bin/login`, running as root, between the
+  shell and Terminal. Sessions got no origin and a click still opened the details
+  window. Parent and start time now come from `sysctl(KERN_PROC_PID)`, as `ps`
+  does; offsets (start at 0, pid at 40, ppid at 560) checked against `ps` before
+  use, and a test reads launchd.
+- Verified on the signed build in Terminal.app: origin recorded as Terminal, a
+  click logged `focused its window (Process)` and brought Terminal forward, and a
+  turn that ended with Terminal in front logged `not notified, its terminal has
+  focus`. iTerm2, VS Code and Ghostty are in the QA checklist, not yet tried.
