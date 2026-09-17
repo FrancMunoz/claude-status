@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Usage;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -30,16 +32,18 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     /// </summary>
     /// <remarks>
     /// An assumption about the plan, not something the endpoint reports - it gives
-    /// a reset time and no length - and it is confined to this pair of bars for
-    /// that reason. Every countdown, threshold and velocity alert in the app still
+    /// a reset time and no length. Every countdown and threshold in the app still
     /// works off <see cref="UsageWindow.ResetsAt"/> alone, so a plan whose windows
     /// are not five hours and seven days shows a slightly wrong second bar and
-    /// nothing else.
+    /// nothing else. Shared with the velocity rule through
+    /// <see cref="UsageWindowSpans"/> - it compares spend against the same clock
+    /// to decide whether a week's pace is really over budget, and the two must not
+    /// disagree about how long a week is.
     /// </remarks>
-    private static readonly TimeSpan SessionSpan = TimeSpan.FromHours(5);
+    private static readonly TimeSpan SessionSpan = UsageWindowSpans.Session;
 
     /// <inheritdoc cref="SessionSpan" />
-    private static readonly TimeSpan WeekSpan = TimeSpan.FromDays(7);
+    private static readonly TimeSpan WeekSpan = UsageWindowSpans.Week;
 
     private readonly ILocalizer _l;
 
@@ -109,6 +113,68 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     /// <summary>The shared localizer, for <c>L[Key]</c> bindings.</summary>
     public ILocalizer L => _l;
 
+    /// <summary>
+    /// The Claude Code sessions to list, running first.
+    /// </summary>
+    /// <remarks>
+    /// Replaced wholesale rather than merged. The rows are immutable readings of
+    /// a moment, the list is short, and reconciling it item by item would buy a
+    /// few allocations at the cost of the only thing that matters here: that what
+    /// is on screen is what the registry last said.
+    /// </remarks>
+    public ObservableCollection<SessionRowViewModel> Sessions { get; } = [];
+
+    /// <summary>Whether there is anything in <see cref="Sessions"/> to show.</summary>
+    [ObservableProperty]
+    private bool _hasSessions;
+
+    /// <summary>Whether the session list is shown at all.</summary>
+    /// <remarks>
+    /// False while the feature is switched off, which is not the same as having
+    /// none to show: off means the card says nothing about sessions, where on
+    /// with an empty list says "none recently", which is itself an answer.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _showSessions;
+
+    /// <summary>How many sessions have a turn in progress - see <see cref="SessionActivity"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsWorking))]
+    [NotifyPropertyChangedFor(nameof(WorkingCountText))]
+    [NotifyPropertyChangedFor(nameof(HasWorkingCount))]
+    private int _workingCount;
+
+    /// <summary>Whether the working badge is up.</summary>
+    public bool IsWorking => WorkingCount > 0;
+
+    /// <summary>
+    /// Whether the badge carries a number - always, while it is up, including a
+    /// "1": the badge answers "how many", and a bare dot for one answered only "any".
+    /// </summary>
+    public bool HasWorkingCount => WorkingCount > 0;
+
+    /// <summary>The number in the badge. Capped, because the badge is one digit wide.</summary>
+    public string WorkingCountText => WorkingCount > 9 ? "9+" : WorkingCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>The last list handed over, kept so the working count can age without a new event.</summary>
+    private IReadOnlyList<ClaudeSession> _lastSessions = [];
+
+    /// <summary>Replaces the session list.</summary>
+    public void UpdateSessions(IReadOnlyList<ClaudeSession> sessions, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        _lastSessions = sessions;
+        Sessions.Clear();
+        foreach (ClaudeSession session in sessions)
+        {
+            Sessions.Add(new SessionRowViewModel(_l, session, now));
+        }
+
+        HasSessions = Sessions.Count > 0;
+        WorkingCount = SessionActivity.CountWorking(sessions, now);
+    }
+
     public UsageBarViewModel Session { get; }
 
     public UsageBarViewModel Week { get; }
@@ -156,25 +222,28 @@ public partial class TaskbarWidgetViewModel : ObservableObject
         _snapshot = snapshot;
         _alert = alert;
         _now = now;
+
+        // Every poll, not only on a session event: a session killed mid-turn sends
+        // no further event, and this is what eventually takes its badge down.
+        WorkingCount = SessionActivity.CountWorking(_lastSessions, now);
         Refresh();
     }
 
     private void Refresh()
     {
-        // Same precedence as the tray icon: a missing credential is actionable
-        // and wins over everything; an unreachable endpoint only matters when
-        // there is no reading at all to fall back on.
-        if (_alert == IndicatorAlert.NeedsCredential)
+        // The shared rule, so the macOS menu bar says the same thing: a missing
+        // credential wins over everything; an unreachable endpoint only matters
+        // when there is no reading at all to fall back on.
+        if (IndicatorText.Absence(_snapshot, _alert) is { } absence)
         {
-            ShowAlert("!", _l["Widget_NeedsCredential"]);
+            ShowAlert(absence.Glyph, _l[absence.MessageKey]);
             return;
         }
 
+        // Absence already answers for a missing snapshot; this only tells the
+        // compiler so.
         if (_snapshot is null)
         {
-            ShowAlert(
-                _alert == IndicatorAlert.Unreachable ? "⊘" : "—",
-                _l[_alert == IndicatorAlert.Unreachable ? "Widget_Offline" : "Widget_NoData"]);
             return;
         }
 

@@ -57,9 +57,22 @@ public partial class App : Application, IDisposable
                 return;
             }
 
+            // Before the main loop starts, not when session watch first needs it. On
+            // macOS the notifier sets itself as the notification center's delegate,
+            // and that has to happen before the app finishes launching - which
+            // Avalonia does inside the main loop - or a click that launched the app
+            // is never delivered. Elsewhere this only builds the notifier early.
+            _ = _services.GetRequiredService<INotifier>();
+
             _controller = new TrayApplicationController(_services, desktop);
 
-            desktop.ShutdownRequested += (_, _) => Dispose();
+            // On Exit, not ShutdownRequested. ShutdownRequested fires only for a
+            // non-forced shutdown - never for the menu's Quit, which is forced - and
+            // before Avalonia asks the windows to close, so a shutdown that is then
+            // cancelled left the app torn down but still running: hooks removed,
+            // instance lock released, a second copy able to start. Exit fires once,
+            // for every shutdown, only when it is really happening.
+            desktop.Exit += (_, _) => Dispose();
 
             // Not awaited: startup reads the config file and begins polling, and
             // blocking here would stall the UI thread before the tray appears.
@@ -103,7 +116,7 @@ public partial class App : Application, IDisposable
     /// </summary>
     /// <remarks>
     /// Avalonia never disposes the <see cref="Application"/> itself, so the real
-    /// teardown happens on <c>ShutdownRequested</c> above. This exists so the
+    /// teardown happens on the lifetime's <c>Exit</c> above. This exists so the
     /// ownership is declared rather than implied, and is safe to call twice.
     /// </remarks>
     public void Dispose()

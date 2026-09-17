@@ -33,6 +33,22 @@ public sealed class RegistryAutostartTests : IDisposable
         }
 
         // Never leave a Run entry behind on a developer's machine.
+        RemoveValue();
+    }
+
+    /// <summary>Deletes the real Run value, if it is there.</summary>
+    /// <remarks>
+    /// These tests use the app's own value name in the real Run key, so running
+    /// them clears an autostart registration the app had made. It re-registers at
+    /// its next start, so the effect does not outlive the next launch.
+    /// </remarks>
+    private static void RemoveValue()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         using RegistryKey? key = Registry.CurrentUser.OpenSubKey(
             RegistryAutostart.RunKeyPath, writable: true);
         key?.DeleteValue(RegistryAutostart.ValueName, throwOnMissingValue: false);
@@ -41,12 +57,19 @@ public sealed class RegistryAutostartTests : IDisposable
     private static RegistryAutostart Create() => new(new StubPlatformInfo());
 
     [Fact]
-    public async Task Starts_out_disabled()
+    public async Task An_absent_value_reads_as_disabled()
     {
         if (!OperatingSystem.IsWindows())
         {
             Assert.Skip("Windows only.");
         }
+
+        // Arranged rather than assumed. This used to read the Run key as it
+        // found it and expect nothing there, which held only on a machine that
+        // had never run ClaudeStatus - and stopped holding entirely once the app
+        // began registering autostart by default at startup. The behaviour under
+        // test is "no value means disabled", so the absence is set up here.
+        RemoveValue();
 
         (await Create().IsEnabledAsync(Ct)).Should().BeFalse();
     }

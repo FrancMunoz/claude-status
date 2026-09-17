@@ -3,6 +3,7 @@ using ClaudeStatus.Platform.Linux;
 using ClaudeStatus.Platform.MacOS;
 using ClaudeStatus.Platform.Windows;
 using ClaudeStatus.Security;
+using ClaudeStatus.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +38,73 @@ public static class PlatformServices
         services.AddSingleton(_ => CreateTrayPointerLocator());
         services.AddSingleton(_ => CreateAppPresentation());
 
+        services.AddSingleton(provider =>
+            new SessionSpool(provider.GetRequiredService<IPlatformInfo>().ConfigDirectory));
+
+        services.AddSingleton(provider => CreateNotifier(provider.GetService<ILoggerFactory>()));
+        services.AddSingleton(_ => CreateTerminalFocus());
+
+        services.AddSingleton(provider =>
+            new SessionStore(provider.GetRequiredService<IPlatformInfo>().ConfigDirectory));
+
+        // The executable is resolved at write time, not now: it moves when the
+        // app updates, and a hook has to point at where the app is when the hook
+        // is written, not where it was when the container was built.
+        services.AddSingleton<IHookManager>(provider => new ClaudeCodeHookManager(
+            () => provider.GetRequiredService<IPlatformInfo>().ExecutablePath
+                ?? Environment.ProcessPath
+                ?? throw new InvalidOperationException("The running executable cannot be located.")));
+
         return services;
+    }
+
+    /// <summary>
+    /// Builds the OS notifier for the running OS.
+    /// </summary>
+    /// <remarks>
+    /// On Windows <see cref="WindowsNotifier"/> picks a toast or the shell icon; on
+    /// macOS <see cref="MacNotifier"/> posts through <c>UNUserNotificationCenter</c>
+    /// when running as a bundle, and refuses outside one. Linux has a native path,
+    /// <c>org.freedesktop.Notifications</c>, not written yet, so it gets the honest
+    /// no-op and keeps showing the app's own card.
+    /// </remarks>
+    /// <param name="loggerFactory">Where the macOS notifier reports permission and failed posts.</param>
+    public static INotifier CreateNotifier(ILoggerFactory? loggerFactory = null)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return WindowsNotifier.Create();
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return new MacNotifier(loggerFactory?.CreateLogger<MacNotifier>());
+        }
+
+        return new NullNotifier();
+    }
+
+    /// <summary>
+    /// Builds the helper that finds and focuses a session's terminal window.
+    /// </summary>
+    /// <remarks>
+    /// Public and container-free because the hook process calls it before any
+    /// container exists. Windows focuses the session's window; macOS its terminal
+    /// application (see <see cref="MacTerminalFocus"/>); Linux has none yet.
+    /// </remarks>
+    public static ITerminalFocus CreateTerminalFocus()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return new WindowsTerminalFocus();
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return new MacTerminalFocus();
+        }
+
+        return new NullTerminalFocus();
     }
 
     /// <summary>

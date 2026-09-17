@@ -647,4 +647,64 @@
   <data name="Config_VelocityAlerts_Help" xml:space="preserve">
     <value>Mostra un avís quan el ritme actual esgotaria una finestra abans de reiniciar-se, perquè una tasca descontrolada no et sorprengui. L'avís es manté als detalls mentre dura.</value>
   </data>
+  <data name="Sessions_Notice_Idle" xml:space="preserve">
+    <value>{0} t'està esperant.</value>
+  </data>
+  <data name="Sessions_Notice_Ended" xml:space="preserve">
+    <value>{0} ha acabat.</value>
+  </data>
+  <data name="Sessions_Unnamed" xml:space="preserve">
+    <value>Una sessió de Claude</value>
+  </data>
+  <data name="Sessions_Heading" xml:space="preserve">
+    <value>Sessions</value>
+  </data>
+  <data name="Sessions_None" xml:space="preserve">
+    <value>No hi ha sessions recents.</value>
+  </data>
+  <data name="Sessions_Finished" xml:space="preserve">
+    <value>acabada</value>
+  </data>
+  <data name="Sessions_Notify" xml:space="preserve">
+    <value>Avisa quan aquesta sessió et necessiti</value>
+  </data>
+  <data name="Sessions_Focus" xml:space="preserve">
+    <value>Mostra el seu terminal</value>
+  </data>
+  <data name="Sessions_Mute" xml:space="preserve">
+    <value>Silencia aquesta sessió</value>
+  </data>
+  <data name="Config_Tab_Sessions" xml:space="preserve">
+    <value>Sessions</value>
+  </data>
+  <data name="Config_SessionWatch" xml:space="preserve">
+    <value>Vigila les sessions del Claude Code</value>
+  </data>
+  <data name="Config_SessionWatch_Hint" xml:space="preserve">
+    <value>Mostra les sessions en marxa i avisa quan una t'està esperant. Per fer-ho, el ClaudeStatus afegeix els seus propis hooks al fitxer de configuració del Claude Code mentre s'executa, i els treu en sortir. Els hooks que hagis posat tu no es toquen mai.</value>
+  </data>
+  <data name="Config_SessionRetention" xml:space="preserve">
+    <value>Mantén les sessions acabades a la llista durant</value>
+  </data>
+  <data name="Config_SessionRetention_Hint" xml:space="preserve">
+    <value>Minuts. Una sessió acabada es manté a la llista aquesta estona.</value>
+  </data>
+  <data name="Config_Sessions_Path" xml:space="preserve">
+    <value>Els hooks s'escriuen a {0}</value>
+  </data>
+  <data name="Hooks_Error_NoSettingsPath" xml:space="preserve">
+    <value>No s'ha trobat la carpeta de configuració del Claude Code, així que no es poden vigilar les sessions.</value>
+  </data>
+  <data name="Hooks_Error_Unreadable" xml:space="preserve">
+    <value>No s'ha pogut llegir el fitxer de configuració del Claude Code, així que s'ha deixat intacte. No es poden vigilar les sessions fins que torni a ser JSON vàlid.</value>
+  </data>
+  <data name="Hooks_Error_Write" xml:space="preserve">
+    <value>No s'ha pogut escriure el fitxer de configuració del Claude Code, així que no es poden vigilar les sessions.</value>
+  </data>
+  <data name="Sessions_Working" xml:space="preserve">
+    <value>treballant</value>
+  </data>
+  <data name="Sessions_Waiting" xml:space="preserve">
+    <value>t'espera</value>
+  </data>
 </root>

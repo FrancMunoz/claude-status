@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using ClaudeStatus.App.Composition;
+using ClaudeStatus.App.Sessions;
 using ClaudeStatus.App.Theming;
 using ClaudeStatus.App.Tray;
 using ClaudeStatus.App.Update;
@@ -14,6 +15,7 @@ using ClaudeStatus.Config;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
 using ClaudeStatus.Security;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Theming;
 using ClaudeStatus.Update;
 using ClaudeStatus.Usage;
@@ -49,11 +51,15 @@ public sealed class TrayApplicationController : IDisposable
     private IStatusIndicator _indicator;
     private readonly ISnapshotCache _snapshotCache;
 
-    /// <summary>Recent session readings, for the velocity rule. Fresh samples only.</summary>
-    private readonly UsageHistory _sessionHistory = new();
+    /// <summary>Recent readings and the pace verdict drawn from them.</summary>
+    private readonly VelocityTracker _velocity = new();
 
-    /// <summary>Recent weekly readings, for the velocity rule.</summary>
-    private readonly UsageHistory _weekHistory = new();
+    /// <summary>Which Claude Code sessions are running. Null while the feature is off.</summary>
+    private SessionWatcher? _sessions;
+
+    /// <summary>How long a session notice stays up.</summary>
+    /// <remarks>Shorter than the velocity warning: it is news, not a diagnosis.</remarks>
+    private static readonly TimeSpan SessionNoticeDuration = TimeSpan.FromSeconds(6);
 
     /// <summary>How long a sustained fast pace waits before it flashes the notice again.</summary>
     private static readonly TimeSpan VelocityRenotify = TimeSpan.FromMinutes(15);
@@ -162,7 +168,9 @@ public sealed class TrayApplicationController : IDisposable
 
         return new TrayIconIndicator(
             services.GetRequiredService<ILocalizer>(),
-            services.GetRequiredService<ITrayThemeProvider>());
+            services.GetRequiredService<ITrayThemeProvider>(),
+            services.GetRequiredService<TimeProvider>(),
+            services.GetRequiredService<IPlatformInfo>().TrayIsAtTop);
     }
 
     private void Wire(IStatusIndicator indicator)
@@ -234,10 +242,15 @@ public sealed class TrayApplicationController : IDisposable
         ApplyLanguage();
         ApplyTheme();
 
+        _services.GetRequiredService<ITrayThemeProvider>().Changed += OnTaskbarThemeChanged;
+
         _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
             "ClaudeStatus starting. Source: {Source}. Poll interval: {Interval}.",
             _settings.CredentialSource,
             _settings.Polling.BaseInterval);
+
+        await EnforceAutostartAsync().ConfigureAwait(true);
+        await StartSessionWatchAsync().ConfigureAwait(true);
 
         StartMonitor();
 
@@ -285,8 +298,8 @@ public sealed class TrayApplicationController : IDisposable
     /// <remarks>
     /// The "system" theme follows the same signal the tray icon uses for its own
     /// contrast, so the app and its icon agree about whether the desktop is dark.
-    /// Reading it fresh here means a theme change on the OS is picked up the next
-    /// time settings are applied.
+    /// Reading it fresh here, and running again on <see cref="ITrayThemeProvider.Changed"/>,
+    /// means a theme change on the OS is picked up as it happens.
     /// </remarks>
     private void ApplyTheme()
     {
@@ -315,6 +328,26 @@ public sealed class TrayApplicationController : IDisposable
         // Runs on every settings change, which is exactly when these can move.
         _indicator.Configure(IndicatorOptionsFrom(_settings));
     }
+
+    /// <summary>
+    /// Redraws everything drawn against the taskbar the moment it changes colour.
+    /// </summary>
+    /// <remarks>
+    /// Both indicators and the "system" theme already read the provider on every
+    /// render; this only makes that render happen now instead of at the next poll.
+    /// The provider raises it off the UI thread.
+    /// </remarks>
+    private void OnTaskbarThemeChanged(object? sender, EventArgs e)
+        => Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            ApplyTheme();
+            RenderIndicator(_monitor?.Latest);
+        });
 
     /// <summary>
     /// Starts, restarts or stops the update checker to match the settings.
@@ -595,6 +628,15 @@ public sealed class TrayApplicationController : IDisposable
         await _configStore.SaveAsync(_settings).ConfigureAwait(true);
     }
 
+    /// <summary>Silences or unsilences one session from the popup's switch, and remembers it.</summary>
+    private async Task ChangeMuteAsync(string sessionId, bool muted)
+    {
+        IEnumerable<string> others = _settings.MutedSessions
+            .Where(id => !string.Equals(id, sessionId, StringComparison.Ordinal));
+        _settings = _settings with { MutedSessions = muted ? [.. others, sessionId] : [.. others] };
+        await _configStore.SaveAsync(_settings).ConfigureAwait(true);
+    }
+
     private void ShowDetails()
     {
         if (_monitor is null)
@@ -621,7 +663,22 @@ public sealed class TrayApplicationController : IDisposable
             // Restarting into a staged update is the controller's business too:
             // the view model must not know that applying an update ends the process.
             _detailsViewModel.UpdateRequested += (_, _) => _updates.ApplyAndRestart();
+
+            // The popup's switches go through the same path as Config's Save, so
+            // the watcher and our hooks follow the switch at once.
+            _detailsViewModel.SessionWatchChanged += (_, on) =>
+                _ = ApplySettingsAsync(_settings with { DisableSessionWatch = !on });
+
+            _detailsViewModel.SessionMuteChanged += (_, e) => _ = ChangeMuteAsync(e.SessionId, e.IsMuted);
+            _detailsViewModel.SessionFocusRequested += OnSessionFocusRequested;
         }
+
+        _detailsViewModel.ApplySessionWatch(_settings.SessionWatch);
+
+        // The view model is built the first time the popup is opened, which is
+        // normally long after the watcher started, so the list has to be handed
+        // over here as well as when a session changes.
+        PushSessions();
 
         if (_detailsWindow is null)
         {
@@ -671,11 +728,7 @@ public sealed class TrayApplicationController : IDisposable
                 _services.GetRequiredService<TimeProvider>());
 
             _reportWindow = new ReportWindow { DataContext = _reportViewModel };
-            _reportWindow.Closing += (_, args) =>
-            {
-                args.Cancel = true;
-                _reportWindow?.Hide();
-            };
+            HideOnClose.Attach(_reportWindow);
         }
 
         _reportViewModel?.Apply(_monitor.Latest);
@@ -697,18 +750,23 @@ public sealed class TrayApplicationController : IDisposable
                 _services.GetRequiredService<JsonThemeStore>(),
                 () => _services.GetRequiredService<ITrayThemeProvider>().Current != TrayBackground.Light,
                 () => _settings,
-                ApplySettingsAsync);
+                ApplySettingsAsync,
+                _services.GetRequiredService<IHookManager>(),
+                () => _sessions?.Sessions ?? []);
 
             _configWindow = new ConfigWindow { DataContext = viewModel };
-            _configWindow.Closing += (_, args) =>
-            {
-                // Hide rather than close: the view model holds a live credential
-                // service and rebuilding it on every open is pointless work.
-                args.Cancel = true;
-                _configWindow?.Hide();
-            };
 
-            _ = viewModel.LoadAsync();
+            // Hide rather than close: the view model holds a live credential
+            // service and rebuilding it on every open is pointless work.
+            HideOnClose.Attach(_configWindow);
+        }
+
+        // On every open, not just the first: the popup's switches and the Show
+        // menu change settings behind a hidden Config, and a form still showing
+        // the old values would put them back on the next Save.
+        if (!_configWindow.IsVisible && _configWindow.DataContext is ConfigViewModel config)
+        {
+            _ = config.LoadAsync();
         }
 
         ShowWindow(_configWindow);
@@ -727,11 +785,7 @@ public sealed class TrayApplicationController : IDisposable
                     _services.GetRequiredService<ILocalizer>()),
             };
 
-            _infoWindow.Closing += (_, args) =>
-            {
-                args.Cancel = true;
-                _infoWindow?.Hide();
-            };
+            HideOnClose.Attach(_infoWindow);
         }
 
         ShowWindow(_infoWindow);
@@ -765,56 +819,25 @@ public sealed class TrayApplicationController : IDisposable
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The rule is in Core (<see cref="VelocityRule"/>); this decides what to do
-    /// with its answer. The details popup carries the warning as a banner for as
-    /// long as it holds. The indicator is asked to show it once per window per
-    /// <see cref="VelocityRenotify"/>, so a pace that stays high does not open the
-    /// hover card on every poll - the banner is there for anyone who missed it.
+    /// The decision is in Core (<see cref="VelocityTracker"/>, which owns the
+    /// histories, the horizons and the latch); this decides what to do with its
+    /// answer. The details popup carries the warning as a banner for as long as it
+    /// holds. The indicator is asked to show it once per <see cref="VelocityRenotify"/>,
+    /// so a pace that stays high does not open the card on every poll - the banner
+    /// is there for anyone who missed it.
     /// </para>
     /// <para>
-    /// Only fresh readings count. A stale one is a cached number with an old
-    /// timestamp, and a rate measured against it would be about a different day.
+    /// Only fresh readings count, which the tracker enforces: a stale one is a
+    /// cached number with an old timestamp, and a rate measured against it would
+    /// be about a different day.
     /// </para>
     /// </remarks>
     private void TrackVelocity(UsageSnapshot snapshot)
     {
-        if (snapshot.IsStale)
-        {
-            return;
-        }
-
         DateTimeOffset now = _services.GetRequiredService<TimeProvider>().GetUtcNow();
         ILocalizer localizer = _services.GetRequiredService<ILocalizer>();
 
-        VelocityAlert? worst = null;
-        foreach ((VelocityWindow kind, UsageWindow? window, UsageHistory history) in new[]
-        {
-            (VelocityWindow.Session, snapshot.Session, _sessionHistory),
-            (VelocityWindow.Week, snapshot.Week, _weekHistory),
-        })
-        {
-            if (window is null)
-            {
-                history.Clear();
-                continue;
-            }
-
-            history.Add(new UsageSample(snapshot.FetchedAt, window.Percent));
-
-            if (!_settings.VelocityAlerts)
-            {
-                continue;
-            }
-
-            VelocityAlert? alert = VelocityRule.Evaluate(kind, history.Samples, window.ResetsAt, now);
-
-            // Keep the one that runs out soonest, the most urgent thing to say.
-            if (alert is not null && (worst is null || alert.UntilExhausted < worst.UntilExhausted))
-            {
-                worst = alert;
-            }
-        }
-
+        VelocityAlert? worst = _velocity.Observe(snapshot, now, _settings.VelocityAlerts);
         string message = worst is null ? string.Empty : DescribeVelocity(localizer, worst, now);
 
         // The banner holds for as long as the pace does; it is there for anyone
@@ -861,6 +884,7 @@ public sealed class TrayApplicationController : IDisposable
 
         bool settingsChangedUpdates = settings.AutomaticUpdates != _settings.AutomaticUpdates;
         bool indicatorChanged = settings.Indicator != _settings.Indicator;
+        bool sessionWatchChanged = settings.SessionWatch != _settings.SessionWatch;
 
         _settings = settings;
 
@@ -883,7 +907,297 @@ public sealed class TrayApplicationController : IDisposable
             StartUpdates();
         }
 
+        if (sessionWatchChanged)
+        {
+            // Both directions: StartSessionWatchAsync also stops the watcher and
+            // removes our hooks when the setting is off.
+            await StartSessionWatchAsync().ConfigureAwait(true);
+            _detailsViewModel?.ApplySessionWatch(settings.SessionWatch);
+            if (!settings.SessionWatch)
+            {
+                _indicator.ShowSessions([]);
+            }
+        }
+
         RenderIndicator(_monitor?.Latest);
+    }
+
+    /// <summary>
+    /// Registers autostart when the settings ask for it and the OS has not got it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Autostart is the only setting whose truth lives outside our config file -
+    /// it is a registry value, a LaunchAgent or a .desktop file - so the two can
+    /// disagree. They do after an update that moves the executable, after a
+    /// profile is copied to a new machine, and after anything else clears the
+    /// entry. A tray app that does not come back at login is simply absent, and
+    /// nobody goes looking in a settings window for a thing they never see, so
+    /// the setting is re-asserted on every start rather than only when saved.
+    /// </para>
+    /// <para>
+    /// It is re-asserted, never decided: <see cref="AppSettings.DisableAutostart"/>
+    /// is what an explicit "no" is stored as, and this does nothing at all when
+    /// that is set. A refusal is logged and dropped - the app has plenty to do
+    /// without it, and interrupting a launch over a registry write nobody asked
+    /// about would be worse than the missing entry.
+    /// </para>
+    /// </remarks>
+    private async Task EnforceAutostartAsync()
+    {
+        ILogger<TrayApplicationController> log =
+            _services.GetRequiredService<ILogger<TrayApplicationController>>();
+        IAutostart autostart = _services.GetRequiredService<IAutostart>();
+
+        if (!_settings.StartWithOperatingSystem || !autostart.IsSupported)
+        {
+            return;
+        }
+
+        try
+        {
+            if (await autostart.IsEnabledAsync().ConfigureAwait(true))
+            {
+                return;
+            }
+
+            await autostart.SetEnabledAsync(true).ConfigureAwait(true);
+            log.LogInformation("Autostart was missing and has been registered.");
+        }
+        catch (AutostartException ex)
+        {
+            log.LogWarning(ex, "Could not register autostart. Carrying on without it.");
+        }
+    }
+
+    /// <summary>
+    /// Starts watching Claude Code sessions, installing our hooks to do it.
+    /// </summary>
+    /// <remarks>
+    /// The hooks exist only while this app does - see <see cref="SessionWatcher"/>.
+    /// A failure here is logged and dropped: it means no session list, which is
+    /// one feature missing, not a reason to refuse to start a usage meter.
+    /// </remarks>
+    private async Task StartSessionWatchAsync()
+    {
+        if (!_settings.SessionWatch)
+        {
+            // Not merely "do not listen": if the feature was on last run, our
+            // hooks are still in Claude Code's settings and have to come out.
+            await StopSessionWatchAsync().ConfigureAwait(true);
+            await _services.GetRequiredService<IHookManager>()
+                .SyncAsync(enabled: false).ConfigureAwait(true);
+            return;
+        }
+
+        if (_sessions is not null)
+        {
+            return;
+        }
+
+        _sessions = new SessionWatcher(
+            _services.GetRequiredService<IHookManager>(),
+            _services.GetRequiredService<SessionSpool>(),
+            new SessionRegistry(_settings.SessionRetention),
+            _services.GetRequiredService<SessionStore>(),
+            _services.GetRequiredService<TimeProvider>(),
+            _services.GetService<ILogger<SessionWatcher>>());
+
+        _sessions.Changed += OnSessionChanged;
+
+        // Resolved here, on the UI thread, rather than at the first toast: the
+        // Windows notifier's window receives the click, and only a thread that
+        // pumps messages ever delivers it.
+        _services.GetRequiredService<INotifier>().Activated += OnNotificationActivated;
+
+        await _sessions.StartAsync().ConfigureAwait(true);
+
+        // Whatever was already spooled is on the list before the card can be
+        // opened, so the first hover is not an empty one.
+        PushSessions();
+    }
+
+    /// <summary>Hands the current session list to everything that shows one.</summary>
+    /// <remarks>
+    /// Both surfaces, always. The hover card is the glance and the details window
+    /// is the one every platform can open - macOS has no widget to hover, so
+    /// pushing only to the indicator would make this a Windows feature.
+    /// </remarks>
+    private void PushSessions()
+    {
+        if (_sessions is not { } watcher)
+        {
+            return;
+        }
+
+        IReadOnlyList<ClaudeSession> sessions = watcher.Sessions;
+        _indicator.ShowSessions(sessions);
+
+        if (_detailsViewModel is { } details)
+        {
+            details.ShowSessions = true;
+            details.ApplySessions(sessions, _services.GetRequiredService<TimeProvider>().GetUtcNow());
+        }
+    }
+
+    /// <summary>Stops watching and removes our hooks.</summary>
+    private async Task StopSessionWatchAsync()
+    {
+        if (_sessions is null)
+        {
+            return;
+        }
+
+        SessionWatcher watcher = _sessions;
+        _sessions = null;
+        watcher.Changed -= OnSessionChanged;
+        _services.GetRequiredService<INotifier>().Activated -= OnNotificationActivated;
+
+        await watcher.StopAsync().ConfigureAwait(true);
+        watcher.Dispose();
+    }
+
+    /// <summary>
+    /// Says a session has finished, unless the user has silenced that one or is
+    /// looking at its terminal.
+    /// </summary>
+    /// <remarks>
+    /// Only <see cref="SessionChange.Idle"/> and <see cref="SessionChange.Finished"/>
+    /// are worth an interruption. A session appearing is not news - the user
+    /// started it - and it would fire the moment the app launched, once per
+    /// session already open.
+    /// </remarks>
+    private void OnSessionChanged(object? sender, SessionChangedEventArgs e)
+    {
+        // The spool is drained on a worker thread, and everything below this
+        // touches windows.
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnSessionChanged(sender, e));
+            return;
+        }
+
+        // Every change updates the list, even the ones not worth interrupting for.
+        PushSessions();
+
+        if (e.Change is not (SessionChange.Idle or SessionChange.Finished))
+        {
+            return;
+        }
+
+        if (_settings.MutedSessions.Contains(e.Session.Id, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        // Only for someone who has looked away. A turn that ends in milliseconds
+        // (/clear) otherwise announces itself to a user still looking at it. The
+        // spool is read within a fraction of a second of the hook, so "now" is
+        // close enough to "when it finished". A session with no known window is
+        // announced, as before.
+        if (e.Session.Origin is { } origin
+            && _services.GetRequiredService<ITerminalFocus>().IsForeground(origin))
+        {
+            _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
+                "Session {Change} for {Folder}: not notified, its terminal has focus.", e.Change, e.Session.Folder);
+            return;
+        }
+
+        ILocalizer localizer = _services.GetRequiredService<ILocalizer>();
+        string name = e.Session.Name.Length > 0 ? e.Session.Name : localizer["Sessions_Unnamed"];
+        string message = localizer.Format(
+            e.Change == SessionChange.Finished ? "Sessions_Notice_Ended" : "Sessions_Notice_Idle",
+            name);
+
+        // A real OS notification where there is one, and the app's own card only
+        // where there is not. The card is right for something the user is already
+        // looking at; this fires when a session they walked away from has finished,
+        // so it has to survive being missed - which a card that fades after six
+        // seconds does not. The card also reads as the hover card appearing for no
+        // reason, which is worse than saying nothing.
+        INotifier notifier = _services.GetRequiredService<INotifier>();
+        bool shown = notifier.Notify(localizer["Sessions_Heading"], message, e.Session.Id);
+
+        // Which notifier, and whether the OS took it: a toast that never appears
+        // leaves nothing else behind to tell an installed-app problem from a
+        // missing registration.
+        _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
+            "Session {Change} for {Folder}: {Notifier} {Result}.",
+            e.Change,
+            e.Session.Folder,
+            notifier.GetType().Name,
+            shown ? "accepted it" : "refused it, showing the card");
+
+        if (!shown)
+        {
+            _indicator.ShowNotice(message, SessionNoticeDuration);
+        }
+    }
+
+    /// <summary>
+    /// Takes the user to the session a clicked notification was about.
+    /// </summary>
+    /// <remarks>
+    /// Runs synchronously inside the click, and must: Windows grants the right to
+    /// put another process's window in front only for as long as the click is the
+    /// latest input, and a <c>Dispatcher.Post</c> would spend it. A toast's click
+    /// arrives on a thread-pool thread, so it is carried over with a blocking
+    /// <c>Invoke</c> instead. Where the session's window is not known - it predates
+    /// this feature, or the hook could not find one - the details window opens
+    /// instead, which lists it.
+    /// </remarks>
+    private void OnNotificationActivated(object? sender, NotificationActivatedEventArgs e)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Invoke(() => OnNotificationActivated(sender, e));
+            return;
+        }
+
+        if (FindSession(e.Tag) is not { Origin: not null } session)
+        {
+            ShowDetails();
+            return;
+        }
+
+        FocusTerminal(session, "Notification clicked");
+    }
+
+    /// <summary>
+    /// Takes the user to the session they clicked in the details window's list.
+    /// </summary>
+    /// <remarks>
+    /// Inside the click, like a notification's, so Windows still counts it as the
+    /// latest input. A row is only clickable when its terminal is known; the check
+    /// is repeated because the list can be a moment older than the watcher.
+    /// </remarks>
+    private void OnSessionFocusRequested(object? sender, string sessionId)
+    {
+        if (FindSession(sessionId) is { Origin: not null } session)
+        {
+            FocusTerminal(session, "Session row clicked");
+        }
+    }
+
+    private ClaudeSession? FindSession(string? id)
+        => id is not null && _sessions is { } watcher
+            ? watcher.Sessions.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.Ordinal))
+            : null;
+
+    /// <summary>Brings a session's terminal forward and logs how that went.</summary>
+    /// <param name="session">A session whose origin is known.</param>
+    /// <param name="source">What asked, for the log.</param>
+    private void FocusTerminal(ClaudeSession session, string source)
+    {
+        SessionOrigin origin = session.Origin!;
+        bool focused = _services.GetRequiredService<ITerminalFocus>().TryFocus(origin);
+
+        _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
+            "{Source} for {Folder}: {Result} ({Precision}).",
+            source,
+            session.Folder,
+            focused ? "focused its window" : "window not focused",
+            origin.Precision);
     }
 
     private static void ShowWindow(Window window)
@@ -967,6 +1281,29 @@ public sealed class TrayApplicationController : IDisposable
         }
 
         _disposed = true;
+
+        // Synchronous, and deliberately so: this is the last chance to take our
+        // hooks out of Claude Code's settings, and a fire-and-forget task here
+        // races the process exit. Leave them in and every turn of every session
+        // launches this executable for an app that is no longer running.
+        if (_sessions is { } sessions)
+        {
+            _sessions = null;
+            sessions.Changed -= OnSessionChanged;
+            _services.GetRequiredService<INotifier>().Activated -= OnNotificationActivated;
+            try
+            {
+                sessions.StopAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Nothing useful to do on the way out; the next start cleans up.
+            }
+
+            sessions.Dispose();
+        }
+
+        _services.GetRequiredService<ITrayThemeProvider>().Changed -= OnTaskbarThemeChanged;
         _updateTimer?.Dispose();
         _updates.Dispose();
         _monitor?.Dispose();

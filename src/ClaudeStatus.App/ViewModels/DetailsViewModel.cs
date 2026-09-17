@@ -1,6 +1,8 @@
+using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using ClaudeStatus.Config;
 using ClaudeStatus.Localization;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Update;
 using ClaudeStatus.Usage;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -108,6 +110,23 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
     /// </remarks>
     public event EventHandler? UpdateRequested;
 
+    /// <summary>Raised when the user flips the session-watch switch. The argument is the new state.</summary>
+    /// <remarks>
+    /// Routed through the controller: turning it off removes our hooks from Claude
+    /// Code's settings and stops the watcher, none of which a view model owns.
+    /// </remarks>
+    public event EventHandler<bool>? SessionWatchChanged;
+
+    /// <summary>Raised when the user silences or unsilences one session from its switch.</summary>
+    public event EventHandler<SessionMuteChangedEventArgs>? SessionMuteChanged;
+
+    /// <summary>Raised when the user clicks a session row. The argument is the session id.</summary>
+    /// <remarks>
+    /// Routed through the controller, which owns the platform's terminal focusing
+    /// and uses the same path a notification click does.
+    /// </remarks>
+    public event EventHandler<string>? SessionFocusRequested;
+
     public DetailsViewModel(
         IUsageMonitor monitor,
         Func<AppSettings> settings,
@@ -176,6 +195,16 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ApplyUpdateNow() => UpdateRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Asks the controller to bring a session's terminal forward.</summary>
+    [RelayCommand]
+    private void FocusSession(SessionRowViewModel? row)
+    {
+        if (row is { CanFocus: true })
+        {
+            SessionFocusRequested?.Invoke(this, row.Id);
+        }
+    }
+
     /// <summary>
     /// Shows or clears the "a new version is ready" notice.
     /// </summary>
@@ -199,6 +228,107 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
     /// <summary>Rebuilds every bar from a snapshot.</summary>
     /// <summary>Whether usage is climbing fast enough to warn about.</summary>
     public bool HasVelocityAlert => VelocityText.Length > 0;
+
+    /// <summary>
+    /// The Claude Code sessions, running first.
+    /// </summary>
+    /// <remarks>
+    /// The same list the hover card shows, in the window that every platform can
+    /// open. macOS has no taskbar widget and its menu-bar card only appears to
+    /// carry a notice, so without this the session list would be a Windows
+    /// feature that happened to compile elsewhere.
+    /// </remarks>
+    public ObservableCollection<SessionRowViewModel> Sessions { get; } = [];
+
+    /// <summary>Whether there is a session to list.</summary>
+    [ObservableProperty]
+    private bool _hasSessions;
+
+    /// <summary>Whether the session section is shown at all.</summary>
+    /// <remarks>
+    /// Off while the feature is off. Distinct from having none to show: that says
+    /// "nothing ran recently", which is an answer; this says the question is not
+    /// being asked.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _showSessions;
+
+    /// <summary>
+    /// Whether Claude Code sessions are watched at all. The popup's master switch.
+    /// </summary>
+    /// <remarks>
+    /// Mirrors <see cref="AppSettings.SessionWatch"/>. Set from the settings with
+    /// <see cref="ApplySessionWatch"/>, which does not raise
+    /// <see cref="SessionWatchChanged"/>; only the user's flip does.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _sessionWatch;
+
+    private bool _applyingSessionWatch;
+
+    /// <summary>Shows the settings' session-watch state without treating it as a user change.</summary>
+    public void ApplySessionWatch(bool on)
+    {
+        _applyingSessionWatch = true;
+        try
+        {
+            SessionWatch = on;
+            if (!on)
+            {
+                ShowSessions = false;
+                ApplySessions([], _clock.GetUtcNow());
+            }
+        }
+        finally
+        {
+            _applyingSessionWatch = false;
+        }
+    }
+
+    partial void OnSessionWatchChanged(bool value)
+    {
+        if (!_applyingSessionWatch)
+        {
+            SessionWatchChanged?.Invoke(this, value);
+        }
+    }
+
+    /// <summary>Replaces the session list, each row's switch showing whether it is silenced.</summary>
+    public void ApplySessions(IReadOnlyList<ClaudeSession> sessions, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        foreach (SessionRowViewModel old in Sessions)
+        {
+            old.PropertyChanged -= OnRowChanged;
+        }
+
+        IReadOnlyList<string> muted = _settings().MutedSessions;
+
+        Sessions.Clear();
+        foreach (ClaudeSession session in sessions)
+        {
+            var row = new SessionRowViewModel(_l, session, now)
+            {
+                IsMuted = muted.Contains(session.Id, StringComparer.Ordinal),
+            };
+
+            // After IsMuted is set, so building the list does not read as the user
+            // flipping every switch on it.
+            row.PropertyChanged += OnRowChanged;
+            Sessions.Add(row);
+        }
+
+        HasSessions = Sessions.Count > 0;
+    }
+
+    private void OnRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender is SessionRowViewModel row && e.PropertyName == nameof(SessionRowViewModel.IsMuted))
+        {
+            SessionMuteChanged?.Invoke(this, new SessionMuteChangedEventArgs(row.Id, row.IsMuted));
+        }
+    }
 
     public void Apply(UsageSnapshot? snapshot)
     {
@@ -369,4 +499,16 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
             }
         }
     }
+}
+
+/// <summary>A session's notifications were silenced or brought back from the popup.</summary>
+/// <param name="sessionId">Claude Code's id for the session.</param>
+/// <param name="isMuted">True when it is now silenced.</param>
+public sealed class SessionMuteChangedEventArgs(string sessionId, bool isMuted) : EventArgs
+{
+    /// <summary>Claude Code's id for the session.</summary>
+    public string SessionId { get; } = sessionId;
+
+    /// <summary>True when it is now silenced.</summary>
+    public bool IsMuted { get; } = isMuted;
 }

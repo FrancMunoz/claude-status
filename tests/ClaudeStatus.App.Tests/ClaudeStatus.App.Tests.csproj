@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- Must match the App it references; see Directory.Build.props. -->
+    <TargetFramework>$(WindowsHostTargetFramework)</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <MinVerSkip>true</MinVerSkip>

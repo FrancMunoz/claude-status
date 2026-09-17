@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ClaudeStatus.App.ViewModels"
         xmlns:views="using:ClaudeStatus.App.Views"
-        x:Class="ClaudeStatus.App.Views.TaskbarHoverWindow"
+        x:Class="ClaudeStatus.App.Views.UsageCardWindow"
         x:DataType="vm:TaskbarWidgetViewModel"
         Title="ClaudeStatus"
         SizeToContent="WidthAndHeight"
@@ -17,13 +17,18 @@
         TransparencyLevelHint="Transparent">
 
     <!--
-        The hover card, as a window of our own rather than an Avalonia ToolTip.
-        The tooltip service positions relative to the widget window, and that
-        window is a child of the taskbar whose coordinates Avalonia does not
+        The small usage card, as a window of our own rather than an Avalonia
+        ToolTip. The tooltip service positions relative to the widget window, and
+        that window is a child of the taskbar whose coordinates Avalonia does not
         model well; the card landed wherever the pointer was and touched the
-        taskbar, and placement settings changed nothing. This window is placed
-        by TaskbarWidgetIndicator from the widget's real screen rectangle, the
-        way the details popup already is.
+        taskbar, and placement settings changed nothing. This window is placed by
+        its owner from a real screen rectangle, the way the details popup is.
+
+        Two owners now. TaskbarWidgetIndicator shows it on hover, placed from the
+        widget's slot in the taskbar. TrayIconIndicator and NativeStatusIndicator
+        show it through UsageNoticeCard to deliver a velocity warning, placed near
+        the tray - it is the only surface either of them has, an icon having
+        nowhere to put a sentence.
     -->
 
     <Border Classes="hoverCard">

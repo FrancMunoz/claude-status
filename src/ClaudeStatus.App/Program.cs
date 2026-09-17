@@ -1,5 +1,6 @@
 using System;
 using Avalonia;
+using ClaudeStatus.App.Composition;
 using Velopack;
 
 namespace ClaudeStatus.App;
@@ -26,6 +27,19 @@ internal sealed class Program
         // starts, which is what makes "check now, apply on quit" work without
         // ever restarting the app underneath someone.
         VelopackApp.Build().Run();
+
+        // Claude Code runs this same executable as a hook at the end of every
+        // turn. That invocation writes one file and exits; it must never reach
+        // Avalonia, or pressing Enter in a Claude Code session would put a second
+        // copy of the app on screen.
+        //
+        // The platform is resolved by hand rather than through DI: building the
+        // container would be most of a startup, for a process that is about to
+        // exit, several times an hour.
+        if (HookEntryPoint.TryHandle(args, PlatformServices.CreatePlatformInfo().ConfigDirectory))
+        {
+            return;
+        }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

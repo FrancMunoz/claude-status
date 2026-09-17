@@ -226,7 +226,7 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
             var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
             viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
 
-            var window = new TaskbarHoverWindow { DataContext = viewModel };
+            var window = new UsageCardWindow { DataContext = viewModel };
 
             Shapes.Path mark = window.GetLogicalDescendants().OfType<Shapes.Path>().Single();
             mark.Data.Should().BeSameAs(AppMark.Geometry, "one outline, drawn everywhere");

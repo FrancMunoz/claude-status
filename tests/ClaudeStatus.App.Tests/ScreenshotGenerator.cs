@@ -10,6 +10,7 @@ using ClaudeStatus.App.Tray;
 using ClaudeStatus.App.Views;
 using ClaudeStatus.Platform;
 using ClaudeStatus.Security;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Theming;
 using Microsoft.Extensions.Time.Testing;
 
@@ -145,8 +146,24 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
                     RenderWidget(Theme(id), taskbar, followSystem: false, showFable: false),
                     Path.Combine(root!, "themes", $"widget-{id}.png"));
             }
+
+            // Claude Code sessions: the badge on the widget, the list in the popup,
+            // and the hover card carrying a pace warning.
+            Save(
+                RenderWidget(Theme("claude"), TrayBackground.Dark, followSystem: true, showFable: false, Sessions()),
+                Path.Combine(root!, "taskbar-widget-working.png"));
+            Save(RenderDetails(Theme("claude"), Sessions()), Path.Combine(root!, "window-details-sessions.png"));
+            Save(RenderUsageCard(Theme("claude")), Path.Combine(root!, "usage-card-notice.png"));
         });
     }
+
+    /// <summary>Two sessions busy and one waiting, as the session shots show them.</summary>
+    private static IReadOnlyList<ClaudeSession> Sessions() =>
+    [
+        new ClaudeSession("s1", "C:\\Proyectos\\claude-status", Now.AddMinutes(-42), Now.AddMinutes(-3), IsWorking: true),
+        new ClaudeSession("s2", "C:\\Proyectos\\website", Now.AddMinutes(-12), Now.AddMinutes(-1), IsWorking: true),
+        new ClaudeSession("s3", "C:\\Proyectos\\notes", Now.AddHours(-2), Now.AddMinutes(-9)),
+    ];
 
     private static Theme Theme(string id) => ThemeCatalog.BuiltIn.Single(t => t.Id == id);
 
@@ -185,7 +202,7 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
         return frame;
     }
 
-    private static WriteableBitmap RenderDetails(Theme theme)
+    private static WriteableBitmap RenderDetails(Theme theme, IReadOnlyList<ClaudeSession>? sessions = null)
     {
         // Fully opaque, which is not the app's default. The default 10 % lets the
         // black the headless session clears to show through, and the readme would
@@ -199,6 +216,15 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
         using var viewModel = new DetailsViewModel(
             monitor, () => new AppSettings(), TestLocalizer.English(), clock);
         viewModel.Apply(Snapshot());
+
+        // The watch as it ships: on (AppSettings.SessionWatch). A switch drawn off in
+        // the readme would advertise the wrong default.
+        viewModel.ApplySessionWatch(true);
+        if (sessions is not null)
+        {
+            viewModel.ShowSessions = true;
+            viewModel.ApplySessions(sessions, Now);
+        }
 
         return Render(new DetailsWindow { DataContext = viewModel });
     }
@@ -230,13 +256,21 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
     }
 
     private static WriteableBitmap RenderWidget(
-        Theme theme, TrayBackground taskbar, bool followSystem, bool showFable)
+        Theme theme,
+        TrayBackground taskbar,
+        bool followSystem,
+        bool showFable,
+        IReadOnlyList<ClaudeSession>? sessions = null)
     {
         ThemeApplier.Apply(Application.Current!, theme, string.Empty, osdTransparency: 0d);
 
         var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
         viewModel.Configure(80d, showFable: showFable, followSystem: followSystem);
         viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+        if (sessions is not null)
+        {
+            viewModel.UpdateSessions(sessions, Now);
+        }
 
         var window = new TaskbarWidgetWindow
         {
@@ -252,6 +286,25 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
 
         TaskbarInk.Apply(window.Resources, taskbar);
         return Render(window);
+    }
+
+    private static WriteableBitmap RenderUsageCard(Theme theme)
+    {
+        ThemeApplier.Apply(Application.Current!, theme, string.Empty, osdTransparency: 0d);
+
+        var l = TestLocalizer.English();
+        var viewModel = new TaskbarWidgetViewModel(l);
+        viewModel.Configure(80d, showFable: false);
+        viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+        viewModel.ShowSessions = true;
+        viewModel.UpdateSessions(Sessions(), Now);
+        viewModel.NoticeText = l.Format(
+            "Velocity_Alert",
+            l["Velocity_Window_Session"],
+            DetailsViewModel.DescribeAge(l, TimeSpan.FromMinutes(48)),
+            DetailsViewModel.DescribeAge(l, new TimeSpan(2, 37, 0)));
+
+        return Render(new UsageCardWindow { DataContext = viewModel });
     }
 
     private static void Save(WriteableBitmap bitmap, string path)
@@ -275,7 +328,10 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
             new StubAutostart(),
             new StubPlatformInfo(),
             new UnsupportedTaskbarHost(),
-            new JsonConfigStore(Path.Combine(Path.GetTempPath(), "claudestatus-shotgen")),
+            // Shown in the window's footer, so it is what the readme prints: a
+            // placeholder, never the path of whoever regenerated the images. The
+            // store only touches the disk on Save, which a render never does.
+            new JsonConfigStore(@"C:\Users\you\AppData\Roaming\ClaudeStatus"),
             TestLocalizer.English(),
             new ClaudeStatus.Localization.JsonLanguageStore(
                 Path.Combine(Path.GetTempPath(), "claudestatus-shotgen")),

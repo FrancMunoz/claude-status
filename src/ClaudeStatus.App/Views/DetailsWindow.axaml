@@ -140,6 +140,80 @@
             </Border>
 
             <!--
+                The Claude Code sessions. Here as well as on the hover card
+                because this window is the one surface every platform has: macOS
+                has no taskbar widget, and its menu-bar card only opens to carry a
+                notice. Unlike the card this window takes focus, so the switches
+                live here too: the master one starts and stops the watch (and our
+                hooks), each row's one silences that session. Both apply at once.
+            -->
+            <Border Classes="rule" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="0,-8,0,-8">
+                <TextBlock Grid.Column="0"
+                           Classes="caption"
+                           VerticalAlignment="Center"
+                           Text="{Binding L[Config_SessionWatch]}" />
+                <ToggleSwitch Grid.Column="1"
+                              Classes="compact"
+                              IsChecked="{Binding SessionWatch}" />
+            </Grid>
+            <StackPanel IsVisible="{Binding ShowSessions}" Spacing="4">
+                <TextBlock Classes="caption"
+                           IsVisible="{Binding !HasSessions}"
+                           Text="{Binding L[Sessions_None]}" />
+
+                <ItemsControl ItemsSource="{Binding Sessions}" IsVisible="{Binding HasSessions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:SessionRowViewModel">
+                            <Grid ColumnSpacing="10" Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <!--
+                                    The folder, state and duration are one button: a
+                                    click brings the session's terminal forward. The
+                                    switch stays outside it, so the two clicks can
+                                    never be mistaken for each other.
+                                -->
+                                <Button Grid.Column="0"
+                                        Classes="session-row"
+                                        IsEnabled="{Binding CanFocus}"
+                                        Command="{Binding $parent[ItemsControl].((vm:DetailsViewModel)DataContext).FocusSessionCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="{Binding $parent[ItemsControl].((vm:DetailsViewModel)DataContext).L[Sessions_Focus]}">
+                                    <Grid ColumnSpacing="10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" MinWidth="52" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Text="{Binding Name}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Classes="caption"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding StateText}" />
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="caption"
+                                                   VerticalAlignment="Center"
+                                                   TextAlignment="Right"
+                                                   Text="{Binding DurationText}" />
+                                    </Grid>
+                                </Button>
+                                <ToggleSwitch Grid.Column="1"
+                                              Classes="compact"
+                                              IsChecked="{Binding Notifies}"
+                                              ToolTip.Tip="{Binding $parent[ItemsControl].((vm:DetailsViewModel)DataContext).L[Sessions_Notify]}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!--
                 A new version is downloaded and will install by itself at the next
                 start. This is an offer of a shortcut, not a demand: a .notice
                 rather than a .warning, because nothing is wrong, and the button is

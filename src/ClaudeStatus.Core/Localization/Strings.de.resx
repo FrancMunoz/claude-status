@@ -647,4 +647,64 @@
   <data name="Config_VelocityAlerts_Help" xml:space="preserve">
     <value>Warnt, wenn das aktuelle Tempo ein Fenster vor dem Zurücksetzen aufbrauchen würde, damit eine ausufernde Aufgabe dich nicht überrascht. Die Warnung bleibt in der Detailansicht, solange sie gilt.</value>
   </data>
+  <data name="Sessions_Notice_Idle" xml:space="preserve">
+    <value>{0} wartet auf dich.</value>
+  </data>
+  <data name="Sessions_Notice_Ended" xml:space="preserve">
+    <value>{0} ist fertig.</value>
+  </data>
+  <data name="Sessions_Unnamed" xml:space="preserve">
+    <value>Eine Claude-Sitzung</value>
+  </data>
+  <data name="Sessions_Heading" xml:space="preserve">
+    <value>Sitzungen</value>
+  </data>
+  <data name="Sessions_None" xml:space="preserve">
+    <value>Keine aktuellen Sitzungen.</value>
+  </data>
+  <data name="Sessions_Finished" xml:space="preserve">
+    <value>beendet</value>
+  </data>
+  <data name="Sessions_Notify" xml:space="preserve">
+    <value>Benachrichtigen, wenn diese Sitzung dich braucht</value>
+  </data>
+  <data name="Sessions_Focus" xml:space="preserve">
+    <value>Terminal anzeigen</value>
+  </data>
+  <data name="Sessions_Mute" xml:space="preserve">
+    <value>Diese Sitzung stummschalten</value>
+  </data>
+  <data name="Config_Tab_Sessions" xml:space="preserve">
+    <value>Sitzungen</value>
+  </data>
+  <data name="Config_SessionWatch" xml:space="preserve">
+    <value>Claude-Code-Sitzungen beobachten</value>
+  </data>
+  <data name="Config_SessionWatch_Hint" xml:space="preserve">
+    <value>Zeigt die laufenden Sitzungen und meldet, wenn eine auf dich wartet. Dafür trägt ClaudeStatus eigene Hooks in die Einstellungsdatei von Claude Code ein, solange es läuft, und entfernt sie beim Beenden wieder. Selbst eingetragene Hooks werden nie angefasst.</value>
+  </data>
+  <data name="Config_SessionRetention" xml:space="preserve">
+    <value>Beendete Sitzungen anzeigen für</value>
+  </data>
+  <data name="Config_SessionRetention_Hint" xml:space="preserve">
+    <value>Minuten. So lange bleibt eine beendete Sitzung in der Liste.</value>
+  </data>
+  <data name="Config_Sessions_Path" xml:space="preserve">
+    <value>Hooks werden geschrieben nach {0}</value>
+  </data>
+  <data name="Hooks_Error_NoSettingsPath" xml:space="preserve">
+    <value>Der Einstellungsordner von Claude Code wurde nicht gefunden, daher können Sitzungen nicht beobachtet werden.</value>
+  </data>
+  <data name="Hooks_Error_Unreadable" xml:space="preserve">
+    <value>Die Einstellungsdatei von Claude Code konnte nicht gelesen werden und wurde deshalb unangetastet gelassen. Sitzungen können erst wieder beobachtet werden, wenn sie gültiges JSON ist.</value>
+  </data>
+  <data name="Hooks_Error_Write" xml:space="preserve">
+    <value>Die Einstellungsdatei von Claude Code konnte nicht geschrieben werden, daher können Sitzungen nicht beobachtet werden.</value>
+  </data>
+  <data name="Sessions_Working" xml:space="preserve">
+    <value>arbeitet</value>
+  </data>
+  <data name="Sessions_Waiting" xml:space="preserve">
+    <value>wartet auf dich</value>
+  </data>
 </root>

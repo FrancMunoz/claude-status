@@ -1,8 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Theming;
 using ClaudeStatus.Usage;
 
@@ -51,6 +53,22 @@ public sealed class TrayIconIndicator : IStatusIndicator
     private RenderTargetBitmap? _currentBitmap;
 
     /// <summary>
+    /// The card the icon borrows when it has a sentence to say.
+    /// </summary>
+    /// <remarks>
+    /// An icon is sixteen pixels of number; a velocity warning is a sentence. The
+    /// widget puts that sentence at the foot of its hover card, and this is the
+    /// same card shown on its own near the tray - without it, <c>ShowNotice</c>
+    /// was the interface's no-op default here, so on Linux, on macOS and on any
+    /// Windows machine falling back to the icon the warning only arrived if the
+    /// user happened to open the details popup afterwards.
+    /// </remarks>
+    private readonly UsageNoticeCard _notice;
+
+    /// <summary>The card's contents, kept current by <see cref="Render"/>.</summary>
+    private readonly TaskbarWidgetViewModel _cardViewModel;
+
+    /// <summary>
     /// Replaced wholesale on a language change.
     /// </summary>
     /// <remarks>
@@ -69,11 +87,23 @@ public sealed class TrayIconIndicator : IStatusIndicator
     /// <param name="localizer">Supplies the menu text.</param>
     /// <param name="theme">The tray background, for contrast. Unknown when omitted.</param>
     /// <param name="clock">Judges how old a reading is. The system clock by default.</param>
+    /// <param name="trayIsAtTop">
+    /// Whether the tray runs along the top edge, which is where the notice card is
+    /// placed from. False is the safe default - the placement helper then infers
+    /// the edge from the screen insets, which is right everywhere except a macOS
+    /// menu bar, and macOS uses the native indicator.
+    /// </param>
     public TrayIconIndicator(
-        ILocalizer localizer, ITrayThemeProvider? theme = null, TimeProvider? clock = null)
+        ILocalizer localizer,
+        ITrayThemeProvider? theme = null,
+        TimeProvider? clock = null,
+        bool trayIsAtTop = false)
     {
         _l = localizer ?? throw new ArgumentNullException(nameof(localizer));
         _clock = clock ?? TimeProvider.System;
+
+        _cardViewModel = new TaskbarWidgetViewModel(_l);
+        _notice = new UsageNoticeCard(_cardViewModel, trayIsAtTop);
 
         // Unknown is the safe default: it makes the renderer draw a halo, which
         // reads on any panel colour.
@@ -113,6 +143,14 @@ public sealed class TrayIconIndicator : IStatusIndicator
     {
         ArgumentNullException.ThrowIfNull(options);
         _staleAfter = StalePolicy.ThresholdFor(options.PollInterval);
+
+        // The notice card lists all three limits whatever the icon is showing -
+        // it is the detail, not the glance - so ShowWeekFable is not passed on.
+        _cardViewModel.Configure(
+            options.ThresholdPercent,
+            showFable: true,
+            followSystem: false,
+            staleAfter: _staleAfter);
     }
 
     /// <inheritdoc />
@@ -136,8 +174,9 @@ public sealed class TrayIconIndicator : IStatusIndicator
             return;
         }
 
-        // Read the theme on every render rather than caching it, so switching the
-        // system theme takes effect on the next poll with no notification plumbing.
+        // Read the theme on every render rather than caching it. A switch of the
+        // system theme triggers a render of its own (ITrayThemeProvider.Changed,
+        // wired in the controller), so this is always the current background.
         //
         // Row is not drawable here and never reaches this tray by choice: an
         // Avalonia status item is square on every backend, so the row belongs to
@@ -166,8 +205,34 @@ public sealed class TrayIconIndicator : IStatusIndicator
         MacOSProperties.SetIsTemplateIcon(_trayIcon, !wantsAttention);
 
         _trayIcon.ToolTipText = BuildTooltip(_l, snapshot, mode, alert);
+
+        // The notice card is not on screen most of the time, but when it appears
+        // it has to show the current numbers rather than whatever they were when
+        // a warning last fired, so it is fed on every render.
+        _cardViewModel.Update(snapshot, alert, _clock.GetUtcNow());
+
         _currentMode = mode;
         UpdateModeChecks(mode);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Shown on the borrowed card near the tray - see <see cref="UsageNoticeCard"/>.
+    /// Empty text takes it down, which is how the controller says the pace has come
+    /// back to normal.
+    /// </remarks>
+    public void ShowNotice(string text, TimeSpan duration)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _notice.Show(text, duration);
+    }
+
+    /// <inheritdoc />
+    public void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _cardViewModel.UpdateSessions(sessions, _clock.GetUtcNow());
+        _cardViewModel.ShowSessions = true;
     }
 
     /// <summary>Fills <see cref="_menu"/> with the menu described in <c>docs/manual.md</c> §3.</summary>
@@ -269,16 +334,18 @@ public sealed class TrayIconIndicator : IStatusIndicator
     {
         ArgumentNullException.ThrowIfNull(localizer);
 
-        if (alert == IndicatorAlert.NeedsCredential)
+        // The rule the widget and the macOS menu bar use, so the three cannot
+        // disagree about which reason wins.
+        if (IndicatorText.Absence(snapshot, alert) is { } absence)
         {
-            return localizer["Tray_Tooltip_NeedsCredential"];
+            return localizer[absence.TooltipKey];
         }
 
+        // Absence already answers for a missing snapshot; this only tells the
+        // compiler so.
         if (snapshot is null)
         {
-            return localizer[alert == IndicatorAlert.Unreachable
-                ? "Tray_Tooltip_Unreachable"
-                : "Tray_Tooltip_NoData"];
+            return localizer["Tray_Tooltip_NoData"];
         }
 
         string session = Describe(localizer, snapshot.Session);
@@ -306,6 +373,7 @@ public sealed class TrayIconIndicator : IStatusIndicator
         }
 
         _disposed = true;
+        _notice.Dispose();
         _trayIcon.IsVisible = false;
         _trayIcon.Dispose();
         _currentBitmap?.Dispose();

@@ -77,6 +77,16 @@ Record the date, OS version and app version next to each run.
 - [ ] **Refresh** updates the numbers.
 - [ ] Pressing Refresh twice quickly explains the cooldown rather than doing
       nothing silently.
+- [ ] **Session rows** (Windows and macOS, session watch on, a prompt sent from
+      a terminal, then another app in front):
+      *Windows: passed 2026-09-17. macOS: not yet recorded.*
+  - [ ] Hovering a running session's row shows a fill, a hand cursor and the
+        "Show its terminal" tooltip.
+  - [ ] Clicking it brings that terminal forward and the popup closes. The log
+        says `Session row clicked for … focused its window`.
+  - [ ] Clicking the row's switch only toggles notifications; it never focuses.
+  - [ ] A finished session's row looks unchanged (not greyed) and does nothing.
+  - [ ] **Linux:** no row reacts to hover or clicks.
 
 ## 5. The Config window
 
@@ -117,6 +127,21 @@ Record the date, OS version and app version next to each run.
       running. Still only one icon.
 - [ ] Two different users logged into the same machine each get their own
       instance.
+
+## 6c. Quitting
+
+With session watch on, so there are hooks to take out:
+
+- [ ] **Quit** from the menu: the process exits and `~/.claude/settings.json` holds
+      none of our hooks (marker `--claude-status-hook`).
+- [ ] Open Config (or Report, or Info) and close it, then quit from the menu:
+      the same.
+- [ ] The same, but quit from outside the app instead - macOS:
+      `osascript -e 'tell application id "com.zeroworks.claudestatus" to quit'`
+      returns without error and the process is gone within a few seconds.
+- [ ] Log out with the app running and a hidden Config window: the logout is
+      **not** interrupted by ClaudeStatus (macOS and Windows).
+- [ ] Relaunch after any of the above: exactly one menu bar item or tray icon.
 
 ## 7. Failure behaviour
 
@@ -176,12 +201,59 @@ Record the date, OS version and app version next to each run.
 ### Windows
 - Test on both Windows 10 and 11 if you can; the notification area differs.
 - Check the icon in the overflow ("hidden icons") area too, not just when pinned.
+- **Session notification click** (with session watch on, a prompt sent, then
+  switch to another app and wait for the "waiting for you" toast):
+  - [ ] Windows Terminal: clicking the toast brings that terminal window forward.
+    With two WT windows, the one the prompt was typed into comes forward.
+  - [ ] VS Code integrated terminal: the right VS Code window comes forward.
+  - [ ] Classic console (`conhost`): the console window comes forward.
+  - [ ] The terminal minimised: it is restored, not just flashed.
+  - [ ] The terminal closed before clicking: nothing is focused, nothing crashes.
+  - [ ] A session that started before this build: the details window opens instead.
+  - [ ] Installed (Start has "ClaudeStatus"): the toast shows and **no** extra
+    icon appears in the tray or its overflow, ever.
+  - [ ] Not installed (unzipped copy, or `dotnet run` on a machine without the
+    install): the toast still shows; an icon appears only while it is up and is
+    gone once it times out or is clicked.
+  - [ ] Clicking the entry in the Action Centre after the toast has gone: note
+    what happens (the shell may not report it at all).
 
 ### macOS
 - Test on both Intel and Apple Silicon if available.
 - First run prompts for Keychain access when reading Claude Code's login. That
   prompt is correct and must not be suppressed. Check that declining it produces
   "no credential", not a crash.
+- **Claude Code sessions** (run the built `.app`, not `dotnet run`; session watch on):
+  - [ ] Launch: `~/.claude/settings.json` gains five hooks whose `command` is the
+    executable inside the bundle. Quit from the menu: they are gone.
+  - [ ] A prompt in Claude Code: the menu bar row gains `●1 ` in front within a
+    second or two, and the details popup lists the session as working.
+  - [ ] A second session working at once: `●2 `. Both turns end: the prefix goes
+    and the row reads exactly as before.
+  - [ ] The prefix is legible on a light menu bar and on a dark one (switch
+    appearance, or use a light and a dark wallpaper).
+  - [ ] Signed out of Claude Code while a turn runs: `! No credential` in red,
+    with no count beside it.
+  - [ ] First launch of a signed build: macOS asks whether ClaudeStatus may send
+    notifications. The log reads `Launch already finished: False` for the
+    notification delegate.
+  - [ ] Allowed: when a turn ends a notification appears, and **no** card. The log
+    says `MacNotifier accepted it`.
+  - [ ] Two turns of the same session end: Notification Center holds one
+    notification for it, not two.
+  - [ ] Clicking the notification brings the session's terminal app forward, in
+    each of: Terminal, iTerm2, VS Code's integrated terminal, Ghostty. The log
+    says `focused its window (Process)`.
+  - [ ] The terminal app in front when a turn ends: no notification, and the log
+    says `not notified, its terminal has focus`.
+  - [ ] The terminal quit before clicking: nothing is focused, nothing crashes.
+  - [ ] A session over ssh, or in tmux started outside a terminal app: the click
+    opens the details popup.
+  - [ ] With the popup open (the app in front), a turn ending still shows a banner.
+  - [ ] Denied, or turned off later in System Settings → Notifications: the
+    "waiting for you" card appears under the menu bar instead, and the log says
+    `MacNotifier refused it`.
+  - [ ] Under `dotnet run` (no bundle): no crash, the card appears.
 
 ### Linux
 - Test at least KDE and GNOME.

@@ -80,6 +80,47 @@
             <ContentControl Content="{Binding TooltipWeekFable}" ContentTemplate="{StaticResource TooltipRow}" />
         </StackPanel>
 
+        <!--
+            The Claude Code sessions. Read-only on purpose: this card never takes
+            focus (it is shown while the pointer is elsewhere, and closes when it
+            leaves), so a control you could click would not be clickable. Silencing
+            a session lives in Config, where there is a window that can be used.
+        -->
+        <StackPanel IsVisible="{Binding ShowSessions}" Spacing="4">
+            <Border Classes="rule" />
+            <TextBlock Classes="caption" Text="{Binding L[Sessions_Heading]}" />
+
+            <TextBlock Classes="caption"
+                       IsVisible="{Binding !HasSessions}"
+                       Text="{Binding L[Sessions_None]}" />
+
+            <ItemsControl ItemsSource="{Binding Sessions}" IsVisible="{Binding HasSessions}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:SessionRowViewModel">
+                        <Grid ColumnSpacing="10" Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" MinWidth="52" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Classes="metric"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{Binding Name}" />
+                            <TextBlock Grid.Column="1"
+                                       Classes="caption"
+                                       Classes.unknown="{Binding !IsRunning}"
+                                       Text="{Binding StateText}" />
+                            <TextBlock Grid.Column="2"
+                                       Classes="caption"
+                                       TextAlignment="Right"
+                                       Text="{Binding DurationText}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
         <!-- The velocity warning. The card opens by itself to show this. -->
         <Border Classes="warning" MaxWidth="340" IsVisible="{Binding HasNotice}">
             <TextBlock Classes="caption" Text="{Binding NoticeText}" />

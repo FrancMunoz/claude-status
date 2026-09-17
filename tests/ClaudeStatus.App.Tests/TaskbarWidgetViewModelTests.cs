@@ -1,6 +1,7 @@
 using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Usage;
 
 namespace ClaudeStatus.App.Tests;
@@ -292,5 +293,43 @@ public class TaskbarWidgetViewModelTests
 
         vm.HasReading.Should().BeFalse();
         vm.AlertGlyph.Should().Be("—");
+    }
+
+    [Fact]
+    public void The_working_badge_counts_busy_sessions_from_one()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+        vm.IsWorking.Should().BeFalse();
+        vm.HasWorkingCount.Should().BeFalse();
+
+        vm.UpdateSessions([new ClaudeSession("a", "C:\\a", Now, Now, IsWorking: true)], Now);
+        vm.IsWorking.Should().BeTrue();
+        vm.HasWorkingCount.Should().BeTrue();
+        vm.WorkingCountText.Should().Be("1");
+
+        vm.UpdateSessions(
+            [
+                new ClaudeSession("a", "C:\\a", Now, Now, IsWorking: true),
+                new ClaudeSession("b", "C:\\b", Now, Now, IsWorking: true),
+                new ClaudeSession("c", "C:\\c", Now, Now),
+            ],
+            Now);
+        vm.WorkingCount.Should().Be(2);
+        vm.HasWorkingCount.Should().BeTrue();
+        vm.WorkingCountText.Should().Be("2");
+
+        vm.UpdateSessions([], Now);
+        vm.IsWorking.Should().BeFalse("the watch being switched off sends an empty list");
+    }
+
+    [Fact]
+    public void A_session_killed_mid_turn_loses_its_badge_on_a_later_poll_without_any_event()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+        vm.UpdateSessions([new ClaudeSession("a", "C:\\a", Now, Now, IsWorking: true)], Now);
+
+        vm.Update(Snapshot(10, 10, 10), IndicatorAlert.None, Now + SessionActivity.StuckAfter);
+
+        vm.IsWorking.Should().BeFalse();
     }
 }

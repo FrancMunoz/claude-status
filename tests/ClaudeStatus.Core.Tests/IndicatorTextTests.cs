@@ -67,4 +67,51 @@ public class IndicatorTextTests
             .ComposeRow(snapshot, IndicatorAlert.NeedsCredential, ("5h", "7d", "F"), false, now: Now)
             .Should().Be("5h ! · 7d !");
     }
+
+    private static UsageSnapshot Reading() => new(
+        UsageWindow.Create(56, Now + TimeSpan.FromHours(2)),
+        UsageWindow.Create(18, Now + TimeSpan.FromDays(2)),
+        null,
+        new Dictionary<string, UsageWindow>(),
+        Now,
+        false);
+
+    [Fact]
+    public void A_missing_credential_replaces_the_readings_even_when_a_cached_one_exists()
+    {
+        IndicatorText.Absence(Reading(), IndicatorAlert.NeedsCredential)
+            .Should().Be(new IndicatorAbsence("!", "Widget_NeedsCredential", "Tray_Tooltip_NeedsCredential"));
+        IndicatorText.Absence(null, IndicatorAlert.NeedsCredential)
+            .Should().Be(new IndicatorAbsence("!", "Widget_NeedsCredential", "Tray_Tooltip_NeedsCredential"));
+    }
+
+    [Fact]
+    public void With_no_reading_at_all_the_reason_is_offline_or_simply_no_data()
+    {
+        IndicatorText.Absence(null, IndicatorAlert.Unreachable)
+            .Should().Be(new IndicatorAbsence("⊘", "Widget_Offline", "Tray_Tooltip_Unreachable"));
+        IndicatorText.Absence(null, IndicatorAlert.None)
+            .Should().Be(new IndicatorAbsence("—", "Widget_NoData", "Tray_Tooltip_NoData"));
+    }
+
+    [Fact]
+    public void An_unreachable_endpoint_does_not_hide_a_cached_reading()
+    {
+        IndicatorText.Absence(Reading(), IndicatorAlert.Unreachable).Should().BeNull();
+        IndicatorText.Absence(Reading(), IndicatorAlert.None).Should().BeNull();
+    }
+
+    [Fact]
+    public void Nothing_leads_the_row_while_no_session_is_working()
+    {
+        IndicatorText.WorkingPrefix(0).Should().BeEmpty("the row must read exactly as it did before sessions");
+        IndicatorText.WorkingPrefix(-1).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(1, "●1 ")]
+    [InlineData(2, "●2 ")]
+    [InlineData(12, "●12 ")]
+    public void A_working_count_is_the_glyph_the_number_and_a_space(int working, string expected)
+        => IndicatorText.WorkingPrefix(working).Should().Be(expected, "the count is shown from one, like the badge");
 }

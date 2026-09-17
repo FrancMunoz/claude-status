@@ -11,6 +11,10 @@ window.
 The number lives in the tray icon itself, so the answer to "do I have enough
 session left to start this?" is already on screen. Click it for the detail.
 
+It also watches your **Claude Code sessions** — which ones are working, which
+are waiting for you, and a notification when one needs you — and warns you when
+usage is climbing fast enough to hit a limit before it resets.
+
 > **Looking for the detail?** [`docs/manual.md`](docs/manual.md) is the full
 > handbook — how it works, every setting, building, packaging, the rules the code
 > follows, and troubleshooting.
@@ -73,6 +77,9 @@ That split is the reason for the native status item: Avalonia's tray icon hands
 its menu *every* click, so a left click could never mean "show me the details".
 The same layer is why the row can be wider than it is tall.
 
+When there are no numbers to show, it says why instead, as the taskbar widget
+does: `! No credential`, `⊘ Offline` or `— No data`.
+
 **Show Fable** in Config adds the weekly Fable limit as a third pair. There is no
 Dock icon — the app is a menu bar utility and quits from its own menu.
 
@@ -109,7 +116,7 @@ The widget is themed, so the card follows whichever theme you pick:
 </p>
 
 Hovering the widget opens a card with all three limits and their reset times,
-whatever the widget itself is showing.
+whatever the widget itself is showing, plus your Claude Code sessions.
 
 - **Left click** — the details popup. Click again to dismiss it.
 - **Right click** — Details, Full report…, Show ▸ (switch metric), Refresh,
@@ -118,7 +125,58 @@ whatever the widget itself is showing.
 | | |
 | --- | --- |
 | <img src="docs/screenshots/report/report-en.png" alt="The full report window" width="330"> | <img src="docs/screenshots/window-config.png" alt="The configuration window" width="300"> |
-| **Full report** — every window the endpoint returned, its own severity labels, exact reset timestamps, and the spend and credit blocks. | **Config** — credential, language, theme, threshold, poll interval, autostart. |
+| **Full report** — every window the endpoint returned, its own severity labels, exact reset timestamps, and the spend and credit blocks. | **Config** — credential, language, theme, threshold, poll interval, autostart, session watch. |
+
+### Claude Code sessions
+
+ClaudeStatus also keeps an eye on your Claude Code sessions, so you can start a
+long task, switch to something else, and hear about it when it is your turn
+again.
+
+| | |
+| --- | --- |
+| ![Taskbar widget with a badge showing 2 working sessions](docs/screenshots/taskbar-widget-working.png) | **Working badge** *(Windows widget)* — a breathing badge on the mark counts the sessions with a turn in progress. It is gone when none are. |
+| <img src="docs/screenshots/macos-menu-bar-working.png" alt="The macOS menu bar item reading ●2 5h (2:47) 19% · 7d 29%" width="420"> | **Working count** *(macOS menu bar)* — the same count leads the row as text while sessions are working, and is gone when none are. |
+| <img src="docs/screenshots/macos-notification.png" alt="A macOS notification from ClaudeStatus: Sessions — claude-status is waiting for you." width="340"> | **Notification** *(macOS)* — when a turn ends; click it to bring that session's terminal to the front. |
+| <img src="docs/screenshots/window-details-sessions.png" alt="The details popup listing three sessions with their state, age and a notify switch each" width="300"> | **Session list** — in the details popup and the hover card: each session's folder, whether it is working or waiting for you, and for how long. One switch watches sessions at all; one per row silences a session you are sitting in front of anyway. **Click a running session in the popup to bring its terminal to the front** (Windows and macOS). |
+
+- **Notifications** — when a session finishes a turn or closes, you get told.
+  On Windows that is a toast (or a tray balloon on a machine where the app is not
+  installed), and **clicking it brings that session's terminal window to the
+  front**. Nothing is shown while that terminal already has focus.
+  On macOS it is a notification in Notification Center; the first one asks for
+  permission, and **clicking it brings that session's terminal app to the
+  front** (Terminal, iTerm2, VS Code, …). Nothing is shown while that app is the
+  one in front. If notifications are turned off for ClaudeStatus — or it runs
+  outside its `.app` — the message appears as a card under the menu bar instead,
+  as it does on Linux.
+- **How it knows** — while it is running, ClaudeStatus adds its own hooks to
+  Claude Code's `settings.json` and removes them when it quits. Hooks you wrote
+  yourself are never touched. Turn it all off in **Config → Sessions**.
+- **Interrupting with Esc** — Claude Code tells hooks nothing when you interrupt
+  a turn, so an interrupted session shows as working until Claude Code reports
+  its prompt idle, about a minute later.
+
+Focusing moves a window, not a tab: two sessions in tabs of the same terminal
+bring up the same window. On macOS it moves the application, not a window — with
+two Terminal windows open, the one macOS last had in front comes forward, because
+picking a window of another app would need the Accessibility permission.
+
+### The pace warning
+
+<img src="docs/screenshots/usage-card-notice.png" alt="The usage card with a warning that the session limit runs out in about 48 minutes, before it resets" width="340" align="right">
+
+If usage is climbing fast enough to run a window out **before it resets**, a card
+pops up by the tray with the estimate — on every platform, whichever indicator
+you use — and the details popup keeps the same sentence as a banner while the
+pace holds. At most once every fifteen minutes, and it never takes focus.
+
+It is deliberately hard to trigger: it needs a real, sustained climb, not one
+large request, and the weekly window also has to be spending ahead of the
+calendar. The rules are in the [manual](docs/manual.md#the-pace-warning). Switch
+it off in **Config → Behaviour**.
+
+<br clear="right">
 
 ### Languages
 

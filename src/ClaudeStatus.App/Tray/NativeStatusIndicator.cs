@@ -1,7 +1,9 @@
 using Avalonia.Threading;
 using ClaudeStatus.App.Branding;
+using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Usage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -62,6 +64,28 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     private TimeSpan _staleAfter = StalePolicy.Floor;
     private bool _disposed;
 
+    /// <summary>The sessions last pushed, counted again at every render.</summary>
+    private IReadOnlyList<ClaudeSession> _sessions = [];
+
+    /// <summary>
+    /// The last reading rendered, so a session event can repaint the row without
+    /// waiting for the next poll.
+    /// </summary>
+    private (UsageSnapshot? Snapshot, IndicatorMode Mode, ThresholdState State, IndicatorAlert Alert)? _lastRender;
+
+    /// <summary>
+    /// The card the menu bar borrows when it has a sentence to say.
+    /// </summary>
+    /// <remarks>
+    /// A status item is a row of numbers; a velocity warning is a sentence, and
+    /// there is nowhere in the menu bar to put one. Same card the taskbar widget
+    /// hovers, shown under the menu bar - see <see cref="UsageNoticeCard"/>.
+    /// </remarks>
+    private readonly UsageNoticeCard _notice;
+
+    /// <summary>The card's contents, kept current by <see cref="Render"/>.</summary>
+    private readonly TaskbarWidgetViewModel _cardViewModel;
+
     /// <param name="item">The platform's status item.</param>
     /// <param name="localizer">Supplies the row labels and the menu.</param>
     /// <param name="log">Reports what reaches the menu bar, and in what colour.</param>
@@ -76,6 +100,11 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         _l = localizer ?? throw new ArgumentNullException(nameof(localizer));
         _log = log ?? NullLogger<NativeStatusIndicator>.Instance;
         _clock = clock ?? TimeProvider.System;
+
+        // Anchored at the top, because this indicator only exists where the status
+        // bar is: the placement helper's inset inference would pick the Dock.
+        _cardViewModel = new TaskbarWidgetViewModel(_l);
+        _notice = new UsageNoticeCard(_cardViewModel, anchorAtTop: true);
 
         _item.LeftClicked += OnLeftClicked;
         _item.MenuItemClicked += OnMenuItemClicked;
@@ -111,6 +140,14 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         _showWeekFable = options.ShowWeekFable;
 
         _staleAfter = StalePolicy.ThresholdFor(options.PollInterval);
+
+        // The card is the detail, not the glance, so it lists all three limits
+        // whatever the menu bar row is showing.
+        _cardViewModel.Configure(
+            options.ThresholdPercent,
+            showFable: true,
+            followSystem: false,
+            staleAfter: _staleAfter);
     }
 
     /// <inheritdoc />
@@ -127,6 +164,8 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             Dispatcher.UIThread.Post(() => Render(snapshot, mode, state, alert));
             return;
         }
+
+        _lastRender = (snapshot, mode, state, alert);
 
         string text = Compose(snapshot, mode, alert);
         StatusTint tint = TintFor(snapshot, state, alert);
@@ -148,10 +187,52 @@ public sealed class NativeStatusIndicator : IStatusIndicator
 
         _item.SetTitle(text, tint);
 
+        // Fed on every render so a warning that appears later opens over the
+        // current numbers, not the ones from when it was last shown.
+        _cardViewModel.Update(snapshot, alert, _clock.GetUtcNow());
+
         if (_currentMode != mode)
         {
             _currentMode = mode;
             RebuildMenu();
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// On the borrowed card under the menu bar - see <see cref="UsageNoticeCard"/>.
+    /// Empty text takes it down, which is how the controller says the pace has come
+    /// back to normal.
+    /// </remarks>
+    public void ShowNotice(string text, TimeSpan duration)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _notice.Show(text, duration);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Repaints the row straight away, so the working count changes when a turn
+    /// starts or ends rather than at the next poll, a minute or more later.
+    /// </remarks>
+    public void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => ShowSessions(sessions));
+            return;
+        }
+
+        _sessions = sessions;
+        _cardViewModel.UpdateSessions(sessions, _clock.GetUtcNow());
+        _cardViewModel.ShowSessions = true;
+
+        if (_lastRender is { } last)
+        {
+            Render(last.Snapshot, last.Mode, last.State, last.Alert);
         }
     }
 
@@ -164,9 +245,24 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     /// </remarks>
     private string Compose(UsageSnapshot? snapshot, IndicatorMode mode, IndicatorAlert alert)
     {
+        // No readings: say why in one symbol and one word, as the taskbar widget
+        // does, rather than a label with a "!" beside each window - "5h ! · 7d !"
+        // names two problems where there is one. Every mode, because the reason is
+        // the same whichever window the user picked.
+        if (IndicatorText.Absence(snapshot, alert) is { } absence)
+        {
+            return $"{absence.Glyph} {_l[absence.MessageKey]}";
+        }
+
+        // Counted here, on every render, not only when sessions are pushed: a
+        // session killed mid-turn sends nothing more, and it is the passing of
+        // StuckAfter at some later poll that takes it off the count.
+        string working = IndicatorText.WorkingPrefix(
+            SessionActivity.CountWorking(_sessions, _clock.GetUtcNow()));
+
         if (mode == IndicatorMode.Row)
         {
-            return IndicatorText.ComposeRow(
+            return working + IndicatorText.ComposeRow(
                 snapshot,
                 alert,
                 (_l["Widget_Session"], _l["Widget_Week"], _l["Tray_Row_Fable"]),
@@ -188,7 +284,7 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             ? IndicatorText.FormatCountdown(single.Window?.TimeUntilReset(_clock.GetUtcNow()))
             : string.Empty;
 
-        return $"{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
+        return $"{working}{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
             + IndicatorText.WindowValue(single.Window, alert, withSign: true);
     }
 
@@ -290,6 +386,7 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         }
 
         _disposed = true;
+        _notice.Dispose();
         _l.PropertyChanged -= OnLanguageChanged;
         _item.LeftClicked -= OnLeftClicked;
         _item.MenuItemClicked -= OnMenuItemClicked;

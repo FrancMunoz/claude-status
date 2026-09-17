@@ -1,3 +1,4 @@
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Theming;
 using ClaudeStatus.Usage;
 
@@ -128,6 +129,19 @@ public interface IStatusIndicator : IDisposable
     /// in the details popup the next time they open it.
     /// </remarks>
     void ShowNotice(string text, TimeSpan duration)
+    {
+    }
+
+    /// <summary>
+    /// Hands over the Claude Code sessions to list.
+    /// </summary>
+    /// <param name="sessions">Running first, then recently finished.</param>
+    /// <remarks>
+    /// A default no-op, like <see cref="ShowNotice"/>: an indicator with no card
+    /// of its own has nowhere to put a list. The ones that do share a view model,
+    /// so in practice all three show it.
+    /// </remarks>
+    void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
     {
     }
 

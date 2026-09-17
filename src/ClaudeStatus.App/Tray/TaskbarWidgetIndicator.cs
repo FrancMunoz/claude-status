@@ -6,6 +6,7 @@ using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.App.Views;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Usage;
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +38,10 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
     private readonly ILogger _log;
     private readonly TaskbarWidgetViewModel _viewModel;
     private readonly TaskbarWidgetWindow _window;
-    private readonly TaskbarHoverWindow _hover;
+
+    /// <summary>The widget's content, measured to size the taskbar slot.</summary>
+    private readonly Border _card;
+    private readonly UsageCardWindow _hover;
     private readonly DispatcherTimer _timer;
     private readonly DispatcherTimer _hoverTimer;
 
@@ -71,6 +75,9 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
     private bool _warnedNoTaskbar;
     private bool _disposed;
 
+    /// <summary>Whether <see cref="Show"/> has returned, so the window is ready to be attached.</summary>
+    private bool _shown;
+
     public TaskbarWidgetIndicator(
         ITaskbarHost host,
         ILocalizer localizer,
@@ -86,6 +93,23 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
 
         _viewModel = new TaskbarWidgetViewModel(_l);
         _window = new TaskbarWidgetWindow { DataContext = _viewModel };
+        _card = _window.FindControl<Border>("Card")
+            ?? throw new InvalidOperationException("TaskbarWidgetWindow has no Card.");
+
+        // Follow the content at once rather than on the next one-second tick. The
+        // widget is right-anchored against the tray, so any change of width - the
+        // first reading replacing "no data", Fable switched on, another language -
+        // moves its left edge, and for up to a second it sat in the wrong place.
+        // Only once Show has returned: the first measure happens inside Show, before
+        // the native window is finished, and attaching then was undone by Show itself
+        // and redone a moment later.
+        _card.SizeChanged += (_, _) =>
+        {
+            if (_shown)
+            {
+                Reposition();
+            }
+        };
         TaskbarInk.Apply(_window.Resources, _taskbarTheme.Current);
 
         // The hover card is a window of our own, placed from the widget's real
@@ -93,7 +117,7 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         // window, and as a child of the taskbar that window's coordinates are not
         // something Avalonia models well: the card landed at the pointer, touching
         // the taskbar, and placement settings changed nothing.
-        _hover = new TaskbarHoverWindow { DataContext = _viewModel };
+        _hover = new UsageCardWindow { DataContext = _viewModel };
         _hover.SizeChanged += (_, _) =>
         {
             _hoverSized = true;
@@ -154,6 +178,7 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         // takes effect without the window ever being seen at it.
         _window.Position = OffScreen;
         _window.Show();
+        _shown = true;
         Reposition();
         _timer.Start();
     }
@@ -173,8 +198,9 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         _lastSnapshot = snapshot;
         _lastAlert = alert;
 
-        // Re-read the taskbar's appearance on every render, as the icon does, so a
-        // light/dark switch takes effect on the next poll. Cheap: three brushes.
+        // Re-read the taskbar's appearance on every render, as the icon does. A
+        // light/dark switch triggers a render of its own (ITrayThemeProvider.Changed,
+        // wired in the controller). Cheap: three brushes.
         TaskbarInk.Apply(_window.Resources, _taskbarTheme.Current);
         _viewModel.Update(snapshot, alert, _clock.GetUtcNow());
 
@@ -243,7 +269,19 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
             _window.Height = logicalHeight;
         }
 
-        int widthPx = (int)Math.Ceiling(_window.Bounds.Width * scale);
+        // The card's own measured width, not the window's. Straight after Show the
+        // window has not yet been shrunk to its content - SizeToContent lands a
+        // layout pass later - and still reports its default size (1632 px wide was
+        // observed). Placed from that, the widget spanned most of the taskbar for
+        // a second and then jumped into its slot. The card's desired size is right
+        // from the first measure, and is zero until there has been one.
+        double contentWidth = _card.DesiredSize.Width;
+        if (contentWidth <= 0d)
+        {
+            return;
+        }
+
+        int widthPx = (int)Math.Ceiling(contentWidth * scale);
         TaskbarSlot? slot = TaskbarLayout.Compute(metrics, widthPx);
         if (slot is null)
         {
@@ -300,6 +338,29 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         else if (!_window.IsPointerOver)
         {
             HideHover();
+        }
+    }
+
+    /// <inheritdoc />
+    public void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => ShowSessions(sessions));
+            return;
+        }
+
+        _viewModel.UpdateSessions(sessions, _clock.GetUtcNow());
+        _viewModel.ShowSessions = true;
+
+        // The card resizes as the list grows and shrinks, and it is placed from
+        // its own measured size, so a visible card has to be put back where it
+        // belongs afterwards.
+        if (_hover.IsVisible)
+        {
+            PlaceHover();
         }
     }
 

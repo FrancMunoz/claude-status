@@ -68,18 +68,40 @@ run it.
 A `ClaudeStatus-win-Portable.zip` is also published. Unzip and run — but it
 **does not update itself**, and you will have to repeat this for every version.
 
+### macOS 13+ (Apple Silicon)
+
+Download `ClaudeStatus-osx-Setup.pkg` from the
+[latest release](https://github.com/FrancMunoz/claude-status/releases/latest) and
+open it.
+
+- Installs to `/Applications`. No administrator rights.
+- **Signed with a Developer ID certificate and notarised by Apple**, so it opens
+  normally: no Gatekeeper warning, no right-click → Open. See [§7](#code-signing).
+- Lives in the menu bar, with no Dock icon. The first launch asks for Keychain
+  access to read Claude Code's login, and the first finished Claude Code turn
+  asks whether ClaudeStatus may send notifications.
+- Updates itself. See [§3](#updates).
+
+A `ClaudeStatus-osx-Portable.zip` is also published: the `.app` in a zip, which
+**does not update itself**. Intel Macs are not packaged; the build is
+`osx-arm64` only.
+
 ### Uninstalling
 
-Windows Settings → Apps → ClaudeStatus → Uninstall. The config directory is left
-behind on purpose; delete it by hand if you want it gone (see
-[§4](#4-where-your-data-lives)).
+- **Windows:** Settings → Apps → ClaudeStatus → Uninstall.
+- **macOS:** quit from the menu bar item's menu, then move
+  `/Applications/ClaudeStatus.app` to the Bin. If autostart was on, also delete
+  `~/Library/LaunchAgents/com.zeroworks.claudestatus.plist`.
 
-### macOS and Linux
+Either way the config directory is left behind on purpose; delete it by hand if
+you want it gone (see [§4](#4-where-your-data-lives)).
 
-Not packaged. The code for both exists behind interfaces and compiles, but
-**neither has ever been executed**, so there is nothing honest to hand you yet.
-You can still build and run from source ([§5](#5-building-from-source)) if you
-are willing to be the first.
+### Linux
+
+Not packaged. The code exists behind interfaces, compiles and is tested in CI,
+but **has never been executed** on a Linux desktop, so there is nothing honest to
+hand you yet. You can still build and run from source
+([§5](#5-building-from-source)) if you are willing to be the first.
 
 ---
 
@@ -119,6 +141,28 @@ is nothing there to fix.
 - Follows your taskbar's light/dark appearance. It is deliberately **not**
   themed — the taskbar is not ours to colour.
 
+### The macOS menu bar
+
+- Text beside the mark, drawn by the OS: `5h (2:11) 56% · 7d 18%` in the row mode,
+  one labelled reading in the others. Red past the threshold, faded when stale.
+- With no reading it says why in one symbol and one word: `! No credential`
+  (red), `⊘ Offline`, `— No data`.
+- While Claude Code sessions have a turn in progress the row is led by a dot and
+  their count, from one: `●2 5h (2:11) 56% · 7d 18%`. The count follows session
+  events at once and is recounted at every poll, so a session killed mid-turn
+  drops off once it has been silent for two hours. It is never shown beside the
+  no-reading words. No animation: the menu bar title is plain text.
+- When a session finishes a turn or closes, macOS shows a notification (after
+  asking permission once). The same session's next notification replaces the
+  last one instead of stacking. Clicking it brings the session's terminal
+  application to the front - the app, not a particular window, since choosing a
+  window of another app needs the Accessibility permission. No notification is
+  posted while that application is the frontmost one. A session whose terminal
+  is unknown or has quit opens the details popup instead. With
+  notifications turned off in **System Settings → Notifications**, or when run
+  outside the `.app` bundle (`dotnet run`), the message falls back to the card
+  under the menu bar.
+
 ### Clicks
 
 | | |
@@ -135,11 +179,46 @@ under each. It closes when it loses focus. **Refresh** forces a poll, subject to
 a 30-second cooldown that exists so leaning on the button cannot get you rate
 limited — if you hit it, the window says so rather than appearing to do nothing.
 
+With session watch on, Details also lists your Claude Code sessions: folder,
+working or waiting, and for how long, with a switch per row that silences that
+session's notifications. **Clicking a running session brings its terminal
+forward** — the same thing clicking its notification does: the exact window on
+Windows, the terminal application on macOS. The popup closes as the terminal
+takes focus. A row is clickable only while the session runs and its terminal was
+recorded, so finished sessions, sessions that started before the app was
+watching, and every session on Linux (which records no terminal) look the same
+but do nothing when clicked.
+
 **Full report** (the *More…* button, or the context menu) is for looking things
 up: every window the endpoint returned, its own severity labels, exact reset
 timestamps, and the pay-as-you-go and prepaid-credit blocks — including when they
 are switched off, because "off" is itself an answer. It is resizable, has a
 taskbar entry, and survives being clicked away from.
+
+### The pace warning
+
+If usage is climbing fast enough to exhaust a window before it resets, a small
+card appears near the tray for a few seconds and the details popup carries the
+same sentence as a banner for as long as the pace holds. One flash per fifteen
+minutes at most; it never takes focus. Turn it off in *Settings → Behaviour →
+velocity alerts*.
+
+Five things have to agree before it speaks, because a projection on its own says
+yes far too often:
+
+- at least four readings covering at least four minutes;
+- the readings have to look like a climb, not a flat stretch with one request
+  landing at the end of it;
+- at least 5 %/h;
+- the wall has to be within eight times the span actually measured — half an hour
+  of samples can support a guess about the next few hours, not about next
+  Thursday;
+- for the weekly window, more of the allowance has to be gone than of the week.
+
+The rate is measured over half an hour for the session and three hours for the
+week, and both come from a least-squares fit over every reading rather than the
+first and the last. A window already at 100 % says nothing: you are past the
+cliff, and the indicator shows that on its own.
 
 ### Settings
 
@@ -548,9 +627,10 @@ attaching one to a bug report is safe.
 Stated plainly, because a manual that only lists what works is not much of a
 manual.
 
-- **macOS and Linux have never been executed.** Not the secret stores, not
-  autostart, not the tray menu. The code compiles and is tested where it can be,
-  and that is all anyone can currently claim for it.
+- **Linux has never been executed.** Not the secret store, not autostart, not
+  the tray menu. The code compiles and is tested where it can be, and that is all
+  anyone can currently claim for it. macOS is packaged and runs; its manual QA
+  pass is still incomplete (see the macOS notes in the checklist).
 - **No workflow has ever run.** The release pipeline is written and verified as
   far as is possible without a git remote — `semantic-release --dry-run` loads
   every plugin and stops exactly at `repositoryUrl`.
@@ -562,7 +642,6 @@ manual.
 - **Memory.** ~101 MB working set for the trimmed release build, down from
   ~135 MB untrimmed. The original 60 MB target is unreachable by construction — a
   bare Avalonia app with no UI at all already uses 86 MB.
-- **Nothing is code-signed.** See [§7](#code-signing).
 
 Roadmap and status: [`../PLAN.md`](../PLAN.md). Engineering diary, including why
 particular decisions went the way they did:

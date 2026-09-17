@@ -141,6 +141,73 @@ public static class IndicatorText
     }
 
     /// <summary>
+    /// The glyph that leads a text indicator while Claude Code sessions are working.
+    /// </summary>
+    public const string WorkingGlyph = "●";
+
+    /// <summary>
+    /// What leads a text indicator while sessions are working: <c>●2 </c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The menu bar's answer to the taskbar widget's badge. A text item has no
+    /// corner to put a badge in, so the count goes in front of the row instead, and
+    /// is shown from one for the same reason the badge is: "one session is busy" is
+    /// exactly the fact that tells the user not to walk away yet.
+    /// </para>
+    /// <para>
+    /// Empty when nothing is working, trailing space included, so a caller can
+    /// prepend it unconditionally. The count is whatever
+    /// <see cref="ClaudeStatus.Sessions.SessionActivity.CountWorking"/> says; this
+    /// only formats it. Invariant digits, like every other token here.
+    /// </para>
+    /// </remarks>
+    public static string WorkingPrefix(int working)
+        => working > 0
+            ? string.Create(CultureInfo.InvariantCulture, $"{WorkingGlyph}{working} ")
+            : string.Empty;
+
+    /// <summary>
+    /// What an indicator with room for words shows instead of the readings, or
+    /// null when there are readings to show.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The taskbar widget's rule, shared so the macOS menu bar says the same thing.
+    /// A row of labels with a symbol beside each - <c>5h ! · 7d !</c> - repeats one
+    /// fact per window and names none of them: there is no session problem and no
+    /// weekly problem, there is one missing credential. One symbol and one word say
+    /// that.
+    /// </para>
+    /// <para>
+    /// Same precedence as the tray icon. A missing credential is actionable and wins
+    /// even over a cached reading, which can never be refreshed until the user acts.
+    /// An unreachable endpoint only matters when there is no reading at all: a
+    /// cached one is shown, faded, as the best information there is.
+    /// </para>
+    /// <para>
+    /// The message is a resource key, not a sentence (<c>CLAUDE.md</c> §5b); the
+    /// view model or indicator turns it into words.
+    /// </para>
+    /// </remarks>
+    public static IndicatorAbsence? Absence(UsageSnapshot? snapshot, IndicatorAlert alert)
+    {
+        if (alert == IndicatorAlert.NeedsCredential)
+        {
+            return new IndicatorAbsence("!", "Widget_NeedsCredential", "Tray_Tooltip_NeedsCredential");
+        }
+
+        if (snapshot is null)
+        {
+            return alert == IndicatorAlert.Unreachable
+                ? new IndicatorAbsence("⊘", "Widget_Offline", "Tray_Tooltip_Unreachable")
+                : new IndicatorAbsence("—", "Widget_NoData", "Tray_Tooltip_NoData");
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Composes the whole row: every headline window as a labelled percentage.
     /// </summary>
     /// <remarks>
@@ -185,3 +252,12 @@ public static class IndicatorText
         return string.Join(separator, parts);
     }
 }
+
+/// <summary>What stands in for the readings when there are none to show.</summary>
+/// <param name="Glyph">The symbol: <c>!</c>, <c>⊘</c> or <c>—</c>.</param>
+/// <param name="MessageKey">The resource key of the word beside it.</param>
+/// <param name="TooltipKey">
+/// The resource key of the sentence for an indicator that has a symbol and a
+/// tooltip but no room for a word: the tray icon.
+/// </param>
+public sealed record IndicatorAbsence(string Glyph, string MessageKey, string TooltipKey);
