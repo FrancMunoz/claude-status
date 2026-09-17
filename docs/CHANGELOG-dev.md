@@ -2523,3 +2523,30 @@ three platforms. Both halves of that are fixed.
   `screencapture` on this macOS does not capture notification banners, so no
   script can take it. The generated screenshots were not regenerated on the Mac -
   fonts substitute and every image changes without any content change.
+
+## 2026-09-17 — Quitting from outside the app no longer leaves an empty process
+
+- **The hang.** A quit that does not come from the app's own menu - on macOS a
+  quit Apple Event, logout or restart - goes through Avalonia's non-forced
+  shutdown (`ClassicDesktopStyleApplicationLifetime.DoShutdown(force: false)`,
+  12.1.2). That raises `ShutdownRequested`, where `App` tore everything down, and
+  *then* asks each window to close. Config, Report and Info cancelled every close
+  to hide instead, so once any of them had been opened the shutdown was cancelled:
+  the native backend answered macOS with `NSTerminateCancel` (the `-128` a
+  scripted quit got back) and the process kept running with no hooks, no instance
+  lock and no menu bar item. A relaunch started a second copy. Seen twice on the
+  Mac; a stack sample showed the main thread idle in `-[NSApplication run]`.
+- **`Views/HideOnClose`** replaces the three handlers: it hides on a user close
+  and lets `ApplicationShutdown` and `OSShutdown` close. One path, no OS check -
+  Windows' logout and shutdown go through the same Avalonia code.
+- **`App` tears down on the lifetime's `Exit`**, not `ShutdownRequested`. `Exit`
+  fires once, for every shutdown that really happens. `ShutdownRequested` is not
+  raised for a forced shutdown at all - which the menu's Quit is - so by the
+  source the menu's Quit never reached the teardown that removes our hooks; that
+  path had not been checked before (Step 0 quit through an Apple Event).
+- Verified on the signed Mac build: an Apple Event quit with no window opened, the
+  same after opening and closing Config, and the menu's Quit - each exits within
+  about two seconds and leaves no hooks in `~/.claude/settings.json`; `osascript`
+  now returns 0 instead of `-128`. Windows not yet run.
+- Tests: which close reasons hide and which close; a headless window closed by the
+  user is hidden, not closed. A "Quitting" section in the QA checklist.

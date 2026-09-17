@@ -728,11 +728,7 @@ public sealed class TrayApplicationController : IDisposable
                 _services.GetRequiredService<TimeProvider>());
 
             _reportWindow = new ReportWindow { DataContext = _reportViewModel };
-            _reportWindow.Closing += (_, args) =>
-            {
-                args.Cancel = true;
-                _reportWindow?.Hide();
-            };
+            HideOnClose.Attach(_reportWindow);
         }
 
         _reportViewModel?.Apply(_monitor.Latest);
@@ -759,14 +755,10 @@ public sealed class TrayApplicationController : IDisposable
                 () => _sessions?.Sessions ?? []);
 
             _configWindow = new ConfigWindow { DataContext = viewModel };
-            _configWindow.Closing += (_, args) =>
-            {
-                // Hide rather than close: the view model holds a live credential
-                // service and rebuilding it on every open is pointless work.
-                args.Cancel = true;
-                _configWindow?.Hide();
-            };
 
+            // Hide rather than close: the view model holds a live credential
+            // service and rebuilding it on every open is pointless work.
+            HideOnClose.Attach(_configWindow);
         }
 
         // On every open, not just the first: the popup's switches and the Show
@@ -793,11 +785,7 @@ public sealed class TrayApplicationController : IDisposable
                     _services.GetRequiredService<ILocalizer>()),
             };
 
-            _infoWindow.Closing += (_, args) =>
-            {
-                args.Cancel = true;
-                _infoWindow?.Hide();
-            };
+            HideOnClose.Attach(_infoWindow);
         }
 
         ShowWindow(_infoWindow);

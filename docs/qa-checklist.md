@@ -128,6 +128,21 @@ Record the date, OS version and app version next to each run.
 - [ ] Two different users logged into the same machine each get their own
       instance.
 
+## 6c. Quitting
+
+With session watch on, so there are hooks to take out:
+
+- [ ] **Quit** from the menu: the process exits and `~/.claude/settings.json` holds
+      none of our hooks (marker `--claude-status-hook`).
+- [ ] Open Config (or Report, or Info) and close it, then quit from the menu:
+      the same.
+- [ ] The same, but quit from outside the app instead - macOS:
+      `osascript -e 'tell application id "com.zeroworks.claudestatus" to quit'`
+      returns without error and the process is gone within a few seconds.
+- [ ] Log out with the app running and a hidden Config window: the logout is
+      **not** interrupted by ClaudeStatus (macOS and Windows).
+- [ ] Relaunch after any of the above: exactly one menu bar item or tray icon.
+
 ## 7. Failure behaviour
 
 - [ ] Turn the network off. The app keeps running and shows stale values.
