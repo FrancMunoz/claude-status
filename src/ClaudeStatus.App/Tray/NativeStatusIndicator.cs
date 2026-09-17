@@ -1,7 +1,9 @@
 using Avalonia.Threading;
 using ClaudeStatus.App.Branding;
+using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Usage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -62,6 +64,19 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     private TimeSpan _staleAfter = StalePolicy.Floor;
     private bool _disposed;
 
+    /// <summary>
+    /// The card the menu bar borrows when it has a sentence to say.
+    /// </summary>
+    /// <remarks>
+    /// A status item is a row of numbers; a velocity warning is a sentence, and
+    /// there is nowhere in the menu bar to put one. Same card the taskbar widget
+    /// hovers, shown under the menu bar - see <see cref="UsageNoticeCard"/>.
+    /// </remarks>
+    private readonly UsageNoticeCard _notice;
+
+    /// <summary>The card's contents, kept current by <see cref="Render"/>.</summary>
+    private readonly TaskbarWidgetViewModel _cardViewModel;
+
     /// <param name="item">The platform's status item.</param>
     /// <param name="localizer">Supplies the row labels and the menu.</param>
     /// <param name="log">Reports what reaches the menu bar, and in what colour.</param>
@@ -76,6 +91,11 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         _l = localizer ?? throw new ArgumentNullException(nameof(localizer));
         _log = log ?? NullLogger<NativeStatusIndicator>.Instance;
         _clock = clock ?? TimeProvider.System;
+
+        // Anchored at the top, because this indicator only exists where the status
+        // bar is: the placement helper's inset inference would pick the Dock.
+        _cardViewModel = new TaskbarWidgetViewModel(_l);
+        _notice = new UsageNoticeCard(_cardViewModel, anchorAtTop: true);
 
         _item.LeftClicked += OnLeftClicked;
         _item.MenuItemClicked += OnMenuItemClicked;
@@ -111,6 +131,14 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         _showWeekFable = options.ShowWeekFable;
 
         _staleAfter = StalePolicy.ThresholdFor(options.PollInterval);
+
+        // The card is the detail, not the glance, so it lists all three limits
+        // whatever the menu bar row is showing.
+        _cardViewModel.Configure(
+            options.ThresholdPercent,
+            showFable: true,
+            followSystem: false,
+            staleAfter: _staleAfter);
     }
 
     /// <inheritdoc />
@@ -148,11 +176,35 @@ public sealed class NativeStatusIndicator : IStatusIndicator
 
         _item.SetTitle(text, tint);
 
+        // Fed on every render so a warning that appears later opens over the
+        // current numbers, not the ones from when it was last shown.
+        _cardViewModel.Update(snapshot, alert, _clock.GetUtcNow());
+
         if (_currentMode != mode)
         {
             _currentMode = mode;
             RebuildMenu();
         }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// On the borrowed card under the menu bar - see <see cref="UsageNoticeCard"/>.
+    /// Empty text takes it down, which is how the controller says the pace has come
+    /// back to normal.
+    /// </remarks>
+    public void ShowNotice(string text, TimeSpan duration)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _notice.Show(text, duration);
+    }
+
+    /// <inheritdoc />
+    public void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _cardViewModel.UpdateSessions(sessions, _clock.GetUtcNow());
+        _cardViewModel.ShowSessions = true;
     }
 
     /// <summary>Builds the text for a mode.</summary>
@@ -290,6 +342,7 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         }
 
         _disposed = true;
+        _notice.Dispose();
         _l.PropertyChanged -= OnLanguageChanged;
         _item.LeftClicked -= OnLeftClicked;
         _item.MenuItemClicked -= OnMenuItemClicked;

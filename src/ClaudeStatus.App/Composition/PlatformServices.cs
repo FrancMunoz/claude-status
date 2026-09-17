@@ -3,6 +3,7 @@ using ClaudeStatus.Platform.Linux;
 using ClaudeStatus.Platform.MacOS;
 using ClaudeStatus.Platform.Windows;
 using ClaudeStatus.Security;
+using ClaudeStatus.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -37,8 +38,52 @@ public static class PlatformServices
         services.AddSingleton(_ => CreateTrayPointerLocator());
         services.AddSingleton(_ => CreateAppPresentation());
 
+        services.AddSingleton(provider =>
+            new SessionSpool(provider.GetRequiredService<IPlatformInfo>().ConfigDirectory));
+
+        services.AddSingleton(_ => CreateNotifier());
+        services.AddSingleton(_ => CreateTerminalFocus());
+
+        services.AddSingleton(provider =>
+            new SessionStore(provider.GetRequiredService<IPlatformInfo>().ConfigDirectory));
+
+        // The executable is resolved at write time, not now: it moves when the
+        // app updates, and a hook has to point at where the app is when the hook
+        // is written, not where it was when the container was built.
+        services.AddSingleton<IHookManager>(provider => new ClaudeCodeHookManager(
+            () => provider.GetRequiredService<IPlatformInfo>().ExecutablePath
+                ?? Environment.ProcessPath
+                ?? throw new InvalidOperationException("The running executable cannot be located.")));
+
         return services;
     }
+
+    /// <summary>
+    /// Builds the OS notifier for the running OS.
+    /// </summary>
+    /// <remarks>
+    /// Windows only so far, where <see cref="WindowsNotifier"/> picks a toast or the
+    /// shell icon. macOS and Linux each have a native path -
+    /// <c>UNUserNotification</c> and <c>org.freedesktop.Notifications</c> - and
+    /// neither can be written or verified from here, so they get the honest no-op
+    /// and keep showing the app's own card (<c>CLAUDE.md</c> §8).
+    /// </remarks>
+    public static INotifier CreateNotifier()
+        => OperatingSystem.IsWindows()
+            ? WindowsNotifier.Create()
+            : new NullNotifier();
+
+    /// <summary>
+    /// Builds the helper that finds and focuses a session's terminal window.
+    /// </summary>
+    /// <remarks>
+    /// Public and container-free because the hook process calls it before any
+    /// container exists. Windows only; see <see cref="NullTerminalFocus"/> for why.
+    /// </remarks>
+    public static ITerminalFocus CreateTerminalFocus()
+        => OperatingSystem.IsWindows()
+            ? new WindowsTerminalFocus()
+            : new NullTerminalFocus();
 
     /// <summary>
     /// Builds the taskbar host for the running OS.

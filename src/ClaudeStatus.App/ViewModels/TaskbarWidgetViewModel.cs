@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Usage;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -30,16 +32,18 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     /// </summary>
     /// <remarks>
     /// An assumption about the plan, not something the endpoint reports - it gives
-    /// a reset time and no length - and it is confined to this pair of bars for
-    /// that reason. Every countdown, threshold and velocity alert in the app still
+    /// a reset time and no length. Every countdown and threshold in the app still
     /// works off <see cref="UsageWindow.ResetsAt"/> alone, so a plan whose windows
     /// are not five hours and seven days shows a slightly wrong second bar and
-    /// nothing else.
+    /// nothing else. Shared with the velocity rule through
+    /// <see cref="UsageWindowSpans"/> - it compares spend against the same clock
+    /// to decide whether a week's pace is really over budget, and the two must not
+    /// disagree about how long a week is.
     /// </remarks>
-    private static readonly TimeSpan SessionSpan = TimeSpan.FromHours(5);
+    private static readonly TimeSpan SessionSpan = UsageWindowSpans.Session;
 
     /// <inheritdoc cref="SessionSpan" />
-    private static readonly TimeSpan WeekSpan = TimeSpan.FromDays(7);
+    private static readonly TimeSpan WeekSpan = UsageWindowSpans.Week;
 
     private readonly ILocalizer _l;
 
@@ -108,6 +112,44 @@ public partial class TaskbarWidgetViewModel : ObservableObject
 
     /// <summary>The shared localizer, for <c>L[Key]</c> bindings.</summary>
     public ILocalizer L => _l;
+
+    /// <summary>
+    /// The Claude Code sessions to list, running first.
+    /// </summary>
+    /// <remarks>
+    /// Replaced wholesale rather than merged. The rows are immutable readings of
+    /// a moment, the list is short, and reconciling it item by item would buy a
+    /// few allocations at the cost of the only thing that matters here: that what
+    /// is on screen is what the registry last said.
+    /// </remarks>
+    public ObservableCollection<SessionRowViewModel> Sessions { get; } = [];
+
+    /// <summary>Whether there is anything in <see cref="Sessions"/> to show.</summary>
+    [ObservableProperty]
+    private bool _hasSessions;
+
+    /// <summary>Whether the session list is shown at all.</summary>
+    /// <remarks>
+    /// False while the feature is switched off, which is not the same as having
+    /// none to show: off means the card says nothing about sessions, where on
+    /// with an empty list says "none recently", which is itself an answer.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _showSessions;
+
+    /// <summary>Replaces the session list.</summary>
+    public void UpdateSessions(IReadOnlyList<ClaudeSession> sessions, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        Sessions.Clear();
+        foreach (ClaudeSession session in sessions)
+        {
+            Sessions.Add(new SessionRowViewModel(_l, session, now));
+        }
+
+        HasSessions = Sessions.Count > 0;
+    }
 
     public UsageBarViewModel Session { get; }
 

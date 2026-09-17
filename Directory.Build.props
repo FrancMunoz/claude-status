@@ -39,6 +39,23 @@
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 
+  <!--
+    The Windows projects compile against the Windows SDK projection when they are
+    built ON Windows, for the toast API (WindowsToastNotifier). Only on a Windows
+    host: the App references Platform.Windows on every OS, and a net10.0 App on
+    macOS or Linux cannot reference a net10.0-windows project. Elsewhere they stay
+    net10.0 and the toast code is compiled out, so the macOS and Linux builds are
+    what they were. Windows releases are packed on a Windows runner (release.yml),
+    so a shipped Windows build always has toasts.
+
+    Opted into per project with <TargetFramework>$(WindowsHostTargetFramework)</TargetFramework>:
+    Platform.Windows, App, and the two test projects that reference them.
+  -->
+  <PropertyGroup>
+    <WindowsHostTargetFramework>net10.0</WindowsHostTargetFramework>
+    <WindowsHostTargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows10.0.17763.0</WindowsHostTargetFramework>
+  </PropertyGroup>
+
   <!-- MinVer: version derived from git tags (v1.2.3). -->
   <PropertyGroup>
     <MinVerTagPrefix>v</MinVerTagPrefix>

@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using ClaudeStatus.Localization;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Theming;
 using ClaudeStatus.Usage;
 
@@ -199,11 +200,62 @@ public sealed record AppSettings
     /// </summary>
     public bool HasCredential { get; init; }
 
-    /// <summary>Start with the OS session.</summary>
-    public bool StartWithOperatingSystem { get; init; }
+    /// <summary>
+    /// Opt out of starting with the OS session.
+    /// </summary>
+    /// <remarks>
+    /// Stored inverted for the reason given on this type: a persisted property's
+    /// intended value has to be <c>default</c>, and the intended value here is
+    /// "on". A plain <c>StartWithOperatingSystem = true</c> could not tell a
+    /// settings file written before this default existed - or one missing the key
+    /// - from a user who deliberately turned it off, and would switch it back on
+    /// under them at every launch. Same shape as
+    /// <see cref="DisableVelocityAlerts"/> and <see cref="DisableAutomaticUpdates"/>.
+    /// </remarks>
+    public bool DisableAutostart { get; init; }
+
+    /// <summary>Start with the OS session. Default on; see <see cref="DisableAutostart"/>.</summary>
+    public bool StartWithOperatingSystem => !DisableAutostart;
 
     /// <summary>Use <see cref="FakeUsageProvider"/> instead of the real endpoint.</summary>
     public bool UseFakeProvider { get; init; }
+
+    /// <summary>
+    /// Opt out of watching Claude Code sessions.
+    /// </summary>
+    /// <remarks>
+    /// Inverted, like the rest of the opt-outs on this type: the feature is on by
+    /// default, and "off" is the thing that has to be written down. While it is
+    /// on, the app keeps its own hooks in Claude Code's settings file - see
+    /// <c>IHookManager</c> - so turning it off has to actually remove them again,
+    /// not merely stop listening.
+    /// </remarks>
+    public bool DisableSessionWatch { get; init; }
+
+    /// <summary>Watch Claude Code sessions. Default on; see <see cref="DisableSessionWatch"/>.</summary>
+    public bool SessionWatch => !DisableSessionWatch;
+
+    /// <summary>
+    /// How long a finished session stays on the list.
+    /// </summary>
+    /// <remarks>
+    /// Null means the default. Clamped by <see cref="SessionRegistry"/> to
+    /// something that cannot empty the list while it is being read, and cannot
+    /// quietly turn this into a history feature either.
+    /// </remarks>
+    public TimeSpan? SessionRetention { get; init; }
+
+    /// <summary>
+    /// Sessions the user has silenced.
+    /// </summary>
+    /// <remarks>
+    /// A session being worked on interactively would toast at the end of every
+    /// turn, which is noise; a long one left running is the whole point. So the
+    /// choice is per session rather than global. Pruned against the registry when
+    /// settings are saved - a session id outlives nothing and the list would
+    /// otherwise grow for the life of the install.
+    /// </remarks>
+    public IReadOnlyList<string> MutedSessions { get; init; } = [];
 
     /// <summary>
     /// Look for new versions on GitHub, and download them in the background.
@@ -353,5 +405,11 @@ public sealed record AppSettings
         OsdTransparency = OsdTransparency is double t && double.IsFinite(t)
             ? Math.Clamp(t, 0d, 1d)
             : DefaultOsdTransparency,
+        SessionRetention = SessionRegistry.Clamp(SessionRetention ?? SessionRegistry.DefaultRetention),
+
+        // An absent key deserializes to null, and every consumer iterates this.
+        MutedSessions = MutedSessions is null
+            ? []
+            : [.. MutedSessions.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal)],
     };
 }

@@ -2,11 +2,19 @@
 
   <PropertyGroup>
     <RootNamespace>ClaudeStatus</RootNamespace>
+    <!-- Windows SDK projection on a Windows host; see Directory.Build.props. -->
+    <TargetFramework>$(WindowsHostTargetFramework)</TargetFramework>
     <!-- DPAPI (System.Security.Cryptography.ProtectedData) is Windows-only. -->
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <!-- LibraryImport generates unsafe marshalling stubs (WindowsTaskbarHost). -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <!-- The toast notifier needs the Windows SDK projection, which only a Windows
+       host build has. Without it WindowsNotifier uses the shell icon instead. -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' != 'windows'">
+    <Compile Remove="WindowsToastNotifier.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />

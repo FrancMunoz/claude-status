@@ -2167,3 +2167,156 @@ task.
   default branch is `master` and `main` does not exist on the remote. Fixed, and a
   `master` ruleset now requires a pull request whose four checks pass, with linear
   history, no force-push and no deletion. The repository admin can bypass.
+
+## 2026-09-12 — A better pace detector, and a notice that reaches every platform
+
+The warning was firing where it should not and arriving nowhere on two of the
+three platforms. Both halves of that are fixed.
+
+### The detector
+
+- **`VelocityRule.Measure` replaces the endpoint rate.** A least-squares fit over
+  every sample, not the first and the last. The old rate threw away the
+  twenty-eight readings in between, so a flat half hour with one request landing
+  at the end was arithmetically identical to a steady climb. `UsageTrend` carries
+  the slope, the span, the sample count and the fit (R²), and `MinimumFit` 0.6
+  rejects a step dressed as a trend. `MinimumSamples` is 4 - two points fit a line
+  perfectly, so the fit gate is blind below three.
+- **`UsageHistory` takes a per-window horizon.** Half an hour is a tenth of a
+  session and a six-hundredth of a week. `VelocityTracker.SessionHorizon` stays at
+  30 minutes; `WeekHorizon` is 3 hours.
+- **`MaximumProjection` (8× the measured span) is the gate that silences the
+  week.** A week at 40 % with five days left "exhausts before reset" at any rate
+  over 0.5 %/h, so the 5 %/h floor was the only real check and any sustained
+  working half hour cleared it - then renotified every fifteen minutes. Ten
+  minutes of samples can carry a guess about the next few hours, not about next
+  Thursday.
+- **Budget corroboration, for the week only.** Where the nominal window length is
+  known, the spend must also be ahead of the clock - more of the allowance gone
+  than of the window. The recent rate and the long-run average are independent
+  evidence. Not applied to the session: a burst that eats an hour of allowance in
+  ten minutes is still under the budget line at the moment it happens, and that is
+  precisely the case the alert exists for.
+- **Hysteresis.** `latched` relaxes the rate floor and the fit gate by 40 % while
+  an alert is up, so a pace hovering at the threshold does not blink the warning
+  on and off once a minute. The hard gates - exhausted, unknown reset, beats the
+  reset - never relax.
+- **The exhausted gate now agrees with the indicators.** It tested `>= 100`; every
+  indicator calls a window spent at `IndicatorText.IsExhausted`, i.e. `>= 99.95`.
+  At 99.96 % the icon drew the exhausted mark while the warning still claimed the
+  window was about to run out. It also now silences *every* window when *any*
+  limit is spent: the user is cut off, so nothing is climbing towards anything.
+- **`VelocityTracker` (Core)** owns the histories, the horizons, the
+  worst-of choice, the exhausted check and the latch, so the whole decision is
+  testable without a window on screen. `TrackVelocity` in the controller is left
+  with what is genuinely UI: wording the sentence and deciding how often to flash
+  it. `UsageWindowSpans` holds the 5 h / 7 d assumption that the widget's elapsed
+  bar and the budget check now share. 25 tests across `VelocityTests` and
+  `VelocityTrackerTests`.
+
+### The notice
+
+- **`ShowNotice` was implemented only on the taskbar widget.** On the tray icon -
+  all of Linux, and any Windows machine falling back to it - and on the macOS menu
+  bar it was the interface's no-op default, so the warning reached the user only if
+  they happened to open the details popup afterwards.
+- **`UsageNoticeCard`** shows the widget's own hover card by itself near the tray,
+  placed with `TrayPopupPlacement` (the details popup's geometry) and taken down by
+  a timer. `TrayIconIndicator` and `NativeStatusIndicator` each hold one plus a
+  `TaskbarWidgetViewModel` fed from `Render`, so the card opens over the current
+  numbers rather than whatever they were when a warning last fired. Empty text
+  takes it down, which is how the controller says the pace has recovered.
+- `TaskbarHoverWindow` → **`UsageCardWindow`**: three owners now, and two of them
+  have no taskbar. The card lists all three limits whatever the indicator shows -
+  it is the detail, not the glance.
+- `TrayIconIndicator` takes `trayIsAtTop` from `IPlatformInfo`, because the
+  placement helper's inset inference picks the Dock over the menu bar.
+
+## 2026-09-16 — Clicking a session notification focuses its terminal
+
+- **`SessionOrigin`** (Core): the pid and start time of the process that owns
+  the session's window, the window handle, and how it was found
+  (`Foreground` > `Console` > `Process`). Carried by `SessionEvent` and
+  `ClaudeSession`, through the spool and `sessions.json`. `SessionOrigin.Merge`
+  keeps a weaker guess from overwriting a stronger one about the same terminal:
+  a `Stop` fired while the user is in another app must not replace the exact
+  window `UserPromptSubmit` saw. Implausible origins read from disk become none.
+- **`ITerminalFocus`** (Core/Platform). `Capture` runs in the hook process -
+  the only place the session's process tree is still intact - and `TryFocus`
+  in the app. `NullTerminalFocus` everywhere but Windows.
+- **`WindowsTerminalFocus`**: the foreground window if an ancestor owns it,
+  else the console window or the terminal that owns its ConPTY pseudo-window,
+  else the front window of the nearest ancestor. The walk stops at
+  `explorer.exe` and at a parent younger than its child. `TryFocus` re-checks
+  pid *and* start time, falls back to the process's current front window when
+  the handle is gone, restores a minimised window, and flashes the taskbar
+  button when Windows refuses the foreground.
+- **`INotifier`** gains a tag and `Activated`. `ShellNotifyIconNotifier` now
+  registers its own window class so the shell's `NIN_BALLOONUSERCLICK` reaches
+  it; the handler runs synchronously inside the click, which is what lets it
+  take the foreground. A balloon has no identity, so the last tag shown wins.
+- The controller focuses the session's window, or opens the details window
+  when the session has no origin (it predates this build).
+- Verified live: from a Claude Code session in Windows Terminal, `Capture`
+  walked to `WindowsTerminal.exe`. Focusing only moves a **window**, not a tab.
+- macOS and Linux: not done - see `PLAN.md` 9.6.
+
+## 2026-09-16 — Windows toasts without a second tray icon
+
+- **`WindowsToastNotifier`**: WinRT toasts posted as `velopack.ClaudeStatus`, the
+  AppUserModelID Velopack's Start Menu shortcut carries (`velopack.` + the
+  `--packId` in `build/pack.ps1` - rename one, rename the other). No icon at all.
+  Windows only checks that the id is registered, not which exe posts, so a
+  development build shows real toasts on a machine where the app is installed.
+- **Registration check** (`AppUserModelIds`): parsing `shell:AppsFolder\<id>`
+  succeeds exactly when Start has the app. The toast API cannot tell: its
+  `Setting` throws `0x80070490` for an installed id that has never shown a toast,
+  the same as for one that does not exist (probed live).
+- **`WindowsNotifier.Create`** picks the toast when the id is registered, else
+  **`ShellNotifyIconNotifier`**, which now adds its icon just before a balloon and
+  deletes it on `NIN_BALLOONHIDE` / `TIMEOUT` / `USERCLICK`. A hidden icon
+  (`NIS_HIDDEN`) cannot show a balloon, so "icon only while a notification is up"
+  is as hidden as that path gets.
+- Each toast carries its tag in `launch`, so a click on an older one reports that
+  one; per-session `Tag` replaces a session's earlier toast in the notification
+  centre. The last 32 are kept referenced so their `Activated` handlers stay alive.
+  A click after the app has exited reaches nothing (no COM activator on the shortcut).
+- `INotifier.Activated` may now arrive off the UI thread (a toast's is a
+  thread-pool thread); the controller marshals with a blocking
+  `Dispatcher.UIThread.Invoke` so the foreground grant is not spent by a post.
+- **Build**: `Platform.Windows`, `App` and the two test projects target
+  `net10.0-windows10.0.17763.0` when built on a Windows host
+  (`WindowsHostTargetFramework` in `Directory.Build.props`) and `net10.0`
+  elsewhere, where the toast file is compiled out. No new package. Trimmed
+  win-x64 publish: `Microsoft.Windows.SDK.NET.dll` 117 KB + `WinRT.Runtime.dll`
+  391 KB. The projection adds ~35 IL2081 trim warnings from CsWinRT's generic
+  collection marshalers (`ABI.System.*`, `ABI.Windows.*`); the toast path uses
+  none of them, and a toast from the trimmed installed build was verified in the
+  notification history.
+
+## 2026-09-16 — Session switches in the popup, quiet when you are looking, trimmed JSON
+
+- **Sessions broke in every release build.** `SessionStore` and `SessionSpool`
+  used reflection `JsonSerializer`, which `PublishTrimmed` disables: the app
+  logged "Startup did not complete" reading `sessions.json`, and the hook process
+  could not write the spool either. Tests never saw it - they are not trimmed.
+  Now `SessionsJsonContext` (same wire format: PascalCase, case-insensitive);
+  `ClaudeCodeHooks` adds a `JsonNode` through the non-generic `JsonArray.Add`.
+  The trimmed publish has no ClaudeStatus trim warnings again.
+- **Switches in the details popup.** A master "Watch Claude Code sessions"
+  switch (goes through `ApplySettingsAsync`, so the watcher and our hooks follow
+  at once) and one per session row, on = notify (`SessionRowViewModel.Notifies`,
+  the inverse of `IsMuted`). Rebuilding the list or showing the settings never
+  reports a change (`SessionSwitchTests`). `ToggleSwitch.compact` drops Fluent's
+  On/Off text and minimum width.
+- `ApplySettingsAsync` now starts or stops the watch when `SessionWatch` changes;
+  before, Config's checkbox only took effect on the next launch.
+- Config reloads its form on every open, so a switch flipped in the popup (or
+  the Show menu) is not put back by the next Save.
+- **No notification while its terminal has focus.** `ITerminalFocus.IsForeground`:
+  the foreground window is the recorded one, or belongs to the recorded process
+  when that window is gone - pid *and* start time checked. A `/clear` that ends
+  in milliseconds no longer toasts at someone still looking at it. Window, not
+  tab: a session in a background tab of the focused terminal is also held back.
+- The controller logs each notification decision: which notifier, accepted or
+  refused, or held back for focus.

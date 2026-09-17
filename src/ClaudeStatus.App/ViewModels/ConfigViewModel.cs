@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using Avalonia;
@@ -6,6 +7,7 @@ using ClaudeStatus.Config;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
 using ClaudeStatus.Security;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Theming;
 using ClaudeStatus.Usage;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -33,6 +35,12 @@ public partial class ConfigViewModel : ObservableObject
 {
     private readonly CredentialService _credentials;
     private readonly IAutostart _autostart;
+
+    /// <summary>Writes our hooks into Claude Code's settings. Null where the feature is unavailable.</summary>
+    private readonly IHookManager? _hooks;
+
+    /// <summary>Supplies the session list when the window opens.</summary>
+    private readonly Func<IReadOnlyList<ClaudeSession>>? _sessionSource;
     private readonly IPlatformInfo _platform;
     private readonly ITaskbarHost _taskbarHost;
     private readonly IConfigStore _configStore;
@@ -74,6 +82,20 @@ public partial class ConfigViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _startWithOperatingSystem;
+
+    /// <summary>Whether ClaudeStatus watches Claude Code sessions.</summary>
+    /// <remarks>
+    /// Turning this off is not just "stop listening": our hooks come back out of
+    /// Claude Code's settings file. The controller does that when it applies the
+    /// saved settings.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _sessionWatch = true;
+
+    /// <summary>How long a finished session stays listed, in minutes.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RetentionText))]
+    private double _sessionRetentionMinutes = SessionRegistry.DefaultRetention.TotalMinutes;
 
     [ObservableProperty]
     private bool _useFakeProvider;
@@ -123,8 +145,13 @@ public partial class ConfigViewModel : ObservableObject
         JsonThemeStore themeStore,
         Func<bool> systemIsDark,
         Func<AppSettings> current,
-        Func<AppSettings, Task> apply)
+        Func<AppSettings, Task> apply,
+        IHookManager? hooks = null,
+        Func<IReadOnlyList<ClaudeSession>>? sessions = null)
     {
+        _hooks = hooks;
+        _sessionSource = sessions;
+
         _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
         _autostart = autostart ?? throw new ArgumentNullException(nameof(autostart));
         _platform = platform ?? throw new ArgumentNullException(nameof(platform));
@@ -191,6 +218,33 @@ public partial class ConfigViewModel : ObservableObject
 
     /// <summary>The poll-interval slider's caption.</summary>
     public string IntervalText => _localizer.Format("Config_Interval", PollIntervalSeconds);
+
+    /// <summary>The retention slider's label.</summary>
+    public string RetentionText
+        => _localizer[
+            "Config_SessionRetention"] + $" {(int)SessionRetentionMinutes} min";
+
+    /// <summary>
+    /// The Claude Code sessions, with a tick box each.
+    /// </summary>
+    /// <remarks>
+    /// Filled when the window opens, and not kept live: a list that reshuffles
+    /// under the pointer while someone is trying to tick a box is worse than a
+    /// list that is a minute out of date.
+    /// </remarks>
+    public ObservableCollection<SessionRowViewModel> Sessions { get; } = [];
+
+    /// <summary>Whether there is a session to offer.</summary>
+    [ObservableProperty]
+    private bool _hasSessions;
+
+    /// <summary>Which settings file the hooks are written to, for display.</summary>
+    public string HookPathText => _hooks?.SettingsPath is { } path
+        ? _localizer.Format("Config_Sessions_Path", path)
+        : string.Empty;
+
+    /// <summary>Whether there is a path worth showing.</summary>
+    public bool HasHookPath => _hooks?.SettingsPath is not null;
 
     /// <summary>Where the settings file lives, shown so the user can find or delete it.</summary>
     public string SettingsFileText => _localizer.Format("Config_SettingsFile", ConfigFilePath);
@@ -264,6 +318,9 @@ public partial class ConfigViewModel : ObservableObject
             UseFakeProvider = settings.UseFakeProvider;
             AutomaticUpdates = settings.AutomaticUpdates;
             VelocityAlerts = settings.VelocityAlerts;
+            SessionWatch = settings.SessionWatch;
+            SessionRetentionMinutes =
+                (settings.SessionRetention ?? SessionRegistry.DefaultRetention).TotalMinutes;
 
             // Rebuilt on every open so a translation file dropped in while the app
             // was running still shows up without a restart of the whole app.
@@ -310,6 +367,37 @@ public partial class ConfigViewModel : ObservableObject
         // Read the real OS state rather than trusting the settings file - the user
         // may have removed the entry outside the app.
         StartWithOperatingSystem = await _autostart.IsEnabledAsync(ct).ConfigureAwait(true);
+
+        LoadSessions();
+    }
+
+    /// <summary>
+    /// Fills the session list and ticks the ones already silenced.
+    /// </summary>
+    /// <remarks>
+    /// A snapshot taken when the window opens. The alternative - a list that
+    /// rebuilds itself as sessions come and go - would reshuffle under the pointer
+    /// of somebody trying to tick a box on it.
+    /// </remarks>
+    private void LoadSessions()
+    {
+        Sessions.Clear();
+
+        if (_sessionSource is not null)
+        {
+            IReadOnlyList<string> muted = _current().MutedSessions;
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            foreach (ClaudeSession session in _sessionSource())
+            {
+                Sessions.Add(new SessionRowViewModel(_localizer, session, now)
+                {
+                    IsMuted = muted.Contains(session.Id, StringComparer.Ordinal),
+                });
+            }
+        }
+
+        HasSessions = Sessions.Count > 0;
     }
 
     /// <summary>
@@ -566,7 +654,14 @@ public partial class ConfigViewModel : ObservableObject
                 ShowFableInWidget = ShowFableInWidget,
                 WidgetUsesThemedCard = !WidgetFollowsSystem,
                 ThresholdPercent = ThresholdPercent,
-                StartWithOperatingSystem = StartWithOperatingSystem,
+                DisableAutostart = !StartWithOperatingSystem,
+                DisableSessionWatch = !SessionWatch,
+                SessionRetention = TimeSpan.FromMinutes(SessionRetentionMinutes),
+
+                // Only the sessions still on the list. A session id outlives
+                // nothing, so keeping the ones that have aged out would grow this
+                // for the life of the install.
+                MutedSessions = [.. Sessions.Where(s => s.IsMuted).Select(s => s.Id)],
                 UseFakeProvider = UseFakeProvider,
                 DisableAutomaticUpdates = !AutomaticUpdates,
                 DisableVelocityAlerts = !VelocityAlerts,
@@ -589,7 +684,7 @@ public partial class ConfigViewModel : ObservableObject
                 // A refused autostart must not lose the rest of the settings.
                 StatusMessage = _localizer[ex.MessageKey];
                 StartWithOperatingSystem = false;
-                settings = settings with { StartWithOperatingSystem = false };
+                settings = settings with { DisableAutostart = true };
             }
 
             await _apply(settings.Normalized()).ConfigureAwait(true);

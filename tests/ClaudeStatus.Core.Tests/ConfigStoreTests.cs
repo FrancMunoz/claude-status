@@ -93,7 +93,7 @@ public class ConfigStoreTests : IDisposable
         {
             IndicatorMode = IndicatorMode.WeekFablePercent,
             ThresholdPercent = 65d,
-            StartWithOperatingSystem = true,
+            DisableAutostart = true,
             CredentialSource = CredentialSource.ManualToken,
             HasCredential = true,
         };
@@ -103,7 +103,7 @@ public class ConfigStoreTests : IDisposable
 
         loaded.IndicatorMode.Should().Be(IndicatorMode.WeekFablePercent);
         loaded.ThresholdPercent.Should().Be(65d);
-        loaded.StartWithOperatingSystem.Should().BeTrue();
+        loaded.StartWithOperatingSystem.Should().BeFalse("an explicit opt-out has to survive a round trip");
         loaded.CredentialSource.Should().Be(CredentialSource.ManualToken);
         loaded.HasCredential.Should().BeTrue();
         store.Exists.Should().BeTrue();

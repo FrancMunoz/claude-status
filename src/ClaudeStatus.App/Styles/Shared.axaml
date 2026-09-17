@@ -185,6 +185,20 @@
         <Setter Property="Background" Value="{DynamicResource Theme.Border}" />
     </Style>
 
+    <!--
+        A switch with no words beside it, for a row that already says what it
+        controls. Fluent's default carries "On"/"Off" text and a wide minimum,
+        which a 340px popup cannot spare. Colours stay Fluent's, which read
+        SystemAccentColor - the theme's primary, written by ThemeApplier.
+    -->
+    <Style Selector="ToggleSwitch.compact">
+        <Setter Property="OnContent" Value="" />
+        <Setter Property="OffContent" Value="" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
     <!-- ==============================================================
          Usage bars
          ============================================================== -->
@@ -314,7 +328,7 @@
     <!--
         The widget's hover card: the same surface as the details popup, so the
         two read as one thing. A Border because the card is a window of our own,
-        not a ToolTip - see TaskbarHoverWindow.
+        not a ToolTip - see UsageCardWindow.
     -->
     <Style Selector="Border.hoverCard">
         <Setter Property="Background" Value="{DynamicResource Theme.OsdBackground}" />

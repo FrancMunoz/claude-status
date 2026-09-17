@@ -311,6 +311,72 @@
                 </ScrollViewer>
             </TabItem>
 
+            <TabItem Header="{Binding L[Config_Tab_Sessions]}">
+                <ScrollViewer>
+                    <StackPanel Margin="0,8,2,8" Spacing="18">
+
+                        <StackPanel>
+                            <CheckBox Content="{Binding L[Config_SessionWatch]}"
+                                      IsChecked="{Binding SessionWatch}" />
+                            <TextBlock Classes="caption option-help"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding L[Config_SessionWatch_Hint]}" />
+                            <TextBlock Classes="caption option-help"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding HasHookPath}"
+                                       Text="{Binding HookPathText}" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="4" IsEnabled="{Binding SessionWatch}">
+                            <TextBlock Classes="label" Text="{Binding RetentionText}" />
+                            <Slider Minimum="5" Maximum="480" TickFrequency="5"
+                                    Value="{Binding SessionRetentionMinutes}" />
+                            <TextBlock Classes="caption"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding L[Config_SessionRetention_Hint]}" />
+                        </StackPanel>
+
+                        <!--
+                            Silencing lives here rather than on the hover card: that
+                            card never takes focus, so nothing on it can be clicked.
+                        -->
+                        <StackPanel Spacing="6" IsEnabled="{Binding SessionWatch}">
+                            <TextBlock Classes="label" Text="{Binding L[Sessions_Heading]}" />
+
+                            <TextBlock Classes="caption"
+                                       IsVisible="{Binding !HasSessions}"
+                                       Text="{Binding L[Sessions_None]}" />
+
+                            <ItemsControl ItemsSource="{Binding Sessions}" IsVisible="{Binding HasSessions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:SessionRowViewModel">
+                                        <Grid ColumnSpacing="10" Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding Name}" />
+                                            <TextBlock Grid.Column="1"
+                                                       Classes="caption"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding StateText}" />
+                                            <CheckBox Grid.Column="2"
+                                                      Content="{Binding $parent[ItemsControl].((vm:ConfigViewModel)DataContext).L[Sessions_Mute]}"
+                                                      IsChecked="{Binding IsMuted}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
         </TabControl>
 
     </DockPanel>

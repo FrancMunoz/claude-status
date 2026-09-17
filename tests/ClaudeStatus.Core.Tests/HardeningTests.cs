@@ -346,7 +346,7 @@ public class JsonSourceGenerationTests : IDisposable
             ThresholdPercent = 65d,
             CredentialSource = CredentialSource.ManualToken,
             HasCredential = true,
-            StartWithOperatingSystem = true,
+            DisableAutostart = true,
         };
 
         await store.SaveAsync(saved, Ct);
@@ -356,7 +356,7 @@ public class JsonSourceGenerationTests : IDisposable
         loaded.ThresholdPercent.Should().Be(65d);
         loaded.CredentialSource.Should().Be(CredentialSource.ManualToken);
         loaded.HasCredential.Should().BeTrue();
-        loaded.StartWithOperatingSystem.Should().BeTrue();
+        loaded.StartWithOperatingSystem.Should().BeFalse("an explicit opt-out has to survive a round trip");
     }
 
     [Fact]

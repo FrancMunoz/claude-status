@@ -176,6 +176,22 @@ Record the date, OS version and app version next to each run.
 ### Windows
 - Test on both Windows 10 and 11 if you can; the notification area differs.
 - Check the icon in the overflow ("hidden icons") area too, not just when pinned.
+- **Session notification click** (with session watch on, a prompt sent, then
+  switch to another app and wait for the "waiting for you" toast):
+  - [ ] Windows Terminal: clicking the toast brings that terminal window forward.
+    With two WT windows, the one the prompt was typed into comes forward.
+  - [ ] VS Code integrated terminal: the right VS Code window comes forward.
+  - [ ] Classic console (`conhost`): the console window comes forward.
+  - [ ] The terminal minimised: it is restored, not just flashed.
+  - [ ] The terminal closed before clicking: nothing is focused, nothing crashes.
+  - [ ] A session that started before this build: the details window opens instead.
+  - [ ] Installed (Start has "ClaudeStatus"): the toast shows and **no** extra
+    icon appears in the tray or its overflow, ever.
+  - [ ] Not installed (unzipped copy, or `dotnet run` on a machine without the
+    install): the toast still shows; an icon appears only while it is up and is
+    gone once it times out or is clicked.
+  - [ ] Clicking the entry in the Action Centre after the toast has gone: note
+    what happens (the shell may not report it at all).
 
 ### macOS
 - Test on both Intel and Apple Silicon if available.

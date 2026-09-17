@@ -141,6 +141,31 @@ timestamps, and the pay-as-you-go and prepaid-credit blocks — including when t
 are switched off, because "off" is itself an answer. It is resizable, has a
 taskbar entry, and survives being clicked away from.
 
+### The pace warning
+
+If usage is climbing fast enough to exhaust a window before it resets, a small
+card appears near the tray for a few seconds and the details popup carries the
+same sentence as a banner for as long as the pace holds. One flash per fifteen
+minutes at most; it never takes focus. Turn it off in *Settings → Behaviour →
+velocity alerts*.
+
+Five things have to agree before it speaks, because a projection on its own says
+yes far too often:
+
+- at least four readings covering at least four minutes;
+- the readings have to look like a climb, not a flat stretch with one request
+  landing at the end of it;
+- at least 5 %/h;
+- the wall has to be within eight times the span actually measured — half an hour
+  of samples can support a guess about the next few hours, not about next
+  Thursday;
+- for the weekly window, more of the allowance has to be gone than of the week.
+
+The rate is measured over half an hour for the session and three hours for the
+week, and both come from a least-squares fit over every reading rather than the
+first and the last. A window already at 100 % says nothing: you are past the
+cliff, and the indicator shows that on its own.
+
 ### Settings
 
 Config has four tabs:

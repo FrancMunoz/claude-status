@@ -6,6 +6,7 @@ using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.App.Views;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
+using ClaudeStatus.Sessions;
 using ClaudeStatus.Usage;
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +38,7 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
     private readonly ILogger _log;
     private readonly TaskbarWidgetViewModel _viewModel;
     private readonly TaskbarWidgetWindow _window;
-    private readonly TaskbarHoverWindow _hover;
+    private readonly UsageCardWindow _hover;
     private readonly DispatcherTimer _timer;
     private readonly DispatcherTimer _hoverTimer;
 
@@ -93,7 +94,7 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         // window, and as a child of the taskbar that window's coordinates are not
         // something Avalonia models well: the card landed at the pointer, touching
         // the taskbar, and placement settings changed nothing.
-        _hover = new TaskbarHoverWindow { DataContext = _viewModel };
+        _hover = new UsageCardWindow { DataContext = _viewModel };
         _hover.SizeChanged += (_, _) =>
         {
             _hoverSized = true;
@@ -301,6 +302,29 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         else if (!_window.IsPointerOver)
         {
             HideHover();
+        }
+    }
+
+    /// <inheritdoc />
+    public void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => ShowSessions(sessions));
+            return;
+        }
+
+        _viewModel.UpdateSessions(sessions, _clock.GetUtcNow());
+        _viewModel.ShowSessions = true;
+
+        // The card resizes as the list grows and shrinks, and it is placed from
+        // its own measured size, so a visible card has to be put back where it
+        // belongs afterwards.
+        if (_hover.IsVisible)
+        {
+            PlaceHover();
         }
     }
 
