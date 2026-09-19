@@ -1080,6 +1080,16 @@ public sealed class TrayApplicationController : IDisposable
         // Every change updates the list, even the ones not worth interrupting for.
         PushSessions();
 
+        // A session is proof that Claude Code is logged in - it is usually what
+        // just wrote the credential. Without this the indicator keeps saying "no
+        // credential" beside a live session count until the backed-off poll comes
+        // round. The monitor's forced-refresh cooldown keeps a burst of events to
+        // one fetch.
+        if (CurrentAlert() == IndicatorAlert.NeedsCredential)
+        {
+            _ = RefreshAsync();
+        }
+
         if (e.Change is not (SessionChange.Idle or SessionChange.Finished))
         {
             return;
