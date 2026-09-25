@@ -162,7 +162,7 @@
             -->
             <Panel>
                 <Path Classes="widgetMark"
-                      VerticalAlignment="Top"
+                      Classes.badged="{Binding ShowSessions}"
                       IsVisible="{Binding !IsWorking}"
                       Data="{x:Static branding:AppMark.Geometry}" />
                 <StackPanel Classes="workingDots"

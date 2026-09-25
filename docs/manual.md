@@ -141,6 +141,31 @@ is nothing there to fix.
 - Follows your taskbar's light/dark appearance. It is deliberately **not**
   themed — the taskbar is not ours to colour.
 
+### The taskbar widget (Windows)
+
+- The default indicator on Windows: a card in the taskbar beside the clock, led
+  by the app mark, showing the session and weekly limits at once - percentage,
+  spend bar, and under it a fainter bar filled with how much of the window has
+  elapsed. The session carries its time left as `(h:mm)` beside the label. Fable
+  is a third column when **Config → Display → Show Fable** is on.
+- Themed, unlike the tray icon, or blended into the taskbar in the clock's own
+  text colour (**Config → Display**, the default).
+- While the session watch is on, a rounded box under the mark reads the Claude
+  Code sessions with a turn in progress over the sessions open - `1/3`, and
+  `0/0` when none is. The count follows session events at once and is
+  recounted at every poll, so a session killed mid-turn stops counting as busy
+  once it has been silent for two hours and leaves the open count when the list
+  forgets it. With the watch off the box goes and the mark stands alone.
+- While at least one session is working the mark gives way to three dots pulsing
+  in sequence - Claude's own thinking sign - and the box breathes between two
+  shades of the theme's accent. The mark is back the moment nothing is working;
+  an open but idle session (`0/1`) shows the mark.
+- Hovering opens a card with all three limits, their reset times, the sessions
+  list, and the pace warning when there is one. Left and right click do what
+  they do on the tray icon.
+- Falls back to the tray icon when the taskbar cannot be joined (a vertical
+  taskbar, or a Windows update that moves things).
+
 ### The macOS menu bar
 
 - Text beside the mark, drawn by the OS: `5h (2:11) 56% · 7d 18%` in the row mode,

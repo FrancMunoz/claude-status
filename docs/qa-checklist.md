@@ -201,6 +201,21 @@ With session watch on, so there are hooks to take out:
 ### Windows
 - Test on both Windows 10 and 11 if you can; the notification area differs.
 - Check the icon in the overflow ("hidden icons") area too, not just when pinned.
+- **Session badge and dots on the taskbar widget** (session watch on):
+  - [ ] Nothing open: the mark, with a `0/0` box under it, and nothing moves.
+    Switch the watch off in Config: the box goes and the mark is centred on
+    the metrics. Switch it back on: `0/n`.
+  - [ ] A prompt in Claude Code: three pulsing dots replace the mark within a
+    second or two, the box reads `1/1` and breathes, and the hover card lists
+    the session as working.
+  - [ ] A second session working at once: `2/2`. One turn ends: `1/2` and the
+    dots keep going. Both end: `0/2`, the mark is back and nothing moves. Close
+    one terminal: `0/1`.
+  - [ ] The widget does not change width as turns start and end; only a change
+    in the number of digits may widen it.
+  - [ ] Blended into a dark taskbar and into a light one: the dots take the
+    clock's ink; the box keeps the theme's accent in both.
+  - [ ] Task Manager: ClaudeStatus's CPU while the dots run, and while idle.
 - **Session notification click** (with session watch on, a prompt sent, then
   switch to another app and wait for the "waiting for you" toast):
   - [ ] Windows Terminal: clicking the toast brings that terminal window forward.

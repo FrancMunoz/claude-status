@@ -430,7 +430,25 @@
         <Setter Property="Stretch" Value="Uniform" />
         <Setter Property="Width" Value="19" />
         <Setter Property="Height" Value="19" />
+        <!--
+            Centred by eye, not by box, while the mark stands alone. Centring
+            its square against the metric column's layout box puts it high: that
+            box starts at the top of a text line and the digits do not, so their
+            ink sits about 2 px lower than the box does. The nudge puts the two
+            lots of ink on the same centre.
+        -->
         <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+
+    <!--
+        With the session badge under it the mark hangs from the top instead, so
+        the badge - bottom-aligned - overlaps only its lower part and as much of
+        the mark as possible stays in view.
+    -->
+    <Style Selector="Path.widgetMark.badged">
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Margin" Value="0" />
     </Style>
 
     <!--

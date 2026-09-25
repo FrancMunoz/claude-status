@@ -8,7 +8,7 @@ There are two kinds of image in `docs/screenshots/`:
 
 | kind | how it is made |
 | --- | --- |
-| **Windows** (`window-*.png`, `taskbar-widget*.png`, `tray-*.png`, `themes/`, …) | Rendered by `ScreenshotGenerator` in the test suite, on Windows. Never regenerate them on a Mac: the fonts substitute and every image changes without any content changing. |
+| **Windows** (`window-*.png`, `taskbar-widget*.png`, `tray-*.png`, `themes/`, …) | Rendered by `ScreenshotGenerator` in the test suite, on Windows: `$env:CLAUDESTATUS_WRITE_SCREENSHOTS = "$PWD/docs/screenshots"` then `dotnet test tests/ClaudeStatus.App.Tests --filter-method '*Regenerates_the_readme*'` (stop the running app first; it locks the build output). The renders carry the scripted day's numbers and sessions already, at a fixed instant, so only what actually changed differs from the committed image. Never regenerate them on a Mac: the fonts substitute and every image changes without any content changing. |
 | **macOS** (`macos-*.png`) | Taken by hand from the running app, because the menu bar item is drawn by AppKit and nothing in the test suite can reach it. |
 
 Both need the app to be showing invented numbers rather than the machine's real

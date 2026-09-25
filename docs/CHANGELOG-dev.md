@@ -2796,3 +2796,29 @@ next.
   tests, green on macOS.
 - Nothing here touches credentials - it exists to avoid photographing a real
   reading, which is somebody's account data. `docs/security.md` unchanged.
+
+## 2026-09-25 — Windows screenshots and docs brought level with the Mac's
+
+- **The mark sat 3 px high with the watch off.** Hanging it from the top of the
+  column (so the badge could overlap its lower half) was applied whether or not
+  there was a badge, which moved the mark in every plain widget shot. `Path.
+  widgetMark` is centred with its 2 px nudge again, and `.badged` - bound to
+  `ShowSessions` - is what hangs it from the top. Regenerating the README set
+  afterwards left every plain widget image byte-identical to the committed one,
+  which is the proof.
+- **Screenshots** regenerated on Windows with `ScreenshotGenerator`: only
+  `window-details-sessions.png` changed (the state column moved with the Mac
+  session's list changes); the widget set, the popup, the config window, the
+  report and the theme gallery came out identical. The Windows working shot
+  already showed the dots and the `2/3` box.
+- **Docs**: `docs/manual.md` gains *The taskbar widget (Windows)* under *Using
+  it*, the Windows counterpart of the menu bar paragraph - it was the one
+  indicator the manual never described. README's Windows sessions row now says
+  the dots and the `0/0` rule, not just the breathing. `docs/qa-checklist.md`
+  gets the Windows badge-and-dots steps mirroring the macOS ones, with Task
+  Manager in place of Activity Monitor. `docs/screenshots.md` names the command
+  that renders the Windows set and that the running app must be stopped first.
+- No real photograph of the Windows taskbar was taken: the machine's own Claude
+  Code session would be counted, so the badge could not read the scripted `2/3`.
+  `docs/screenshots.md` covers how to pose one from another terminal.
+- Nothing here touches credentials; `docs/security.md` unchanged.
