@@ -161,10 +161,40 @@ public static class AppServices
         if (settings.UseFakeProvider)
         {
             return new FakeUsageProvider(
-                FakeUsageScenario.Healthy, provider.GetRequiredService<TimeProvider>());
+                FakeScenario(), provider.GetRequiredService<TimeProvider>());
         }
 
         CredentialService credentials = provider.GetRequiredService<CredentialService>();
         return CreateRealProvider(provider, credentials.ResolveTokenSource(settings.CredentialSource));
     }
+
+    /// <summary>The environment variable that picks a fake scenario other than the default.</summary>
+    public const string FakeScenarioVariable = "CLAUDESTATUS_FAKE_SCENARIO";
+
+    /// <summary>
+    /// Which scripted day the fake provider plays.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An environment variable rather than a setting, because it is not a
+    /// preference: the scenarios are for development and for the paired
+    /// screenshots in <c>docs/screenshots.md</c>, and a user who finds a
+    /// "pretend I am nearly out of quota" switch in Config has found a bug, not a
+    /// feature. The tick box that turns fake data on at all is the preference.
+    /// </para>
+    /// <para>
+    /// Anything unrecognised - a typo, a number outside the enum - falls back to
+    /// <see cref="FakeUsageScenario.Healthy"/> rather than failing to start. This
+    /// only ever decides which invented numbers are shown.
+    /// </para>
+    /// </remarks>
+    internal static FakeUsageScenario FakeScenario()
+        => FakeScenario(Environment.GetEnvironmentVariable(FakeScenarioVariable));
+
+    /// <inheritdoc cref="FakeScenario()" />
+    internal static FakeUsageScenario FakeScenario(string? value)
+        => Enum.TryParse(value, ignoreCase: true, out FakeUsageScenario scenario)
+            && Enum.IsDefined(scenario)
+            ? scenario
+            : FakeUsageScenario.Healthy;
 }

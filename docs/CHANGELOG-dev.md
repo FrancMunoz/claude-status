@@ -2757,3 +2757,42 @@ nothing in a status item animates.
   five; the new option and what it is not), README's sessions bullet,
   `docs/qa-checklist.md`. Nothing here touches credentials; `docs/security.md` is
   unchanged.
+
+## 2026-09-25 — A scripted day both platforms can pose for
+
+For a picture that puts the macOS menu bar next to the Windows widget, the two
+halves have to carry the same numbers. Fake data already gave the same
+percentages; what did not agree was the countdown, which is recomputed from the
+stored reset at every render and so slides a minute between one poll and the
+next.
+
+- **`FakeUsageScenario.Screenshot`**: the healthy day's readings - 29 / 58 / 44,
+  the numbers the README's images have always carried - with fifty seconds of
+  slack on the session window's reset, so the countdown reads `(2:37)` for all
+  but a few seconds of each poll instead of turning over ten seconds in. It
+  cannot be made exact: a countdown written to the minute and a one-minute poll
+  are the same width, so there is no offset that never crosses a boundary. The
+  doc says to refresh and then shoot, which closes it.
+- **`CLAUDESTATUS_FAKE_SCENARIO`** picks the scenario, read where the provider is
+  built (`AppServices.CreateProvider`). An environment variable and not a
+  setting: a user who finds "pretend I am nearly out of quota" in Config has
+  found a bug. Anything unrecognised falls back to `Healthy` rather than failing
+  to start - it only decides which invented numbers are shown.
+- **`build/seed-screenshot-sessions.ps1`** writes the scripted sessions into the
+  spool, the same drop box the hooks use, so no real Claude Code session is
+  needed: three open, two working, the same three names everywhere because only
+  the last path segment is displayed and the script varies the root per platform,
+  not the leaf. PowerShell because it has to run on both machines; `-Clear` puts
+  it back. The filenames carry a sequence number - the spool is drained in
+  ordinal filename order, and a `Started` landing after its own `Submitted` would
+  put the session back to merely open and the badge one short.
+- **`docs/screenshots.md`**: the whole procedure, which kind of image is taken
+  how, the `screencapture -R` recipe and sizes for the macOS shots, and the two
+  things that drift after seeding (the countdown, and the durations in the
+  popup).
+- Tests: the scenario's readings match the healthy day's, the countdown holds
+  across a poll where the healthy day's turns over at once, the slack runs out
+  rather than lasting forever, and nothing in it is near the threshold. 1140
+  tests, green on macOS.
+- Nothing here touches credentials - it exists to avoid photographing a real
+  reading, which is somebody's account data. `docs/security.md` unchanged.
