@@ -2715,3 +2715,39 @@ nothing in a status item animates.
   a scripted quit still exits cleanly and removes its hooks. The light menu bar
   is the one check left: this desktop keeps a dark bar in Light appearance, so
   it needs a light wallpaper to judge.
+
+## 2026-09-25 — A switch for the "session closed" notification, off by default
+
+- **`AppSettings.NotifyOnSessionEnd`** (Core), and the one place on that type
+  where a plain flag is right rather than an inverted one: the intended default
+  really is `false`. A session ends because its user closed the window, and
+  telling someone what they have just done is the definition of noise. The
+  notification that matters is the other one - a turn finished while they were
+  looking elsewhere, which they cannot know without being told.
+- **`Sessions/SessionNotices.ShouldAnnounce`** (Core): the settings half of
+  "is this worth interrupting for", kept apart from the platform half. Kind of
+  change, then the per-session mute, then this flag. The controller asks it
+  first because it is free, and only runs the terminal-focus check - which walks
+  processes - on what survives it. The three conditions used to be two inline
+  `if`s in `TrayApplicationController.OnSessionChanged` with no test between them.
+- **Config → Sessions** gains the checkbox, under the watch and above retention,
+  with a hint saying what it is *not*: the "waiting for you" notification has no
+  switch of its own, because it is what the watch is for, and is silenced per
+  session with the row switches below. `Config_SessionEndNotice` and
+  `_Hint` in all five languages.
+- **There is no third notification.** One `INotifier.Notify` call site in the
+  app, reached only for `SessionChange.Idle` and `Finished`. The other two things
+  that appear are cards, not OS notifications: the pace warning
+  (`Settings → Behaviour → velocity alerts`) and the fallback card shown when the
+  OS refuses a notification. A test pins the `SessionChange` enum so a fourth
+  change cannot be added and fall through to silence unnoticed.
+- Behaviour that did not change: a closed session still leaves the running count,
+  is still listed as finished until retention drops it, and still counts in the
+  indicator's `0/2`. This governs the announcement only.
+- Tests: the rule's eight combinations, the default, and the enum pin. The config
+  window's load test already covers the new binding, and the localization tests
+  the new keys in all five files. 1133 tests, green on macOS.
+- Docs: `docs/manual.md` (the Settings tab table said four tabs and there are
+  five; the new option and what it is not), README's sessions bullet,
+  `docs/qa-checklist.md`. Nothing here touches credentials; `docs/security.md` is
+  unchanged.

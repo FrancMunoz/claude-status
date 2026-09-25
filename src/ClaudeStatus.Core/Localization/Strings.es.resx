@@ -683,6 +683,12 @@
   <data name="Config_SessionWatch_Hint" xml:space="preserve">
     <value>Muestra las sesiones en marcha y avisa cuando una te está esperando. Para conseguirlo, ClaudeStatus añade sus propios hooks al archivo de configuración de Claude Code mientras se está ejecutando, y los quita al salir. Los hooks que hayas puesto tú no se tocan nunca.</value>
   </data>
+  <data name="Config_SessionEndNotice" xml:space="preserve">
+    <value>Avisar cuando se cierre una sesión</value>
+  </data>
+  <data name="Config_SessionEndNotice_Hint" xml:space="preserve">
+    <value>Desactivado, porque una sesión suele cerrarse cuando cierras su ventana, y que te cuenten lo que acabas de hacer es ruido. Actívalo si dejas sesiones en marcha en otro sitio y quieres enterarte cuando una se va. Que te avisen de que un turno ha terminado y te toca a ti es otra cosa: para eso está la vigilancia, y se silencia por sesión aquí abajo.</value>
+  </data>
   <data name="Config_SessionRetention" xml:space="preserve">
     <value>Mantener las sesiones terminadas en la lista durante</value>
   </data>

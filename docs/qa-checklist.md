@@ -249,6 +249,10 @@ With session watch on, so there are hooks to take out:
     notification delegate.
   - [ ] Allowed: when a turn ends a notification appears, and **no** card. The log
     says `MacNotifier accepted it`.
+  - [ ] Close a session's terminal: **no** notification, and the log shows no
+    `Session Finished … accepted it`. Turn *Settings → Sessions → tell me when a
+    session closes* on and close another: the notification appears. The per-session
+    mute switch silences both either way.
   - [ ] Two turns of the same session end: Notification Center holds one
     notification for it, not two.
   - [ ] Clicking the notification brings the session's terminal app forward, in

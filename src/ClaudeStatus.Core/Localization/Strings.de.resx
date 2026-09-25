@@ -683,6 +683,12 @@
   <data name="Config_SessionWatch_Hint" xml:space="preserve">
     <value>Zeigt die laufenden Sitzungen und meldet, wenn eine auf dich wartet. Dafür trägt ClaudeStatus eigene Hooks in die Einstellungsdatei von Claude Code ein, solange es läuft, und entfernt sie beim Beenden wieder. Selbst eingetragene Hooks werden nie angefasst.</value>
   </data>
+  <data name="Config_SessionEndNotice" xml:space="preserve">
+    <value>Melden, wenn eine Sitzung endet</value>
+  </data>
+  <data name="Config_SessionEndNotice_Hint" xml:space="preserve">
+    <value>Aus, denn eine Sitzung endet meist, weil du ihr Fenster geschlossen hast, und dir zu melden, was du gerade selbst getan hast, ist nur Lärm. Schalte es ein, wenn du Sitzungen anderswo laufen lässt und mitbekommen willst, wenn eine verschwindet. Die Meldung, dass ein Zug fertig ist und du an der Reihe bist, ist etwas anderes: dafür ist die Beobachtung da, und sie wird unten pro Sitzung stummgeschaltet.</value>
+  </data>
   <data name="Config_SessionRetention" xml:space="preserve">
     <value>Beendete Sitzungen anzeigen für</value>
   </data>

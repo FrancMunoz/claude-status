@@ -258,6 +258,28 @@ public sealed record AppSettings
     public IReadOnlyList<string> MutedSessions { get; init; } = [];
 
     /// <summary>
+    /// Whether closing a Claude Code session is worth a notification.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Off, and not stored inverted, because here the intended default really is
+    /// <c>false</c> - the one case on this type where a plain flag is the honest
+    /// shape. A session ends because its user closed the window, and telling
+    /// someone what they have just done is the definition of noise. The
+    /// notification that matters is the other one: a turn finished while they were
+    /// looking somewhere else, which they cannot know without being told.
+    /// </para>
+    /// <para>
+    /// It is the announcement this governs, not the bookkeeping. A closed session
+    /// still leaves the running count, still drops off the list when
+    /// <see cref="SessionRetention"/> is up, and is still listed as finished until
+    /// then. <see cref="MutedSessions"/> silences a session whichever way this is
+    /// set.
+    /// </para>
+    /// </remarks>
+    public bool NotifyOnSessionEnd { get; init; }
+
+    /// <summary>
     /// Look for new versions on GitHub, and download them in the background.
     /// </summary>
     /// <remarks>

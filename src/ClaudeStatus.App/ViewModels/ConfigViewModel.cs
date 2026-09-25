@@ -97,6 +97,15 @@ public partial class ConfigViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(RetentionText))]
     private double _sessionRetentionMinutes = SessionRegistry.DefaultRetention.TotalMinutes;
 
+    /// <summary>Whether a session closing is worth a notification. Off by default.</summary>
+    /// <remarks>
+    /// The other session notification - a turn finished, you are being waited for -
+    /// has no switch of its own here: it is the reason the watch exists, and it is
+    /// silenced per session with the row switches below.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _notifyOnSessionEnd;
+
     [ObservableProperty]
     private bool _useFakeProvider;
 
@@ -319,6 +328,7 @@ public partial class ConfigViewModel : ObservableObject
             AutomaticUpdates = settings.AutomaticUpdates;
             VelocityAlerts = settings.VelocityAlerts;
             SessionWatch = settings.SessionWatch;
+            NotifyOnSessionEnd = settings.NotifyOnSessionEnd;
             SessionRetentionMinutes =
                 (settings.SessionRetention ?? SessionRegistry.DefaultRetention).TotalMinutes;
 
@@ -657,6 +667,7 @@ public partial class ConfigViewModel : ObservableObject
                 DisableAutostart = !StartWithOperatingSystem,
                 DisableSessionWatch = !SessionWatch,
                 SessionRetention = TimeSpan.FromMinutes(SessionRetentionMinutes),
+                NotifyOnSessionEnd = NotifyOnSessionEnd,
 
                 // Only the sessions still on the list. A session id outlives
                 // nothing, so keeping the ones that have aged out would grow this

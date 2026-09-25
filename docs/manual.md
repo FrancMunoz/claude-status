@@ -160,7 +160,8 @@ is nothing there to fix.
   mark is back the moment nothing is working; an open but idle session (`0/1`)
   shows the mark. Both are drawn into the item's image, which macOS paints in
   the menu bar's own ink, so the box reads in dark and light appearances alike.
-- When a session finishes a turn or closes, macOS shows a notification (after
+- When a session finishes a turn - or closes, if *Settings → Sessions → tell me
+  when a session closes* is on - macOS shows a notification (after
   asking permission once). The same session's next notification replaces the
   last one instead of stacking. Clicking it brings the session's terminal
   application to the front - the app, not a particular window, since choosing a
@@ -230,7 +231,7 @@ cliff, and the indicator shows that on its own.
 
 ### Settings
 
-Config has four tabs:
+Config has five tabs:
 
 | tab | what is on it |
 | --- | --- |
@@ -238,6 +239,7 @@ Config has four tabs:
 | **Display** | language, indicator (taskbar widget / tray icon, Windows only), Fable column in the widget, blend the widget into the taskbar, threshold |
 | **Theme** | colour theme, font, popup transparency |
 | **Behaviour** | poll interval, autostart, automatic updates, velocity alerts, fake data |
+| **Sessions** | watch Claude Code sessions, tell me when a session closes, how long a finished session stays listed, and a switch per session that silences it |
 
 Language and theme apply **as you pick them**, before Save, so you can see what
 you chose.
@@ -249,6 +251,13 @@ you chose.
 - **Popup transparency** is 0–100 %, default 10 %, and affects the details
   popup's background only. Never its text — a percentage you have to squint at
   defeats the point.
+- **Tell me when a session closes** is off. There are exactly two session
+  notifications — a turn finished and it is your move, and a session closed — and
+  only the second has a switch, because a session usually closes when you close
+  its window and being told what you have just done is noise. Turn it on if you
+  leave sessions running somewhere you are not looking. The first one is the
+  reason the watch exists and is silenced per session instead, with the row
+  switches on this tab or in the details popup. Both respect those switches.
 
 ### Languages
 

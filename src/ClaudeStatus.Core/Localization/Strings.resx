@@ -683,6 +683,12 @@
   <data name="Config_SessionWatch_Hint" xml:space="preserve">
     <value>Lists the sessions that are running and tells you when one is waiting for you. To do it, ClaudeStatus adds its own hooks to Claude Code's settings file while it is running, and removes them again when it quits. Hooks you added yourself are never touched.</value>
   </data>
+  <data name="Config_SessionEndNotice" xml:space="preserve">
+    <value>Tell me when a session closes</value>
+  </data>
+  <data name="Config_SessionEndNotice_Hint" xml:space="preserve">
+    <value>Off, because a session usually closes when you close its window, and being told what you have just done is noise. Turn it on if you leave sessions running elsewhere and want to hear when one goes. Being told that a turn has finished and it is your move is separate: that is what the watch is for, and you silence it per session below.</value>
+  </data>
   <data name="Config_SessionRetention" xml:space="preserve">
     <value>Keep finished sessions listed for</value>
   </data>

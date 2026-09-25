@@ -140,7 +140,9 @@ again.
 | <img src="docs/screenshots/macos-notification.png" alt="A macOS notification from ClaudeStatus: Sessions — claude-status is waiting for you." width="340"> | **Notification** *(macOS)* — when a turn ends; click it to bring that session's terminal to the front. |
 | <img src="docs/screenshots/window-details-sessions.png" alt="The details popup listing three sessions with their state, age and a notify switch each" width="300"> | **Session list** — in the details popup and the hover card: each session's folder, whether it is working or waiting for you, and for how long. One switch watches sessions at all; one per row silences a session you are sitting in front of anyway. **Click a running session in the popup to bring its terminal to the front** (Windows and macOS). |
 
-- **Notifications** — when a session finishes a turn or closes, you get told.
+- **Notifications** — when a session finishes a turn, you get told; when one
+  closes, only if you asked to be (*Settings → Sessions*, off by default — you
+  closed the window, so you already know).
   On Windows that is a toast (or a tray balloon on a machine where the app is not
   installed), and **clicking it brings that session's terminal window to the
   front**. Nothing is shown while that terminal already has focus.

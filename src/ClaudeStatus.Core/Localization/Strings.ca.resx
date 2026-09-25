@@ -683,6 +683,12 @@
   <data name="Config_SessionWatch_Hint" xml:space="preserve">
     <value>Mostra les sessions en marxa i avisa quan una t'està esperant. Per fer-ho, el ClaudeStatus afegeix els seus propis hooks al fitxer de configuració del Claude Code mentre s'executa, i els treu en sortir. Els hooks que hagis posat tu no es toquen mai.</value>
   </data>
+  <data name="Config_SessionEndNotice" xml:space="preserve">
+    <value>Avisa'm quan es tanqui una sessió</value>
+  </data>
+  <data name="Config_SessionEndNotice_Hint" xml:space="preserve">
+    <value>Desactivat, perquè una sessió es tanca normalment quan en tanques la finestra, i que t'expliquin el que acabes de fer és soroll. Activa-ho si deixes sessions en marxa en un altre lloc i vols saber quan se'n va alguna. Que t'avisin que un torn ha acabat i et toca a tu és una altra cosa: per això hi ha la vigilància, i se silencia per sessió aquí sota.</value>
+  </data>
   <data name="Config_SessionRetention" xml:space="preserve">
     <value>Mantén les sessions acabades a la llista durant</value>
   </data>

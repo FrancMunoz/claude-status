@@ -327,6 +327,19 @@
                                        Text="{Binding HookPathText}" />
                         </StackPanel>
 
+                        <!--
+                            Only the closing notification has a switch. The one for
+                            "a turn finished and it is your move" is what the watch
+                            is for, and is silenced per session below.
+                        -->
+                        <StackPanel IsEnabled="{Binding SessionWatch}">
+                            <CheckBox Content="{Binding L[Config_SessionEndNotice]}"
+                                      IsChecked="{Binding NotifyOnSessionEnd}" />
+                            <TextBlock Classes="caption option-help"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding L[Config_SessionEndNotice_Hint]}" />
+                        </StackPanel>
+
                         <StackPanel Spacing="4" IsEnabled="{Binding SessionWatch}">
                             <TextBlock Classes="label" Text="{Binding RetentionText}" />
                             <Slider Minimum="5" Maximum="480" TickFrequency="5"

@@ -683,6 +683,12 @@
   <data name="Config_SessionWatch_Hint" xml:space="preserve">
     <value>Affiche les sessions en cours et vous prévient quand l'une vous attend. Pour cela, ClaudeStatus ajoute ses propres hooks au fichier de configuration de Claude Code pendant qu'il tourne, et les retire en quittant. Les hooks que vous avez ajoutés vous-même ne sont jamais touchés.</value>
   </data>
+  <data name="Config_SessionEndNotice" xml:space="preserve">
+    <value>Me prévenir quand une session se ferme</value>
+  </data>
+  <data name="Config_SessionEndNotice_Hint" xml:space="preserve">
+    <value>Désactivé, car une session se ferme en général parce que vous avez fermé sa fenêtre, et vous annoncer ce que vous venez de faire n'est que du bruit. Activez-le si vous laissez des sessions tourner ailleurs et voulez savoir quand l'une d'elles disparaît. Être prévenu qu'un tour est terminé et que c'est à vous, c'est autre chose : c'est la raison d'être de la surveillance, et cela se coupe session par session ci-dessous.</value>
+  </data>
   <data name="Config_SessionRetention" xml:space="preserve">
     <value>Garder les sessions terminées dans la liste pendant</value>
   </data>

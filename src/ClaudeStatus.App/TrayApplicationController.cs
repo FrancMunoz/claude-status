@@ -1092,12 +1092,11 @@ public sealed class TrayApplicationController : IDisposable
             _ = RefreshAsync();
         }
 
-        if (e.Change is not (SessionChange.Idle or SessionChange.Finished))
-        {
-            return;
-        }
-
-        if (_settings.MutedSessions.Contains(e.Session.Id, StringComparer.Ordinal))
+        // Asked first because it costs nothing: the kind of change, the per-session
+        // switch and the "tell me when one closes" setting, all in one rule - see
+        // SessionNotices. The focus check below walks processes, so it only runs
+        // for what survives this.
+        if (!SessionNotices.ShouldAnnounce(e.Change, e.Session.Id, _settings))
         {
             return;
         }
