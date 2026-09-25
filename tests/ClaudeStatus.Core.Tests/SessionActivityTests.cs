@@ -30,6 +30,32 @@ public class SessionActivityTests
         => SessionActivity.CountWorking([], T0).Should().Be(0);
 
     [Fact]
+    public void Open_counts_every_session_without_an_end_busy_or_not()
+    {
+        IReadOnlyList<ClaudeSession> sessions =
+        [
+            Session("a", working: true),
+            Session("b", working: false),
+            Session("c", working: false, ended: T0.AddMinutes(1)),
+        ];
+
+        SessionActivity.CountOpen(sessions).Should().Be(2, "a finished session is listed for a while but no longer open");
+        SessionActivity.CountOpen([]).Should().Be(0);
+    }
+
+    [Fact]
+    public void A_session_that_went_quiet_mid_turn_stays_open_after_it_stops_counting_as_busy()
+    {
+        // The badge reads 0/1, not 0/0: the turn has been given up on, the session
+        // has not. It leaves the list when the retention window says so.
+        IReadOnlyList<ClaudeSession> sessions = [Session("a", working: true)];
+        DateTimeOffset later = T0 + SessionActivity.StuckAfter;
+
+        SessionActivity.CountWorking(sessions, later).Should().Be(0);
+        SessionActivity.CountOpen(sessions).Should().Be(1);
+    }
+
+    [Fact]
     public void A_finished_session_is_not_working_even_if_its_last_turn_never_ended()
     {
         ClaudeSession session = Session("a", working: true, ended: T0.AddMinutes(1));

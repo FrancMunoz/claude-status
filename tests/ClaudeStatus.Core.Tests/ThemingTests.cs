@@ -196,6 +196,24 @@ public class ThemeCatalogTests
 
     [Theory]
     [MemberData(nameof(BuiltInIds))]
+    public void The_working_badge_stays_readable_through_its_pulse(string id)
+    {
+        // The badge alternates between Primary and PrimaryPulse while a session is
+        // busy, and the session count is drawn on both. The far end of that pulse
+        // is derived, not declared, precisely so it cannot be the one frame where
+        // the number disappears - which is what the opacity fade it replaced did.
+        Theme theme = ById(id);
+
+        theme.OnPrimary.ContrastWith(theme.PrimaryPulse).Should().BeGreaterThanOrEqualTo(
+            4.5d, $"'{id}' draws the session count on the pulsing badge");
+
+        // And it has to be a visible change, or the badge just sits there.
+        Distance(theme.Primary, theme.PrimaryPulse).Should().BeGreaterThan(
+            20d, $"'{id}' must show that the badge is breathing");
+    }
+
+    [Theory]
+    [MemberData(nameof(BuiltInIds))]
     public void The_bar_track_is_visible_but_quieter_than_the_bar(string id)
     {
         // A track that vanishes into the background turns a 20 % reading into a

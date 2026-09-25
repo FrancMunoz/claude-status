@@ -140,21 +140,27 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     /// <summary>How many sessions have a turn in progress - see <see cref="SessionActivity"/>.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsWorking))]
-    [NotifyPropertyChangedFor(nameof(WorkingCountText))]
-    [NotifyPropertyChangedFor(nameof(HasWorkingCount))]
+    [NotifyPropertyChangedFor(nameof(SessionCountText))]
     private int _workingCount;
 
-    /// <summary>Whether the working badge is up.</summary>
+    /// <summary>How many sessions are open, working or waiting - see <see cref="SessionActivity.CountOpen"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SessionCountText))]
+    private int _openCount;
+
+    /// <summary>Whether the session badge breathes: at least one turn is in progress.</summary>
     public bool IsWorking => WorkingCount > 0;
 
     /// <summary>
-    /// Whether the badge carries a number - always, while it is up, including a
-    /// "1": the badge answers "how many", and a bare dot for one answered only "any".
+    /// The text in the session badge: <c>1/3</c>, busy over open.
     /// </summary>
-    public bool HasWorkingCount => WorkingCount > 0;
-
-    /// <summary>The number in the badge. Capped, because the badge is one digit wide.</summary>
-    public string WorkingCountText => WorkingCount > 9 ? "9+" : WorkingCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
+    /// <remarks>
+    /// Shown whenever the watch is on (<see cref="ShowSessions"/>), <c>0/0</c>
+    /// included - the badge answers "can I walk away", and "nothing open" is an
+    /// answer. Not capped: the box is as wide as its digits. The shape is
+    /// <see cref="IndicatorText.SessionCount"/>'s, shared with the macOS menu bar.
+    /// </remarks>
+    public string SessionCountText => IndicatorText.SessionCount(WorkingCount, OpenCount);
 
     /// <summary>The last list handed over, kept so the working count can age without a new event.</summary>
     private IReadOnlyList<ClaudeSession> _lastSessions = [];
@@ -173,6 +179,21 @@ public partial class TaskbarWidgetViewModel : ObservableObject
 
         HasSessions = Sessions.Count > 0;
         WorkingCount = SessionActivity.CountWorking(sessions, now);
+        OpenCount = SessionActivity.CountOpen(sessions);
+    }
+
+    /// <summary>
+    /// Forgets the sessions: the watch was switched off. The badge and the list go
+    /// with it, which an empty list would not do - that is a reading of nothing.
+    /// </summary>
+    public void ClearSessions()
+    {
+        _lastSessions = [];
+        Sessions.Clear();
+        HasSessions = false;
+        ShowSessions = false;
+        WorkingCount = 0;
+        OpenCount = 0;
     }
 
     public UsageBarViewModel Session { get; }

@@ -483,20 +483,67 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         });
 
     [Fact]
-    public void Working_sessions_lead_the_row_with_their_count_from_one()
+    public void Sessions_lead_the_row_with_busy_over_open()
     {
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
         {
             RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
-            item.Title.Should().Be("●1 5h (2:11) 42% · 7d 18%");
+            item.Title.Should().Be("[1/1] 5h (2:11) 42% · 7d 18%");
 
             RenderThenPush(
                 indicator,
                 Snapshot(),
                 IndicatorAlert.None,
                 [Session("a", working: true), Session("b", working: false), Session("c", working: true)]);
-            item.Title.Should().Be("●2 5h (2:11) 42% · 7d 18%", "a waiting session is not counted");
+            item.Title.Should().Be("[2/3] 5h (2:11) 42% · 7d 18%", "a waiting session is open but not busy");
+        }
+    }
+
+    [Fact]
+    public void The_row_carries_no_count_until_sessions_are_watched()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            OnUi(() =>
+            {
+                indicator.Render(Snapshot(), IndicatorMode.Row, ThresholdState.Normal, IndicatorAlert.None);
+                return 0;
+            });
+
+            item.Title.Should().Be("5h (2:11) 42% · 7d 18%", "off is not the same as none open");
+        }
+    }
+
+    [Fact]
+    public void An_empty_list_is_a_reading_of_nothing_open_and_says_so()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, []);
+
+            item.Title.Should().Be("[0/0] 5h (2:11) 42% · 7d 18%");
+        }
+    }
+
+    [Fact]
+    public void Switching_the_watch_off_takes_the_count_off_the_row_at_once()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+            item.Title.Should().StartWith("[1/1] ");
+
+            OnUi(() =>
+            {
+                indicator.HideSessions();
+                return 0;
+            });
+
+            item.Title.Should().Be("5h (2:11) 42% · 7d 18%");
         }
     }
 
@@ -514,7 +561,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
                 return 0;
             });
 
-            item.Title.Should().Be("5h (2:11) 42% · 7d 18%", "the turn ended and no poll has happened since");
+            item.Title.Should().Be("[0/1] 5h (2:11) 42% · 7d 18%", "the turn ended and no poll has happened since");
         }
     }
 
@@ -539,7 +586,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
                 return 0;
             });
 
-            item.Title.Should().Be("●1 5h (2:11) 42% · 7d 18%");
+            item.Title.Should().Be("[1/1] 5h (2:11) 42% · 7d 18%");
         }
     }
 
@@ -567,7 +614,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         using (indicator)
         {
             RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
-            item.Title.Should().StartWith("●1 ");
+            item.Title.Should().StartWith("[1/1] ");
 
             // No further session event: only the clock moves, as it does between polls.
             clock.SetUtcNow(Now + SessionActivity.StuckAfter + TimeSpan.FromMinutes(1));
@@ -577,7 +624,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
                 return 0;
             });
 
-            item.Title.Should().NotStartWith(IndicatorText.WorkingGlyph);
+            item.Title.Should().StartWith("[0/1] ", "the session is still open, only its turn has been given up on");
         }
     }
 
@@ -590,7 +637,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
             RenderThenPush(
                 indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)], IndicatorMode.WeekPercent);
 
-            item.Title.Should().Be("●1 7d 18%");
+            item.Title.Should().Be("[1/1] 7d 18%");
         }
     }
 
@@ -602,7 +649,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         {
             RenderThenPush(indicator, Snapshot(session: 100d), IndicatorAlert.None, [Session("a", working: true)]);
 
-            item.Title.Should().Be("●1 5h (2:11) x · 7d 18%");
+            item.Title.Should().Be("[1/1] 5h (2:11) x · 7d 18%");
         }
     }
 

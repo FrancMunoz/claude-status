@@ -135,8 +135,8 @@ again.
 
 | | |
 | --- | --- |
-| ![Taskbar widget with a badge showing 2 working sessions](docs/screenshots/taskbar-widget-working.png) | **Working badge** *(Windows widget)* — a breathing badge on the mark counts the sessions with a turn in progress. It is gone when none are. |
-| <img src="docs/screenshots/macos-menu-bar-working.png" alt="The macOS menu bar item reading ●2 5h (2:47) 19% · 7d 29%" width="420"> | **Working count** *(macOS menu bar)* — the same count leads the row as text while sessions are working, and is gone when none are. |
+| ![Taskbar widget with a badge reading 2/3: two of three open sessions working](docs/screenshots/taskbar-widget-working.png) | **Session badge** *(Windows widget)* — a box on the mark reads *working / open*: how many Claude Code sessions have a turn in progress, out of how many are open. It breathes while anything is working. |
+| <img src="docs/screenshots/macos-menu-bar-working.png" alt="The macOS menu bar item reading ●2 5h (2:47) 19% · 7d 29%" width="420"> | **Session count** *(macOS menu bar)* — the same count leads the row as text: `[2/3]`. The screenshot predates the change and still shows the old `●2` form. |
 | <img src="docs/screenshots/macos-notification.png" alt="A macOS notification from ClaudeStatus: Sessions — claude-status is waiting for you." width="340"> | **Notification** *(macOS)* — when a turn ends; click it to bring that session's terminal to the front. |
 | <img src="docs/screenshots/window-details-sessions.png" alt="The details popup listing three sessions with their state, age and a notify switch each" width="300"> | **Session list** — in the details popup and the hover card: each session's folder, whether it is working or waiting for you, and for how long. One switch watches sessions at all; one per row silences a session you are sitting in front of anyway. **Click a running session in the popup to bring its terminal to the front** (Windows and macOS). |
 

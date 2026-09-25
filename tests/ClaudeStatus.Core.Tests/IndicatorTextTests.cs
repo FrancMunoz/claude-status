@@ -101,17 +101,22 @@ public class IndicatorTextTests
         IndicatorText.Absence(Reading(), IndicatorAlert.None).Should().BeNull();
     }
 
+    [Theory]
+    [InlineData(0, 0, "0/0")]
+    [InlineData(0, 3, "0/3")]
+    [InlineData(1, 3, "1/3")]
+    [InlineData(12, 12, "12/12")]
+    public void The_session_count_is_busy_over_open(int working, int open, string expected)
+        => IndicatorText.SessionCount(working, open).Should().Be(expected, "the widget and the menu bar share this shape");
+
     [Fact]
-    public void Nothing_leads_the_row_while_no_session_is_working()
-    {
-        IndicatorText.WorkingPrefix(0).Should().BeEmpty("the row must read exactly as it did before sessions");
-        IndicatorText.WorkingPrefix(-1).Should().BeEmpty();
-    }
+    public void A_negative_count_is_written_as_zero_rather_than_trusted()
+        => IndicatorText.SessionCount(-1, -2).Should().Be("0/0");
 
     [Theory]
-    [InlineData(1, "●1 ")]
-    [InlineData(2, "●2 ")]
-    [InlineData(12, "●12 ")]
-    public void A_working_count_is_the_glyph_the_number_and_a_space(int working, string expected)
-        => IndicatorText.WorkingPrefix(working).Should().Be(expected, "the count is shown from one, like the badge");
+    [InlineData(0, 0, "[0/0] ")]
+    [InlineData(1, 3, "[1/3] ")]
+    [InlineData(2, 2, "[2/2] ")]
+    public void The_row_prefix_is_the_count_in_brackets_and_a_space(int working, int open, string expected)
+        => IndicatorText.SessionPrefix(working, open).Should().Be(expected, "the brackets are the text form of the widget's box");
 }

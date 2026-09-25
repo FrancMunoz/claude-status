@@ -235,6 +235,13 @@ public sealed class TrayIconIndicator : IStatusIndicator
         _cardViewModel.ShowSessions = true;
     }
 
+    /// <inheritdoc />
+    public void HideSessions()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _cardViewModel.ClearSessions();
+    }
+
     /// <summary>Fills <see cref="_menu"/> with the menu described in <c>docs/manual.md</c> §3.</summary>
     private void FillMenu()
     {

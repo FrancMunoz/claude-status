@@ -141,31 +141,37 @@ public static class IndicatorText
     }
 
     /// <summary>
-    /// The glyph that leads a text indicator while Claude Code sessions are working.
+    /// The session count as every indicator writes it: <c>1/3</c>, busy over open.
     /// </summary>
-    public const string WorkingGlyph = "●";
+    /// <remarks>
+    /// One place for the shape so the taskbar widget's rectangle and the macOS
+    /// menu bar cannot drift. The numbers are whatever
+    /// <see cref="ClaudeStatus.Sessions.SessionActivity.CountWorking"/> and
+    /// <see cref="ClaudeStatus.Sessions.SessionActivity.CountOpen"/> say; this only
+    /// formats them. Invariant digits, like every other token here. A negative
+    /// count is written as zero rather than trusted.
+    /// </remarks>
+    public static string SessionCount(int working, int open)
+        => string.Create(CultureInfo.InvariantCulture, $"{Math.Max(working, 0)}/{Math.Max(open, 0)}");
 
     /// <summary>
-    /// What leads a text indicator while sessions are working: <c>●2 </c>.
+    /// What leads a text indicator while sessions are watched: <c>[1/3] </c>.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The menu bar's answer to the taskbar widget's badge. A text item has no
-    /// corner to put a badge in, so the count goes in front of the row instead, and
-    /// is shown from one for the same reason the badge is: "one session is busy" is
-    /// exactly the fact that tells the user not to walk away yet.
+    /// The menu bar's answer to the taskbar widget's rectangle. A text item has no
+    /// box to draw, so the brackets are the box, and the count goes in front of the
+    /// row. It is shown whenever the session watch is on, <c>[0/0]</c> included:
+    /// "nothing open" is itself the answer to "can I walk away", and a prefix that
+    /// came and went would move the row every time a session opened.
     /// </para>
     /// <para>
-    /// Empty when nothing is working, trailing space included, so a caller can
-    /// prepend it unconditionally. The count is whatever
-    /// <see cref="ClaudeStatus.Sessions.SessionActivity.CountWorking"/> says; this
-    /// only formats it. Invariant digits, like every other token here.
+    /// Trailing space included, so a caller can prepend it unconditionally. Whether
+    /// to prepend it at all - the watch may be off - is the caller's to decide.
     /// </para>
     /// </remarks>
-    public static string WorkingPrefix(int working)
-        => working > 0
-            ? string.Create(CultureInfo.InvariantCulture, $"{WorkingGlyph}{working} ")
-            : string.Empty;
+    public static string SessionPrefix(int working, int open)
+        => string.Create(CultureInfo.InvariantCulture, $"[{SessionCount(working, open)}] ");
 
     /// <summary>
     /// What an indicator with room for words shows instead of the readings, or

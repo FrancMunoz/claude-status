@@ -147,11 +147,13 @@ is nothing there to fix.
   one labelled reading in the others. Red past the threshold, faded when stale.
 - With no reading it says why in one symbol and one word: `! No credential`
   (red), `⊘ Offline`, `— No data`.
-- While Claude Code sessions have a turn in progress the row is led by a dot and
-  their count, from one: `●2 5h (2:11) 56% · 7d 18%`. The count follows session
-  events at once and is recounted at every poll, so a session killed mid-turn
-  drops off once it has been silent for two hours. It is never shown beside the
-  no-reading words. No animation: the menu bar title is plain text.
+- While the session watch is on the row is led by the Claude Code sessions with
+  a turn in progress over the sessions open: `[1/3] 5h (2:11) 56% · 7d 18%`, and
+  `[0/0]` when none is. The count follows session events at once and is
+  recounted at every poll, so a session killed mid-turn stops counting as busy
+  once it has been silent for two hours and leaves the open count when the list
+  forgets it. It is never shown beside the no-reading words, and not at all with
+  the watch off. No animation: the menu bar title is plain text.
 - When a session finishes a turn or closes, macOS shows a notification (after
   asking permission once). The same session's next notification replaces the
   last one instead of stacking. Clicking it brings the session's terminal

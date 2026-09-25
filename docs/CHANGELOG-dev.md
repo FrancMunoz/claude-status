@@ -2550,3 +2550,63 @@ three platforms. Both halves of that are fixed.
   now returns 0 instead of `-128`. Windows not yet run.
 - Tests: which close reasons hide and which close; a headless window closed by the
   user is hidden, not closed. A "Quitting" section in the QA checklist.
+
+## 2026-09-25 — The session badge counts open sessions too: `1/3`
+
+- **What it says.** Sessions with a turn in progress over sessions open, on every
+  indicator that showed the busy count: the Windows widget's badge and the macOS
+  menu bar row. `[0/3]` is three terminals waiting, `[0/2]` after one closes,
+  `[0/0]` nothing open. Shown whenever the session watch is on, `0/0` included -
+  "nothing open" is itself the answer to "can I walk away". Nothing at all while
+  the watch is off.
+- **`SessionActivity.CountOpen`** (Core): sessions without an end. A session
+  killed without one stays counted until the retention window drops it from the
+  list, the same way it stays listed; `StuckAfter` is about a turn, not a
+  session, so the badge reads `0/1` for a turn given up on, not `0/0`.
+- **`IndicatorText.SessionCount`** (`1/3`) and **`SessionPrefix`** (`[1/3] `)
+  replace `WorkingGlyph` / `WorkingPrefix`. One shape for both surfaces; the
+  brackets are the text form of the widget's box. No `9+` cap any more - the
+  box is as wide as its digits.
+- **`IStatusIndicator.HideSessions`** (default no-op), called by the controller
+  when the watch is switched off instead of `ShowSessions([])`. An empty list is
+  now a reading - no session is open - and shows as `0/0`; off means no count.
+  `TaskbarWidgetViewModel.ClearSessions` is the view-model half: list, badge and
+  `ShowSessions` all go, and a later poll cannot resurrect the count from the old
+  list. `NativeStatusIndicator` keeps a `_watching` flag for the prefix.
+- **The widget's badge** (`Panel.sessionBadge`, `TextBlock.sessionCount`) is a
+  rounded box (3 px corners, 2 px of air beside the digit ink and 3 above and below, Micro bold
+  - Caption was tried and shouted) over the *bottom* of the mark, its bottom edge on the time
+  bar's. The mark column now stretches to the metric column's height with the
+  mark hung from the top, instead of being centred with a 2 px nudge; the badge
+  covers roughly the lower half of the mark. The three-layer pulse from the
+  uncommitted badge work (two pills, `Theme.PrimaryPulse`) is kept as-is and runs
+  only while something works.
+- `docs/screenshots/taskbar-widget-working.png` regenerated (`ScreenshotGenerator`
+  now sets `ShowSessions` for the sessions shot). The macOS shot was not: it needs
+  a Mac and still shows `●2`; the README says so.
+- Tests: `SessionCount` / `SessionPrefix` shapes, `CountOpen`, the widget view
+  model's `2/3`, `0/1`, `0/0` and `ClearSessions`, the menu bar row with no watch,
+  with an empty list, and after `HideSessions`. The headless badge tests read
+  `2/2`. 1114 tests, all green on Windows.
+- Docs: `PLAN.md` §9.5b (widget and macOS items ticked), `docs/manual.md`,
+  `docs/qa-checklist.md` (macOS sessions steps), README table.
+
+## 2026-09-25 — Three dots in place of the mark while a turn runs
+
+- **Widget** (`TaskbarWidgetWindow`, `StackPanel.workingDots`): while
+  `IsWorking`, the mark is hidden and three 4 px dots take its 19 px box,
+  pulsing on opacity 0.3 → 1 → 0.3 over 0.9 s, each 0.3 s behind the last
+  (one `Animation` per dot, differing only in `Delay`; the offsets survive an
+  infinite iteration). Claude's own thinking sign, in the mark's ink - primary,
+  or `Widget.Ink` when the widget follows the taskbar. The mark is back the
+  moment nothing works; an open but idle session (`0/1`) does not hide it. The
+  badge's own breathing is untouched.
+- Opacity is fine here where it was not on the badge: a dot has nothing inside
+  it to fade. Keyframe animations pause on a hidden control, and `.active` is
+  bound to the same flag anyway.
+- Widget only. The tray icon bitmap (Linux, Windows fallback) still needs the
+  §9.5b decision about re-rendering on a timer; the macOS row is text.
+- Tests (`WorkingBadgeTests`): working → mark hidden, three dots shown in the
+  theme's primary and moving after a tick; idle → mark shown, no dots.
+- `docs/screenshots/taskbar-widget-working.png` regenerated; it catches the
+  dots on their first frame.

@@ -226,10 +226,13 @@ With session watch on, so there are hooks to take out:
 - **Claude Code sessions** (run the built `.app`, not `dotnet run`; session watch on):
   - [ ] Launch: `~/.claude/settings.json` gains five hooks whose `command` is the
     executable inside the bundle. Quit from the menu: they are gone.
-  - [ ] A prompt in Claude Code: the menu bar row gains `●1 ` in front within a
-    second or two, and the details popup lists the session as working.
-  - [ ] A second session working at once: `●2 `. Both turns end: the prefix goes
-    and the row reads exactly as before.
+  - [ ] Session watch on and nothing open: the menu bar row starts with `[0/0] `.
+    Switch the watch off in Config: the prefix goes and the row reads exactly
+    as before. Switch it back on.
+  - [ ] A prompt in Claude Code: the row reads `[1/1] ` within a second or two,
+    and the details popup lists the session as working.
+  - [ ] A second session working at once: `[2/2] `. One turn ends: `[1/2] `.
+    Both end: `[0/2] `. Close one terminal: `[0/1] `.
   - [ ] The prefix is legible on a light menu bar and on a dark one (switch
     appearance, or use a light and a dark wallpaper).
   - [ ] Signed out of Claude Code while a turn runs: `! No credential` in red,

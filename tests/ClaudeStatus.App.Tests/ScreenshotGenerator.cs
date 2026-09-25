@@ -269,6 +269,9 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
         viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
         if (sessions is not null)
         {
+            // The badge is up exactly while the watch is on, which is what a pushed
+            // list means; the other widget shots stand for the watch switched off.
+            viewModel.ShowSessions = true;
             viewModel.UpdateSessions(sessions, Now);
         }
 

@@ -68,6 +68,12 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     private IReadOnlyList<ClaudeSession> _sessions = [];
 
     /// <summary>
+    /// Whether a session list has been pushed and not taken back: the row carries
+    /// the <c>[1/3]</c> prefix only then. Off is not the same as "none open".
+    /// </summary>
+    private bool _watching;
+
+    /// <summary>
     /// The last reading rendered, so a session event can repaint the row without
     /// waiting for the next poll.
     /// </summary>
@@ -227,8 +233,31 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         }
 
         _sessions = sessions;
+        _watching = true;
         _cardViewModel.UpdateSessions(sessions, _clock.GetUtcNow());
         _cardViewModel.ShowSessions = true;
+
+        if (_lastRender is { } last)
+        {
+            Render(last.Snapshot, last.Mode, last.State, last.Alert);
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>Takes the prefix off the row straight away, for the same reason.</remarks>
+    public void HideSessions()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(HideSessions);
+            return;
+        }
+
+        _sessions = [];
+        _watching = false;
+        _cardViewModel.ClearSessions();
 
         if (_lastRender is { } last)
         {
@@ -256,9 +285,14 @@ public sealed class NativeStatusIndicator : IStatusIndicator
 
         // Counted here, on every render, not only when sessions are pushed: a
         // session killed mid-turn sends nothing more, and it is the passing of
-        // StuckAfter at some later poll that takes it off the count.
-        string working = IndicatorText.WorkingPrefix(
-            SessionActivity.CountWorking(_sessions, _clock.GetUtcNow()));
+        // StuckAfter at some later poll that takes it off the count. Nothing at
+        // all while the watch is off - "[0/0]" would claim a reading that is not
+        // being taken.
+        string working = _watching
+            ? IndicatorText.SessionPrefix(
+                SessionActivity.CountWorking(_sessions, _clock.GetUtcNow()),
+                SessionActivity.CountOpen(_sessions))
+            : string.Empty;
 
         if (mode == IndicatorMode.Row)
         {

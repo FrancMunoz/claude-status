@@ -145,6 +145,19 @@ public interface IStatusIndicator : IDisposable
     {
     }
 
+    /// <summary>
+    /// Takes the sessions off again: the session watch has been switched off.
+    /// </summary>
+    /// <remarks>
+    /// Not the same as <see cref="ShowSessions"/> with an empty list. An empty list
+    /// is a reading - no session is open - and the indicators say so with a
+    /// <c>0/0</c>; this says there is no reading to give, and the count goes away
+    /// with the list. A default no-op for the same reason as the other two.
+    /// </remarks>
+    void HideSessions()
+    {
+    }
+
     /// <summary>Makes the indicator visible.</summary>
     void Show();
 

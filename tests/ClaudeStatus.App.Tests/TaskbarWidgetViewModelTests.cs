@@ -296,30 +296,54 @@ public class TaskbarWidgetViewModelTests
     }
 
     [Fact]
-    public void The_working_badge_counts_busy_sessions_from_one()
+    public void The_session_badge_counts_busy_sessions_over_open_ones()
     {
         var vm = new TaskbarWidgetViewModel(new Localizer());
         vm.IsWorking.Should().BeFalse();
-        vm.HasWorkingCount.Should().BeFalse();
+        vm.SessionCountText.Should().Be("0/0");
 
         vm.UpdateSessions([new ClaudeSession("a", "C:\\a", Now, Now, IsWorking: true)], Now);
         vm.IsWorking.Should().BeTrue();
-        vm.HasWorkingCount.Should().BeTrue();
-        vm.WorkingCountText.Should().Be("1");
+        vm.SessionCountText.Should().Be("1/1");
 
         vm.UpdateSessions(
             [
                 new ClaudeSession("a", "C:\\a", Now, Now, IsWorking: true),
                 new ClaudeSession("b", "C:\\b", Now, Now, IsWorking: true),
                 new ClaudeSession("c", "C:\\c", Now, Now),
+                new ClaudeSession("d", "C:\\d", Now, Now, EndedAt: Now),
             ],
             Now);
         vm.WorkingCount.Should().Be(2);
-        vm.HasWorkingCount.Should().BeTrue();
-        vm.WorkingCountText.Should().Be("2");
+        vm.OpenCount.Should().Be(3, "a finished session is listed but not open");
+        vm.SessionCountText.Should().Be("2/3");
+
+        vm.UpdateSessions([new ClaudeSession("c", "C:\\c", Now, Now)], Now);
+        vm.IsWorking.Should().BeFalse("nothing is busy, but the badge still says how many are open");
+        vm.SessionCountText.Should().Be("0/1");
 
         vm.UpdateSessions([], Now);
-        vm.IsWorking.Should().BeFalse("the watch being switched off sends an empty list");
+        vm.SessionCountText.Should().Be("0/0", "an empty list is a reading: nothing open");
+    }
+
+    [Fact]
+    public void Switching_the_watch_off_takes_the_badge_down_where_an_empty_list_would_not()
+    {
+        var vm = new TaskbarWidgetViewModel(new Localizer());
+        vm.UpdateSessions([new ClaudeSession("a", "C:\\a", Now, Now, IsWorking: true)], Now);
+        vm.ShowSessions = true;
+
+        vm.ClearSessions();
+
+        vm.ShowSessions.Should().BeFalse("the badge is up exactly while the watch is on");
+        vm.HasSessions.Should().BeFalse();
+        vm.Sessions.Should().BeEmpty();
+        vm.IsWorking.Should().BeFalse();
+        vm.SessionCountText.Should().Be("0/0");
+
+        // And a later poll must not resurrect the count from the old list.
+        vm.Update(Snapshot(10, 10, 10), IndicatorAlert.None, Now.AddMinutes(1));
+        vm.IsWorking.Should().BeFalse();
     }
 
     [Fact]

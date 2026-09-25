@@ -104,6 +104,37 @@ public sealed record Theme(
         }
     }
 
+    /// <summary>
+    /// The far end of a pulse on <see cref="Primary"/>: the working badge breathing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The badge used to breathe by fading its opacity, which took the count inside
+    /// it down with it - the one thing on the badge that has to be read spent half
+    /// of every cycle half gone. Alternating between two opaque colours instead
+    /// animates only the pill.
+    /// </para>
+    /// <para>
+    /// Derived by blending <em>away</em> from <see cref="OnPrimary"/> - toward white
+    /// when the count is black on this primary, toward black when it is white - so
+    /// the shift can only raise the count's contrast, never lower it. Blending
+    /// toward the background would have been the obvious move and is the wrong one:
+    /// it drains the badge of the colour that makes it a signal, and on the
+    /// taskbar, whose colour the widget does not control, it can fade the pill into
+    /// the panel it is sitting on.
+    /// </para>
+    /// </remarks>
+    public Rgb PrimaryPulse
+    {
+        get
+        {
+            var white = new Rgb(0xFF, 0xFF, 0xFF);
+            var black = new Rgb(0x00, 0x00, 0x00);
+
+            return Primary.Blend(OnPrimary.IsDark ? white : black, 0.34d);
+        }
+    }
+
     /// <summary>Background for the warning banner, from the alert colour.</summary>
     public Rgb AlertSurface => Background.Blend(Alert, 0.16d);
 

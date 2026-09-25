@@ -364,6 +364,25 @@ public sealed class TaskbarWidgetIndicator : IStatusIndicator
         }
     }
 
+    /// <inheritdoc />
+    public void HideSessions()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(HideSessions);
+            return;
+        }
+
+        _viewModel.ClearSessions();
+
+        if (_hover.IsVisible)
+        {
+            PlaceHover();
+        }
+    }
+
     private void OnNoticeExpired()
     {
         _noticeTimer.Stop();

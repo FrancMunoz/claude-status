@@ -69,6 +69,7 @@ public static class ThemeApplier
         SetBrush(resources, "Text", theme.Text);
         SetBrush(resources, "Muted", theme.Muted);
         SetBrush(resources, "Primary", theme.Primary);
+        SetBrush(resources, "PrimaryPulse", theme.PrimaryPulse);
         SetBrush(resources, "OnPrimary", theme.OnPrimary);
         SetBrush(resources, "Alert", theme.Alert);
         SetBrush(resources, "AlertSurface", theme.AlertSurface);

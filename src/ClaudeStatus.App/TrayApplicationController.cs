@@ -915,7 +915,9 @@ public sealed class TrayApplicationController : IDisposable
             _detailsViewModel?.ApplySessionWatch(settings.SessionWatch);
             if (!settings.SessionWatch)
             {
-                _indicator.ShowSessions([]);
+                // Not an empty list: that would be "no session is open", which the
+                // indicators now show as 0/0. Off means no count at all.
+                _indicator.HideSessions();
             }
         }
 

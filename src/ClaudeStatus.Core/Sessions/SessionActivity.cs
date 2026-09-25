@@ -39,6 +39,29 @@ public static class SessionActivity
         return count;
     }
 
+    /// <summary>The number of open sessions, busy or not.</summary>
+    /// <remarks>
+    /// The denominator of the indicators' <c>1/3</c>. Open means no end was
+    /// reported: a session killed without one stays counted until the retention
+    /// window drops it from the list, the same way it stays listed. No
+    /// <see cref="StuckAfter"/> here - that rule is about a turn, not a session.
+    /// </remarks>
+    public static int CountOpen(IReadOnlyList<ClaudeSession> sessions)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+
+        int count = 0;
+        foreach (ClaudeSession session in sessions)
+        {
+            if (session.IsRunning)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
     /// <summary>Whether this session counts as busy at <paramref name="now"/>.</summary>
     public static bool IsWorking(ClaudeSession session, DateTimeOffset now)
     {
