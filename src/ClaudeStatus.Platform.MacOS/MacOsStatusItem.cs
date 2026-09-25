@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using ClaudeStatus.Platform.MacOS.Interop;
@@ -63,40 +64,16 @@ public sealed class MacOsStatusItem : INativeStatusItem
     private const long NSImageLeft = 2;
 
     /// <summary>
-    /// The mark's size in points, beside menu bar text.
+    /// The image's height in points, beside menu bar text.
     /// </summary>
     /// <remarks>
     /// The menu bar is 22 pt and its own icons leave a margin rather than filling
     /// it. Sixteen matches them and keeps the mark from overpowering the number,
-    /// which is the thing being read.
+    /// which is the thing being read. Only the height: the width follows from the
+    /// bitmap, because the image is no longer always a square - the session badge
+    /// rides beside the mark in it.
     /// </remarks>
     private const double IconPoints = 16d;
-
-    /// <summary>
-    /// Set between the mark and the text.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// AppKit exposes no gap between an <c>NSButton</c>'s image and its title -
-    /// <c>imagePosition</c> says which side the image sits on and nothing says how
-    /// far away, so the only place the space can come from is one of the two things
-    /// being spaced. Padding the image would mean drawing the mark into a wider
-    /// canvas, which is a second bitmap and a <c>drawInRect:</c> declaration this
-    /// interop layer deliberately does without; a space at the head of the title
-    /// costs neither.
-    /// </para>
-    /// <para>
-    /// It is also the better of the two on its merits. The mark is read as a glyph
-    /// leading a line of text, and a space is measured in the menu bar's own font -
-    /// so the gap tracks the text size the system chose, where a padded bitmap
-    /// would be fixed in points and drift out of proportion the moment it did not.
-    /// U+2002 rather than a plain space: a word space here reads as a missing word,
-    /// and the mark needs more air than one anyway - it is a figure being set
-    /// against text, not a letter in it. Half an em comes out around 6 pt beside
-    /// the menu bar's own 13 pt, which is the gap the mark was asked for.
-    /// </para>
-    /// </remarks>
-    private const string MarkGap = "\u2002";
 
     /// <summary>The action every button and menu item routes through.</summary>
     private const string ActionSelector = "claudeStatusAction:";
@@ -265,8 +242,14 @@ public sealed class MacOsStatusItem : INativeStatusItem
         // NSStatusBarButton already knows the right answer for its own context, and
         // handing it a bare string is how to get it. The menu bar font arrives the
         // same way, which is the other thing the attributed string was there for.
-        // MarkGap leads it, so the mark is not touching the number it introduces.
-        ObjC.Send(button, ObjC.sel_registerName("setTitle:"), ObjC.NSString(MarkGap + text));
+        //
+        // Nothing leads it. AppKit exposes no gap between a button's image and its
+        // title, and this used to be an en space at the head of the title - which
+        // spaced the title from the image but could not space anything inside the
+        // image, so the session box ended up crowded against the mark and adrift
+        // from the numbers. The image carries both gaps now, in one measurement;
+        // see MenuBarImageRenderer.Gap.
+        ObjC.Send(button, ObjC.sel_registerName("setTitle:"), ObjC.NSString(text));
 
         // Red is the one colour worth overriding for: it means the same thing in
         // every appearance and has to survive being read at a glance. It tints the
@@ -335,14 +318,46 @@ public sealed class MacOsStatusItem : INativeStatusItem
         // The bitmap arrives at its pixel size, which on a HiDPI display is twice
         // what it should occupy. Naming the point size is what turns those extra
         // pixels into sharpness rather than into a mark twice too big.
+        //
+        // The height is fixed and the width is derived, so a wider bitmap comes out
+        // wider rather than squashed: a 64 x 32 image is 32 x 16 pt. Forcing a
+        // square here is what stretched the first badge image into a blur.
         ObjC.SendSize(
             image,
             ObjC.sel_registerName("setSize:"),
-            new ObjC.CGSize(IconPoints, IconPoints));
+            PointSizeOf(png));
 
         ObjC.Send(button, ObjC.sel_registerName("setImage:"), image);
         ObjC.SendLong(button, ObjC.sel_registerName("setImagePosition:"), NSImageLeft);
         ObjC.Send(image, "release");
+    }
+
+    /// <summary>
+    /// The point size an image's bytes call for, at the height the menu bar wants.
+    /// </summary>
+    /// <remarks>
+    /// Read from the PNG's own header rather than from the <c>NSImage</c>. A PNG
+    /// begins with an 8-byte signature and an IHDR chunk whose first two fields are
+    /// the pixel width and height, big-endian - eight bytes at a fixed offset, and
+    /// no round trip through AppKit for something the caller already knew. Anything
+    /// that is not a PNG, or is too short to say, falls back to the square this
+    /// always used to force.
+    /// </remarks>
+    private static ObjC.CGSize PointSizeOf(ReadOnlySpan<byte> png)
+    {
+        const int WidthOffset = 16;
+
+        if (png.Length < WidthOffset + 8)
+        {
+            return new ObjC.CGSize(IconPoints, IconPoints);
+        }
+
+        uint width = BinaryPrimitives.ReadUInt32BigEndian(png[WidthOffset..]);
+        uint height = BinaryPrimitives.ReadUInt32BigEndian(png[(WidthOffset + 4)..]);
+
+        return width == 0 || height == 0
+            ? new ObjC.CGSize(IconPoints, IconPoints)
+            : new ObjC.CGSize(IconPoints * width / height, IconPoints);
     }
 
     /// <summary>Replaces the menu shown on a right click.</summary>

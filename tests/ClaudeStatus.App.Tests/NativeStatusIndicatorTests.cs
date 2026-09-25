@@ -38,12 +38,24 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
 
         public event EventHandler<long>? MenuItemClicked;
 
-        /// <summary>The mark handed over, if any.</summary>
-        public byte[] Icon { get; private set; } = [];
+        /// <summary>
+        /// Every image handed over, in order.
+        /// </summary>
+        /// <remarks>
+        /// All of them, not just the last: the working dots are frames swapped on a
+        /// timer, so "what is in the menu bar" is a sequence and the interesting
+        /// questions - does it move, does it stop - can only be asked of the whole
+        /// list. Kept by reference, which is also how the renderer's cache is
+        /// checked.
+        /// </remarks>
+        public List<byte[]> Icons { get; } = [];
+
+        /// <summary>The image showing now, if any.</summary>
+        public byte[] Icon => Icons.Count == 0 ? [] : Icons[^1];
 
         public void SetTitle(string text, StatusTint tint) => (Title, Tint) = (text, tint);
 
-        public void SetIcon(ReadOnlySpan<byte> png) => Icon = png.ToArray();
+        public void SetIcon(ReadOnlySpan<byte> png) => Icons.Add(png.ToArray());
 
         public void SetMenu(IReadOnlyList<StatusMenuEntry> entries) => Menu = entries;
 
@@ -448,6 +460,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
         {
+            item.Icons.Should().ContainSingle("once, and nothing has happened since");
             item.Icon.Should().NotBeEmpty();
 
             // PNG magic. Cheap, and it catches the encoder silently changing format
@@ -482,26 +495,46 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
             return 0;
         });
 
+    /// <summary>The image the renderer draws for a state, for comparing by reference.</summary>
+    private static byte[] Image(int? frame, int working, int open, bool watching)
+        => OnUi(() => MenuBarImageRenderer.Render(frame, working, open, watching));
+
     [Fact]
-    public void Sessions_lead_the_row_with_busy_over_open()
+    public void The_sessions_are_in_the_image_and_the_row_is_only_the_reading()
     {
+        // The count used to lead the row as "[1/3] ". A status item is an image and
+        // a run of plain text, and the box the widget draws can only be the image -
+        // so the row went back to being exactly the numbers.
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
         {
-            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
-            item.Title.Should().Be("[1/1] 5h (2:11) 42% · 7d 18%");
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: false)]);
 
-            RenderThenPush(
-                indicator,
-                Snapshot(),
-                IndicatorAlert.None,
-                [Session("a", working: true), Session("b", working: false), Session("c", working: true)]);
-            item.Title.Should().Be("[2/3] 5h (2:11) 42% · 7d 18%", "a waiting session is open but not busy");
+            item.Title.Should().Be("5h (2:11) 42% · 7d 18%");
+            item.Title.Should().NotStartWith("[");
+            item.Icon.Should().Equal(Image(null, 0, 1, watching: true));
         }
     }
 
     [Fact]
-    public void The_row_carries_no_count_until_sessions_are_watched()
+    public void The_box_reads_busy_over_open()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
+        using (indicator)
+        {
+            RenderThenPush(
+                indicator,
+                Snapshot(),
+                IndicatorAlert.None,
+                [Session("a", working: false), Session("b", working: false), Session("c", working: false)]);
+
+            item.Icon.Should().Equal(
+                Image(null, 0, 3, watching: true), "a waiting session is open but not busy");
+        }
+    }
+
+    [Fact]
+    public void The_image_is_the_bare_mark_until_sessions_are_watched()
     {
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
@@ -512,7 +545,9 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
                 return 0;
             });
 
-            item.Title.Should().Be("5h (2:11) 42% · 7d 18%", "off is not the same as none open");
+            item.Title.Should().Be("5h (2:11) 42% · 7d 18%");
+            item.Icon.Should().Equal(
+                Image(null, 0, 0, watching: false), "off is not the same as none open");
         }
     }
 
@@ -524,18 +559,19 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         {
             RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, []);
 
-            item.Title.Should().Be("[0/0] 5h (2:11) 42% · 7d 18%");
+            item.Icon.Should().Equal(Image(null, 0, 0, watching: true));
+            item.Icon.Should().NotEqual(
+                Image(null, 0, 0, watching: false), "0/0 is an answer; off is no answer");
         }
     }
 
     [Fact]
-    public void Switching_the_watch_off_takes_the_count_off_the_row_at_once()
+    public void Switching_the_watch_off_takes_the_box_off_the_image_at_once()
     {
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
         {
-            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
-            item.Title.Should().StartWith("[1/1] ");
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: false)]);
 
             OnUi(() =>
             {
@@ -544,11 +580,12 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
             });
 
             item.Title.Should().Be("5h (2:11) 42% · 7d 18%");
+            item.Icon.Should().Equal(Image(null, 0, 0, watching: false));
         }
     }
 
     [Fact]
-    public void A_session_event_repaints_the_row_without_waiting_for_a_poll()
+    public void A_session_event_repaints_the_image_without_waiting_for_a_poll()
     {
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
@@ -561,32 +598,27 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
                 return 0;
             });
 
-            item.Title.Should().Be("[0/1] 5h (2:11) 42% · 7d 18%", "the turn ended and no poll has happened since");
+            item.Icon.Should().Equal(
+                Image(null, 0, 1, watching: true), "the turn ended and no poll has happened since");
         }
     }
 
     [Fact]
-    public void Sessions_arriving_before_any_reading_write_nothing()
+    public void Sessions_arriving_before_any_reading_still_put_the_box_up()
     {
-        // There is no row yet to put a count in front of; the first render does it.
+        // The badge is about the sessions, not about the usage: there is no row to
+        // write yet, and the count is already known.
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
         {
             OnUi(() =>
             {
-                indicator.ShowSessions([Session("a", working: true)]);
+                indicator.ShowSessions([Session("a", working: false)]);
                 return 0;
             });
 
             item.Title.Should().BeNull();
-
-            OnUi(() =>
-            {
-                indicator.Render(Snapshot(), IndicatorMode.Row, ThresholdState.Normal, IndicatorAlert.None);
-                return 0;
-            });
-
-            item.Title.Should().Be("[1/1] 5h (2:11) 42% · 7d 18%");
+            item.Icon.Should().Equal(Image(null, 0, 1, watching: true));
         }
     }
 
@@ -614,7 +646,7 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
         using (indicator)
         {
             RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
-            item.Title.Should().StartWith("[1/1] ");
+            item.Icon.Should().Equal(Image(0, 1, 1, watching: true));
 
             // No further session event: only the clock moves, as it does between polls.
             clock.SetUtcNow(Now + SessionActivity.StuckAfter + TimeSpan.FromMinutes(1));
@@ -624,33 +656,162 @@ public class NativeStatusIndicatorTests(HeadlessAppFixture fixture)
                 return 0;
             });
 
-            item.Title.Should().StartWith("[0/1] ", "the session is still open, only its turn has been given up on");
+            item.Icon.Should().Equal(
+                Image(null, 0, 1, watching: true),
+                "the session is still open, only its turn has been given up on");
         }
     }
 
     [Fact]
-    public void A_single_metric_mode_carries_the_count_too()
+    public void A_single_metric_mode_keeps_the_box_too()
     {
+        // The image is not the row's, so choosing one number rather than three
+        // cannot take the sessions away with it.
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
         {
             RenderThenPush(
-                indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)], IndicatorMode.WeekPercent);
+                indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: false)], IndicatorMode.WeekPercent);
 
-            item.Title.Should().Be("[1/1] 7d 18%");
+            item.Title.Should().Be("7d 18%");
+            item.Icon.Should().Equal(Image(null, 0, 1, watching: true));
         }
     }
 
     [Fact]
-    public void The_count_sits_before_the_label_and_never_touches_a_spent_window()
+    public void A_spent_window_is_written_the_same_way_with_sessions_watched()
     {
         (NativeStatusIndicator indicator, FakeStatusItem item) = Build();
         using (indicator)
         {
-            RenderThenPush(indicator, Snapshot(session: 100d), IndicatorAlert.None, [Session("a", working: true)]);
+            RenderThenPush(indicator, Snapshot(session: 100d), IndicatorAlert.None, [Session("a", working: false)]);
 
-            item.Title.Should().Be("[1/1] 5h (2:11) x · 7d 18%");
+            item.Title.Should().Be("5h (2:11) x · 7d 18%");
         }
+    }
+
+    [Fact]
+    public void Nothing_ticks_while_no_session_is_working()
+    {
+        // An idle app must cost nothing: no timer exists until a turn starts, so
+        // there is no frame to advance and no image to hand over.
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build(out FakeTimeProvider clock);
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: false)]);
+            int written = item.Icons.Count;
+
+            OnUi(() =>
+            {
+                clock.Advance(MenuBarImageRenderer.Cycle * 3);
+                return 0;
+            });
+
+            item.Icons.Should().HaveCount(written);
+        }
+    }
+
+    [Fact]
+    public void A_turn_in_progress_starts_the_dots_and_they_cycle()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build(out FakeTimeProvider clock);
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+            item.Icon.Should().Equal(Image(0, 1, 1, watching: true), "the wave starts at its first frame");
+
+            var seen = new List<string>();
+            for (int tick = 0; tick < MenuBarImageRenderer.FrameCount; tick++)
+            {
+                OnUi(() =>
+                {
+                    clock.Advance(MenuBarImageRenderer.FrameInterval);
+                    return 0;
+                });
+
+                seen.Add(Convert.ToHexString(item.Icon));
+            }
+
+            seen.Should().OnlyHaveUniqueItems("six distinct frames make the pulse");
+            seen[^1].Should().Be(
+                Convert.ToHexString(Image(0, 1, 1, watching: true)),
+                "the sixth tick is back at the first frame");
+        }
+    }
+
+    [Fact]
+    public void The_dots_stop_and_the_mark_comes_back_when_the_turn_ends()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build(out FakeTimeProvider clock);
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+
+            OnUi(() =>
+            {
+                indicator.ShowSessions([Session("a", working: false)]);
+                return 0;
+            });
+
+            item.Icon.Should().Equal(Image(null, 0, 1, watching: true), "an open but idle session shows the mark");
+
+            int written = item.Icons.Count;
+            OnUi(() =>
+            {
+                clock.Advance(MenuBarImageRenderer.Cycle * 3);
+                return 0;
+            });
+
+            item.Icons.Should().HaveCount(written, "the timer is gone, not merely ignored");
+        }
+    }
+
+    [Fact]
+    public void Switching_the_watch_off_stops_the_dots_too()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build(out FakeTimeProvider clock);
+        using (indicator)
+        {
+            RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+
+            OnUi(() =>
+            {
+                indicator.HideSessions();
+                return 0;
+            });
+
+            item.Icon.Should().Equal(Image(null, 0, 0, watching: false));
+
+            int written = item.Icons.Count;
+            OnUi(() =>
+            {
+                clock.Advance(MenuBarImageRenderer.Cycle * 3);
+                return 0;
+            });
+
+            item.Icons.Should().HaveCount(written);
+        }
+    }
+
+    [Fact]
+    public void Disposing_while_the_dots_run_leaves_no_timer_behind()
+    {
+        (NativeStatusIndicator indicator, FakeStatusItem item) = Build(out FakeTimeProvider clock);
+        RenderThenPush(indicator, Snapshot(), IndicatorAlert.None, [Session("a", working: true)]);
+        OnUi(() =>
+        {
+            indicator.Dispose();
+            return 0;
+        });
+
+        int written = item.Icons.Count;
+        OnUi(() =>
+        {
+            clock.Advance(MenuBarImageRenderer.Cycle * 3);
+            return 0;
+        });
+
+        item.Icons.Should().HaveCount(written);
     }
 
     [Fact]

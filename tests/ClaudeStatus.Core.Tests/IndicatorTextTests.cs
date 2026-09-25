@@ -112,11 +112,4 @@ public class IndicatorTextTests
     [Fact]
     public void A_negative_count_is_written_as_zero_rather_than_trusted()
         => IndicatorText.SessionCount(-1, -2).Should().Be("0/0");
-
-    [Theory]
-    [InlineData(0, 0, "[0/0] ")]
-    [InlineData(1, 3, "[1/3] ")]
-    [InlineData(2, 2, "[2/2] ")]
-    public void The_row_prefix_is_the_count_in_brackets_and_a_space(int working, int open, string expected)
-        => IndicatorText.SessionPrefix(working, open).Should().Be(expected, "the brackets are the text form of the widget's box");
 }

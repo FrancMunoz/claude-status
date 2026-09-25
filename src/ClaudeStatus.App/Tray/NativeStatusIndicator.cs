@@ -1,5 +1,4 @@
 using Avalonia.Threading;
-using ClaudeStatus.App.Branding;
 using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
@@ -41,16 +40,6 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     /// <summary>Offset for a metric choice, clear of the command range.</summary>
     private const long ModeTagBase = 200;
 
-    /// <summary>
-    /// The mark's size in physical pixels.
-    /// </summary>
-    /// <remarks>
-    /// Twice the point size it is displayed at, so it is crisp on a HiDPI menu bar.
-    /// Rendering at the display's own scale would mean asking the platform how big
-    /// a pixel is before anything can be drawn, for one small fixed image.
-    /// </remarks>
-    private const int IconPixels = 32;
-
     private readonly INativeStatusItem _item;
     private readonly ILocalizer _l;
     private readonly ILogger<NativeStatusIndicator> _log;
@@ -68,10 +57,40 @@ public sealed class NativeStatusIndicator : IStatusIndicator
     private IReadOnlyList<ClaudeSession> _sessions = [];
 
     /// <summary>
-    /// Whether a session list has been pushed and not taken back: the row carries
-    /// the <c>[1/3]</c> prefix only then. Off is not the same as "none open".
+    /// Whether a session list has been pushed and not taken back: the image carries
+    /// the count box only then. Off is not the same as "none open".
     /// </summary>
     private bool _watching;
+
+    /// <summary>
+    /// Which frame of the working pulse is up, or null while the mark is.
+    /// </summary>
+    /// <remarks>
+    /// Null rather than a frame plus a flag: the renderer takes the same null and
+    /// draws the mark, so there is one answer to "what is in the image" rather than
+    /// two that could disagree.
+    /// </remarks>
+    private int? _frame;
+
+    /// <summary>
+    /// Advances <see cref="_frame"/> while a turn is in progress, and does not exist
+    /// otherwise.
+    /// </summary>
+    /// <remarks>
+    /// An idle app must cost nothing, so this is created on the render that first
+    /// sees a working session and disposed on the first that sees none - not left
+    /// ticking against a flag. From <see cref="_clock"/> so a test can drive the
+    /// pulse without waiting 150 ms a frame.
+    /// </remarks>
+    private ITimer? _pulse;
+
+    /// <summary>The image last handed over, so an unchanged frame is not re-set.</summary>
+    /// <remarks>
+    /// Reference equality against the renderer's cache, which returns the same array
+    /// for the same picture: a poll that changes nothing about the sessions must not
+    /// turn into a <c>setImage:</c>.
+    /// </remarks>
+    private byte[]? _icon;
 
     /// <summary>
     /// The last reading rendered, so a session event can repaint the row without
@@ -115,9 +134,10 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         _item.LeftClicked += OnLeftClicked;
         _item.MenuItemClicked += OnMenuItemClicked;
 
-        // Once. The mark never changes - its colour follows the text through the
-        // platform's own tinting, so there is nothing here to keep in step.
-        _item.SetIcon(AppMark.ToPng(IconPixels));
+        // The bare mark, until a session list says otherwise. Branding, not state:
+        // it has to be there from the first frame rather than appear once the first
+        // fetch lands.
+        UpdateIcon();
 
         RebuildMenu();
 
@@ -193,6 +213,11 @@ public sealed class NativeStatusIndicator : IStatusIndicator
 
         _item.SetTitle(text, tint);
 
+        // The counts are recounted here, not only when sessions are pushed: a
+        // session killed mid-turn sends nothing more, and it is the passing of
+        // StuckAfter at some later poll that takes it off the working count.
+        UpdateIcon();
+
         // Fed on every render so a warning that appears later opens over the
         // current numbers, not the ones from when it was last shown.
         _cardViewModel.Update(snapshot, alert, _clock.GetUtcNow());
@@ -218,8 +243,8 @@ public sealed class NativeStatusIndicator : IStatusIndicator
 
     /// <inheritdoc />
     /// <remarks>
-    /// Repaints the row straight away, so the working count changes when a turn
-    /// starts or ends rather than at the next poll, a minute or more later.
+    /// Repaints the image straight away, so the count changes and the dots start
+    /// when a turn does, rather than at the next poll a minute or more later.
     /// </remarks>
     public void ShowSessions(IReadOnlyList<ClaudeSession> sessions)
     {
@@ -241,10 +266,17 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         {
             Render(last.Snapshot, last.Mode, last.State, last.Alert);
         }
+        else
+        {
+            // No reading yet, so no row to repaint - but the badge is about the
+            // sessions, not about the usage, and it should be up from the moment
+            // the watch is.
+            UpdateIcon();
+        }
     }
 
     /// <inheritdoc />
-    /// <remarks>Takes the prefix off the row straight away, for the same reason.</remarks>
+    /// <remarks>Takes the box off the image straight away, for the same reason.</remarks>
     public void HideSessions()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -263,6 +295,102 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         {
             Render(last.Snapshot, last.Mode, last.State, last.Alert);
         }
+        else
+        {
+            UpdateIcon();
+        }
+    }
+
+    /// <summary>
+    /// Draws the image the sessions call for, and runs the pulse while one works.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Everything about the sessions is in the image rather than the title, because
+    /// an <c>NSStatusItem</c> is an image and a run of plain text: a rounded box
+    /// cannot be written in text and nothing in a status item animates. The row is
+    /// therefore exactly the reading, as it was before sessions existed.
+    /// </para>
+    /// <para>
+    /// The timer is started here and nowhere else, on the first call that sees a
+    /// working session, and stopped on the first that sees none - an idle app costs
+    /// nothing. Six images a second is what every animated menu bar app does.
+    /// </para>
+    /// </remarks>
+    private void UpdateIcon()
+    {
+        int working = _watching ? SessionActivity.CountWorking(_sessions, _clock.GetUtcNow()) : 0;
+        int open = _watching ? SessionActivity.CountOpen(_sessions) : 0;
+
+        if (working > 0)
+        {
+            // From the first frame every time, so the wave always starts at the
+            // same place rather than wherever the last turn left it.
+            _frame ??= 0;
+            StartPulse();
+        }
+        else
+        {
+            StopPulse();
+            _frame = null;
+        }
+
+        SetIcon(MenuBarImageRenderer.Render(_frame, working, open, _watching));
+    }
+
+    /// <summary>Hands the image over, unless it is the one already up.</summary>
+    private void SetIcon(byte[] png)
+    {
+        if (ReferenceEquals(_icon, png))
+        {
+            return;
+        }
+
+        _icon = png;
+        _item.SetIcon(png);
+    }
+
+    private void StartPulse()
+    {
+        _pulse ??= _clock.CreateTimer(
+            OnPulse,
+            state: null,
+            MenuBarImageRenderer.FrameInterval,
+            MenuBarImageRenderer.FrameInterval);
+    }
+
+    private void StopPulse()
+    {
+        _pulse?.Dispose();
+        _pulse = null;
+    }
+
+    /// <summary>Moves the dots on one frame.</summary>
+    /// <remarks>
+    /// On the UI thread, like everything else that touches the status item. A
+    /// <see cref="TimeProvider"/> timer fires on a pool thread in production and on
+    /// the caller's thread under a fake clock, so this checks rather than assuming
+    /// either.
+    /// </remarks>
+    private void OnPulse(object? state)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnPulse(state));
+            return;
+        }
+
+        if (_disposed || _frame is not { } frame)
+        {
+            return;
+        }
+
+        _frame = (frame + 1) % MenuBarImageRenderer.FrameCount;
+        SetIcon(MenuBarImageRenderer.Render(
+            _frame,
+            SessionActivity.CountWorking(_sessions, _clock.GetUtcNow()),
+            SessionActivity.CountOpen(_sessions),
+            _watching));
     }
 
     /// <summary>Builds the text for a mode.</summary>
@@ -283,20 +411,9 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             return $"{absence.Glyph} {_l[absence.MessageKey]}";
         }
 
-        // Counted here, on every render, not only when sessions are pushed: a
-        // session killed mid-turn sends nothing more, and it is the passing of
-        // StuckAfter at some later poll that takes it off the count. Nothing at
-        // all while the watch is off - "[0/0]" would claim a reading that is not
-        // being taken.
-        string working = _watching
-            ? IndicatorText.SessionPrefix(
-                SessionActivity.CountWorking(_sessions, _clock.GetUtcNow()),
-                SessionActivity.CountOpen(_sessions))
-            : string.Empty;
-
         if (mode == IndicatorMode.Row)
         {
-            return working + IndicatorText.ComposeRow(
+            return IndicatorText.ComposeRow(
                 snapshot,
                 alert,
                 (_l["Widget_Session"], _l["Widget_Week"], _l["Tray_Row_Fable"]),
@@ -318,7 +435,7 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             ? IndicatorText.FormatCountdown(single.Window?.TimeUntilReset(_clock.GetUtcNow()))
             : string.Empty;
 
-        return $"{working}{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
+        return $"{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
             + IndicatorText.WindowValue(single.Window, alert, withSign: true);
     }
 
@@ -420,6 +537,7 @@ public sealed class NativeStatusIndicator : IStatusIndicator
         }
 
         _disposed = true;
+        StopPulse();
         _notice.Dispose();
         _l.PropertyChanged -= OnLanguageChanged;
         _item.LeftClicked -= OnLeftClicked;

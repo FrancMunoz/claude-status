@@ -2610,3 +2610,108 @@ three platforms. Both halves of that are fixed.
   theme's primary and moving after a tick; idle → mark shown, no dots.
 - `docs/screenshots/taskbar-widget-working.png` regenerated; it catches the
   dots on their first frame.
+
+## 2026-09-25 — The macOS menu bar gets the badge as a box and the working dots
+
+Brings the `NSStatusItem` up to what the Windows widget got earlier today. Both
+things are drawn into the item's **image**, because a status item is a 16 pt
+image plus a run of plain text: a rounded box cannot be written as text and
+nothing in a status item animates.
+
+- **`Tray/MenuBarImageRenderer`** (new): takes `(frame or null, working, open,
+  watching)` and returns PNG bytes - the mark, or three dots, with the session
+  box beside it. Pure, and cached by those four things, so the frame timer hands
+  the platform bytes that already exist rather than rasterising six times a
+  second. `AppMark.Draw` was split out of `AppMark.ToPng` so the mark is fitted
+  by one piece of code whether it is drawn into a square of its own or into the
+  corner of a wider bitmap.
+- **The box replaces the `[1/3] ` prefix.** The row is the reading again -
+  `5h (2:11) 56% · 7d 18%` - and `IndicatorText.SessionPrefix` is gone with its
+  test, nothing else having used it. `SessionCount` stays: one shape for the
+  widget's box and the menu bar's. Up whenever the watch is on, `0/0` included;
+  `HideSessions` takes it down and leaves the bare mark.
+- **Template image, digits cut out of the box.** A white box with black digits
+  has no edge at all on a light menu bar. The box is drawn as opaque ink with
+  the digits punched through it (`CombinedGeometry`, `Exclude`) and the image
+  stays `setTemplate:`, so macOS paints it in the bar's own colour - white box
+  with dark digits on a dark bar, and the other way round on a light one, like
+  every system item. That is what "white background, black text" becomes on a
+  template image in dark mode, which is where it was asked for.
+- **Shape**: 5 px corners at 2x, bold tabular digits, 2 px of air beside the ink.
+  Full 16 pt height rather than the widget's badge over the mark's bottom, which
+  at 16 pt was judged unreadable. Fixed width, sized for two digits each side
+  (`10/12`) and centred, so the item does not walk along the bar as turns start
+  and end; only a third digit widens it. The image comes out **52 pt wide** with
+  the box up and 16 pt without it.
+- **The digits are the menu bar's own size**, not the box's. The first pass fitted
+  them to 3 px of padding in a 32 px box, which is what the handoff asked for and
+  which came out at 13 pt of ink against a row whose digits are 10 - a second,
+  louder line rather than part of the same one. Counted off a screenshot of the
+  running item (`29%` and `58%` are 10 px of ink on this display) and set to
+  match: `DigitInk` is 20 px at 2x, and the padding that falls out is 6 px above
+  and below. Measured again on the running item afterwards: 10 px, the same as
+  the row.
+- **The dots**: while `CountWorking > 0` the mark gives way to three 8 px dots
+  (4 pt), 3 px apart, centred in the mark's square, each fading 0.3 → 1 → 0.3
+  over 0.9 s and each 0.3 s behind the last - the widget's animation, sampled at
+  **6 frames of 150 ms**. The opacities are computed from the curve, not eyeballed:
+  a sine ease in and out between a floor, a peak and the floor again is
+  algebraically one raised cosine over the whole cycle, so `DotOpacity` is one
+  line. Template images keep their alpha, so a dim dot survives the mask.
+- **The timer** lives in `NativeStatusIndicator`, comes from the injected
+  `TimeProvider`, runs on the UI thread, is created on the render that first
+  sees a working session and disposed on the first that sees none - an idle app
+  costs nothing - and is disposed with the indicator. An unchanged image is not
+  re-set: the renderer's cache returns the same array and the indicator compares
+  by reference.
+- **`MacOsStatusItem.SetIcon`** no longer forces every image to a 16 x 16 pt
+  square. The height stays 16 pt and the width follows the bitmap's own aspect,
+  read from the PNG's IHDR (eight bytes at a fixed offset) rather than through a
+  round trip to `NSImage`. A 64 x 32 image is 32 x 16 pt; nothing is stretched.
+- Tests: the renderer (the badge widens the image, one width from `0/0` to
+  `9/9`, a third digit widens it, six distinct frames that come round again, the
+  same inputs give the same array, the watch off collapses every count to the
+  bare mark, the dot phases lag by two frames each); the indicator through
+  `FakeStatusItem`, which now records every image (no ticks while nothing works,
+  ticks and a cycling image once a turn starts, `HideSessions` and an idle
+  session stop the ticks and restore the mark, disposal leaves no timer, and the
+  title no longer starts with `[`). 1124 tests, green on macOS.
+- Nothing here touches credentials, tokens or the keychain: it is one bitmap and
+  one timer. `docs/security.md` is unchanged.
+- Docs: `docs/manual.md` (the menu bar paragraph), `docs/qa-checklist.md` (the
+  macOS session steps, rewritten for the image, plus the Activity Monitor
+  check), the README's macOS row.
+  `docs/screenshots/macos-menu-bar-working.png` retaken from the running app -
+  three dots, a `2/3` box and the row - replacing the old `●2` form. Taken with
+  `screencapture -R` over the menu bar, which does work; the note about
+  `screencapture` in the 2026-09-17 entry is about notification banners, not the
+  menu bar.
+- **Sized from what the owner saw.** The first run on the bar was called ugly:
+  the dots too small, the digits too big, the corners too square. The handoff's
+  own numbers were the cause - 4 px dots are a quarter of the ink in a 32 px box
+  where they were a fifth in the widget's 19, and 3 px of padding in a full-height
+  box makes the digits taller than the row beside them. Dots doubled to 8 px
+  (gap 3, not 6, or the row fills the square edge to edge), digits set to the menu
+  bar's own 10 pt, corners 3 → 5.
+- **Spacing and alignment, from two more looks at the bar.** The box was crowded
+  against the mark (2 pt) and adrift from the row (an en space plus the first
+  glyph's left side bearing, nearly 7 pt). `Gap` is 5 pt now and the image draws
+  only part of the trailing one: `TitleBearing` is the 3 pt the row's first glyph
+  brings with it, counted off the running item, and drawing the full gap on both
+  sides made the right one twice the left. `MacOsStatusItem` no longer leads the
+  title with `MarkGap` at all - the image owns the spacing. Corners 5 → 7.
+- **The digits sat a pixel low.** Right size (10 px, the same as the row's) and a
+  pixel below it: AppKit centres the image on the button but puts the title on
+  the text baseline, and a font leaves descender room under digits that never use
+  it, so the row's ink rides a point above the image's middle. `TextRise` names
+  that point and `BoxHeight = Height - 2 × TextRise` derives from it, so the box
+  is drawn 14 pt tall from the top and the digits centred in it land on the row's
+  own line. Measured again afterwards: badge and row both at rows 9-18.
+- **Seen running** on a locally built, ad-hoc signed `.app`: the row reads
+  `5h (2:36) 29% · 7d 58%` with no prefix, the box goes `0/0` → `0/2` → `1/2` →
+  `2/2` → `0/1` without the item moving, the dots replace the mark on the first
+  working session and the mark returns when none is (the three dots' brightness
+  measured frame by frame off the screen to confirm the wave really moves), and
+  a scripted quit still exits cleanly and removes its hooks. The light menu bar
+  is the one check left: this desktop keeps a dark bar in Light appearance, so
+  it needs a light wallpaper to judge.

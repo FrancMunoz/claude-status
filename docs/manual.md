@@ -147,13 +147,19 @@ is nothing there to fix.
   one labelled reading in the others. Red past the threshold, faded when stale.
 - With no reading it says why in one symbol and one word: `! No credential`
   (red), `⊘ Offline`, `— No data`.
-- While the session watch is on the row is led by the Claude Code sessions with
-  a turn in progress over the sessions open: `[1/3] 5h (2:11) 56% · 7d 18%`, and
-  `[0/0]` when none is. The count follows session events at once and is
-  recounted at every poll, so a session killed mid-turn stops counting as busy
-  once it has been silent for two hours and leaves the open count when the list
-  forgets it. It is never shown beside the no-reading words, and not at all with
-  the watch off. No animation: the menu bar title is plain text.
+- While the session watch is on, a rounded box beside the mark reads the Claude
+  Code sessions with a turn in progress over the sessions open - `1/3`, and
+  `0/0` when none is. The row itself is only the reading. The count follows
+  session events at once and is recounted at every poll, so a session killed
+  mid-turn stops counting as busy once it has been silent for two hours and
+  leaves the open count when the list forgets it. The box keeps one width from
+  `0/0` to `9/9`, so the item does not walk along the menu bar; only a third
+  digit widens it. With the watch off the box goes and the mark is alone.
+- While at least one session is working the mark gives way to three dots pulsing
+  in sequence - Claude's own thinking sign - and the box stays beside them. The
+  mark is back the moment nothing is working; an open but idle session (`0/1`)
+  shows the mark. Both are drawn into the item's image, which macOS paints in
+  the menu bar's own ink, so the box reads in dark and light appearances alike.
 - When a session finishes a turn or closes, macOS shows a notification (after
   asking permission once). The same session's next notification replaces the
   last one instead of stacking. Clicking it brings the session's terminal

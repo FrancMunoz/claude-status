@@ -96,34 +96,62 @@ public static class AppMark
         using (DrawingContext context = bitmap.CreateDrawingContext())
         using (context.PushRenderOptions(new RenderOptions { EdgeMode = EdgeMode.Antialias }))
         {
-            Rect bounds = Geometry.Bounds;
-            if (bounds.Width <= 0 || bounds.Height <= 0)
-            {
-                return [];
-            }
-
             // The box the mark is fitted into, once the margin is taken off both
             // sides. At inset 0 this is the whole canvas and the maths below is
             // exactly what it always was.
-            double box = pixels * (1d - (2d * inset));
-
-            // Uniform, and centred on whichever axis has room left over: the mark is
-            // not square, and stretching it to fill a square box would distort it.
-            double scale = Math.Min(box / bounds.Width, box / bounds.Height);
-
-            using (context.PushTransform(
-                Matrix.CreateTranslation(-bounds.X, -bounds.Y)
-                * Matrix.CreateScale(scale, scale)
-                * Matrix.CreateTranslation(
-                    (pixels - (bounds.Width * scale)) / 2,
-                    (pixels - (bounds.Height * scale)) / 2)))
+            if (!Draw(
+                context,
+                new Rect(0, 0, pixels, pixels),
+                pixels * (1d - (2d * inset)),
+                colour))
             {
-                context.DrawGeometry(new SolidColorBrush(colour), null, Geometry);
+                return [];
             }
         }
 
         using var stream = new MemoryStream();
         bitmap.Save(stream, new PngBitmapEncoderOptions());
         return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Draws the mark into a context, fitted to a box and centred in a canvas.
+    /// </summary>
+    /// <remarks>
+    /// Split out of <see cref="ToPng(int, Color, double)"/> for the macOS menu bar
+    /// image, which draws the mark into one corner of a wider bitmap rather than
+    /// into a square of its own - see <c>Tray/MenuBarImageRenderer.cs</c>. One copy
+    /// of the fit, so the two cannot come out at different sizes.
+    /// </remarks>
+    /// <param name="context">Where to draw.</param>
+    /// <param name="canvas">The area the mark is centred in.</param>
+    /// <param name="fit">The side of the square the mark is scaled to fit.</param>
+    /// <param name="colour">The fill.</param>
+    /// <returns>False when the outline has no bounds to scale, and nothing was drawn.</returns>
+    internal static bool Draw(DrawingContext context, Rect canvas, double fit, Color colour)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        Rect bounds = Geometry.Bounds;
+        if (bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            return false;
+        }
+
+        // Uniform, and centred on whichever axis has room left over: the mark is
+        // not square, and stretching it to fill a square box would distort it.
+        double scale = Math.Min(fit / bounds.Width, fit / bounds.Height);
+
+        using (context.PushTransform(
+            Matrix.CreateTranslation(-bounds.X, -bounds.Y)
+            * Matrix.CreateScale(scale, scale)
+            * Matrix.CreateTranslation(
+                canvas.X + ((canvas.Width - (bounds.Width * scale)) / 2),
+                canvas.Y + ((canvas.Height - (bounds.Height * scale)) / 2))))
+        {
+            context.DrawGeometry(new SolidColorBrush(colour), null, Geometry);
+        }
+
+        return true;
     }
 }

@@ -226,15 +226,22 @@ With session watch on, so there are hooks to take out:
 - **Claude Code sessions** (run the built `.app`, not `dotnet run`; session watch on):
   - [ ] Launch: `~/.claude/settings.json` gains five hooks whose `command` is the
     executable inside the bundle. Quit from the menu: they are gone.
-  - [ ] Session watch on and nothing open: the menu bar row starts with `[0/0] `.
-    Switch the watch off in Config: the prefix goes and the row reads exactly
-    as before. Switch it back on.
-  - [ ] A prompt in Claude Code: the row reads `[1/1] ` within a second or two,
-    and the details popup lists the session as working.
-  - [ ] A second session working at once: `[2/2] `. One turn ends: `[1/2] `.
-    Both end: `[0/2] `. Close one terminal: `[0/1] `.
-  - [ ] The prefix is legible on a light menu bar and on a dark one (switch
-    appearance, or use a light and a dark wallpaper).
+  - [ ] Session watch on and nothing open: the mark with a `0/0` box beside it,
+    no motion, and the row reads exactly `5h (2:11) 56% · 7d 18%` - no `[`,
+    no count. Switch the watch off in Config: the box goes and the bare mark is
+    left. Switch it back on: `0/n`.
+  - [ ] A prompt in Claude Code: the dots replace the mark within a second or
+    two, the box reads `1/1`, and the details popup lists the session as working.
+  - [ ] A second session working at once: `2/2`. One turn ends: `1/2` and the
+    dots keep going. Both end: `0/2`, the mark is back and nothing moves. Close
+    one terminal: `0/1`.
+  - [ ] The box does not change width between `0/0` and `9/9`, so the item does
+    not shift along the menu bar as turns start and end.
+  - [ ] The box and its digits are legible on a light menu bar and on a dark one
+    (System Settings → Appearance). The box's edge must be visible in both.
+  - [ ] Activity Monitor: ClaudeStatus's CPU while the dots run, and while idle.
+    Above about 1 % with the dots running, halve the frame rate before anything
+    else.
   - [ ] Signed out of Claude Code while a turn runs: `! No credential` in red,
     with no count beside it.
   - [ ] First launch of a signed build: macOS asks whether ClaudeStatus may send
