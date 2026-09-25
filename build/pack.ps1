@@ -144,6 +144,33 @@ function Test-SigningGroup {
     return $missing.Count -eq 0
 }
 
+<#
+.SYNOPSIS
+    Locates the Azure Artifact Signing dlib that vpk bundles.
+
+.DESCRIPTION
+    signtool talks to Artifact Signing through Azure.CodeSigning.Dlib.dll, which
+    ships inside the vpk package next to the signtool.exe vpk runs. Local tools
+    restore into the NuGet global packages folder, so it is found from there and
+    from the version pinned in .config/dotnet-tools.json. A full path is needed
+    because vpk runs signtool from the repository, not from its own folder.
+#>
+function Get-AzureSigningDlib {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $RepoRoot
+    )
+
+    $tools = Get-Content (Join-Path $RepoRoot '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
+    $version = $tools.tools.vpk.version
+    $packages = ((dotnet nuget locals global-packages --list | Select-Object -First 1) -replace '^global-packages:\s*', '').Trim()
+    $dlib = Join-Path $packages "vpk/$version/vendor/signing/Azure.CodeSigning.Dlib.dll"
+    if (-not (Test-Path -LiteralPath $dlib)) {
+        throw "Azure.CodeSigning.Dlib.dll was not found at $dlib. Run 'dotnet tool restore'."
+    }
+    return $dlib
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 try {
@@ -350,8 +377,20 @@ try {
             CertificateProfileName = $WinSignProfile
         } | ConvertTo-Json | Set-Content -Path $metadataPath -Encoding utf8NoBOM
 
+        # Not --azureTrustedSignFile: behind that option vpk 1.2.0 hardcodes the
+        # signtool arguments and ignores --signParams, which leaves no way to set the
+        # description and URL Windows shows in the signature details and on the UAC
+        # prompt. So: the arguments vpk would build, plus /d and /du, handed to the
+        # signtool.exe vpk bundles. The certificate itself carries no contact - the
+        # CA/Browser Forum rules for public code signing keep email out of the
+        # subject - so the URL is the only place a signed file can point to.
+        $dlib = Get-AzureSigningDlib -RepoRoot $repoRoot
+        $signParams = '/fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 /v ' +
+            '/d ClaudeStatus /du https://www.zeroworks.com ' +
+            "/dlib `"$dlib`" /dmdf `"$metadataPath`""
+
         Write-Host "==> Signing as $WinSignAccount/$WinSignProfile via $WinSignEndpoint" -ForegroundColor Cyan
-        $extraArgs += '--azureTrustedSignFile', $metadataPath
+        $extraArgs += '--signParams', $signParams
     }
 
     # vpk refuses to package a build whose Main does not call VelopackApp.Run(),
