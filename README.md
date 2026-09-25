@@ -67,6 +67,10 @@ dark desktop picture, with nothing to keep in sync:
   <img src="docs/screenshots/macos-menu-bar.png" alt="The menu bar item showing 5h (2:36) 29% · 7d 58% beside the system icons" width="420">
 </p>
 
+Above with the session watch off, so the row is only the reading. With it on — the
+default — a count box sits between the mark and the numbers; see
+[Claude Code sessions](#claude-code-sessions).
+
 The session pair carries the time left in the window with it — the `(2:36)`
 above — the same countdown, in the same shape, as the taskbar widget's.
 

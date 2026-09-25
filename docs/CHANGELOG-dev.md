@@ -2681,11 +2681,17 @@ nothing in a status item animates.
 - Docs: `docs/manual.md` (the menu bar paragraph), `docs/qa-checklist.md` (the
   macOS session steps, rewritten for the image, plus the Activity Monitor
   check), the README's macOS row.
-  `docs/screenshots/macos-menu-bar-working.png` retaken from the running app -
-  three dots, a `2/3` box and the row - replacing the old `●2` form. Taken with
-  `screencapture -R` over the menu bar, which does work; the note about
-  `screencapture` in the 2026-09-17 entry is about notification banners, not the
-  menu bar.
+  Both macOS menu bar screenshots retaken from the running app at the final
+  sizes: `macos-menu-bar-working.png` (three dots, a `2/3` box and the row) in
+  place of the old `●2` form, and `macos-menu-bar.png`, which changed because the
+  title lost its leading en space. The plain one is taken with the session watch
+  off so the row is only the reading, and the README says so and points at the
+  sessions section. Both with `screencapture -R` over the menu bar, which does
+  work - the note about `screencapture` in the 2026-09-17 entry is about
+  notification banners. `macos-notification.png` was not retaken: nothing here
+  changes it, and a persistent macOS "background activity" banner sat over ours
+  every time. The generated window screenshots are a Windows job, as before -
+  fonts substitute on the Mac and every image changes without any content change.
 - **Sized from what the owner saw.** The first run on the bar was called ugly:
   the dots too small, the digits too big, the corners too square. The handoff's
   own numbers were the cause - 4 px dots are a quarter of the ink in a 32 px box
