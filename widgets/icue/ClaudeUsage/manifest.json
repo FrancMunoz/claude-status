@@ -1,0 +1,27 @@
+{
+  "author": "ClaudeStatus",
+  "id": "com.github.francmunoz.claudestatus.usage",
+  "name": "Claude Usage",
+  "description": "Your Claude subscription usage from ClaudeStatus: the 5-hour session, the weekly and Fable windows, how much of each has elapsed, when they reset, the pace warning and your Claude Code sessions. Tap to open the details window on the PC.",
+  "version": "1.1.8",
+  "preview_icon": "resources/claude-usage.svg",
+  "min_framework_version": "1.0.0",
+  "min_app_version": "5.47",
+  "os": [
+    { "platform": "windows" }
+  ],
+  "supported_devices": [
+    { "type": "dashboard_lcd" }
+  ],
+  "interactive": true,
+  "required_plugins": [
+    "widgetbuilder.linkprovider:Url:1.0"
+  ],
+  "permissions": [
+    {
+      "type": "url",
+      "domain": "localhost",
+      "port": 47831
+    }
+  ]
+}

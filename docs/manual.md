@@ -166,6 +166,23 @@ is nothing there to fix.
 - Falls back to the tray icon when the taskbar cannot be joined (a vertical
   taskbar, or a Windows update that moves things).
 
+### The iCUE widget (Windows, CORSAIR XENEON EDGE)
+
+- The reading on a XENEON EDGE, in a small slot: the 5-hour session as a ring
+  (usage on the outer arc, elapsed time on the inner one), the weekly and Fable
+  rows with their bars, reset times and projection, the Claude Code sessions as
+  a count with one bar per session, the three working dots while a turn is in
+  progress, and the pace warning as a banner. Red past the threshold, `✕` when
+  spent, faded with a `STALE` box when old.
+- It reaches the app over a WebSocket to the IPv6 loopback address, the one
+  route iCUE leaves open to a widget; the app listens on `127.0.0.1` and `[::1]`.
+- Fed by the app over a local port, on when **Config → Behaviour → Share the
+  reading with the iCUE widget** is ticked. Off by default. Nothing leaves the
+  machine and the document holds no credential (`docs/security.md` §5b).
+- A tap opens the details window on the PC, as a tray click does. When the app
+  is not running the widget says so and a tap opens the download page.
+- Install, contract and troubleshooting: `docs/icue-widget.md`.
+
 ### The macOS menu bar
 
 - Text beside the mark, drawn by the OS: `5h (2:11) 56% · 7d 18%` in the row mode,
@@ -263,7 +280,7 @@ Config has five tabs:
 | **Account** | credential source, manual token, Test button, encryption notice |
 | **Display** | language, indicator (taskbar widget / tray icon, Windows only), Fable column in the widget, blend the widget into the taskbar, threshold |
 | **Theme** | colour theme, font, popup transparency |
-| **Behaviour** | poll interval, autostart, automatic updates, velocity alerts, fake data |
+| **Behaviour** | poll interval, autostart, automatic updates, velocity alerts, the iCUE widget export and its port, fake data |
 | **Sessions** | watch Claude Code sessions, tell me when a session closes, how long a finished session stays listed, and a switch per session that silences it |
 
 Language and theme apply **as you pick them**, before Save, so you can see what

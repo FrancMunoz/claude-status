@@ -232,6 +232,33 @@ With session watch on, so there are hooks to take out:
     gone once it times out or is clicked.
   - [ ] Clicking the entry in the Action Centre after the toast has gone: note
     what happens (the shell may not report it at all).
+- **iCUE widget on a CORSAIR XENEON EDGE** (`docs/icue-widget.md`; needs iCUE
+  5.47 or later and **Share the reading with the iCUE widget** on in Config →
+  Behaviour). Start from a clean iCUE: quit it from the tray and start it again
+  after importing the widget.
+  - [ ] Live numbers in the small slot, a `LIVE` box with the fetch time, and
+    `claudestatus.log` has `subscriber connected`. iCUE's log has
+    `ClaudeStatus widget: socket open ws://[::1]:…`.
+  - [ ] **Boot order**: quit ClaudeStatus. The widget says it is not running
+    and the attempt number under it keeps climbing. Start ClaudeStatus: the
+    numbers come back within fifteen seconds, without touching the widget.
+  - [ ] Reboot the machine: the widget is up before the app and recovers the
+    same way.
+  - [ ] A prompt in Claude Code: the count goes to `1/n`, that session's bar
+    lights, and the three dots run. The turn ends: the dots stop and go.
+  - [ ] Session watch off in Config: the sessions pill goes.
+  - [ ] Tap the widget: the details window opens on the PC. Tap again: it closes.
+  - [ ] **Custom Style** on, change the accent: the ring, the bars and the dots
+    follow. Off: white, `#FF8900`, black at 80 %.
+  - [ ] Threshold crossed on a window: that figure and its bar turn red.
+  - [ ] Top row: bars, count and label level with one another, and the bars as
+    tall as the digits. Judge from a capture of the display, not by eye.
+  - [ ] iCUE in Spanish, German and French: nothing in the top row or under the
+    bars is cut off; in the ring the countdown may lose its word, not its time.
+  - [ ] From a browser on the same PC, a page on any `https://` site cannot
+    read `http://localhost:47831/v1/usage` (403, no CORS header).
+  - [ ] After an iCUE update: repeat the first item. The route to `[::1]` rests
+    on iCUE's own filter.
 
 ### macOS
 - Test on both Intel and Apple Silicon if available.

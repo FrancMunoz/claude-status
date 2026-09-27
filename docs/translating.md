@@ -107,3 +107,18 @@ Keys are `Area_Thing`, where the area says where it appears:
 
 Anything that is not shaped like this will not be found by the key-usage test,
 so keep to it.
+
+## The iCUE widget is translated separately
+
+The widget for the CORSAIR XENEON EDGE (`docs/icue-widget.md`) is a web page
+run by iCUE, and iCUE translates it, not this app. Its strings live in
+`widgets/icue/ClaudeUsage/translation.json`, keyed by the English text, and it
+follows iCUE's language, not the one chosen in Config. English, Spanish, German
+and French ship; Catalan does not, because iCUE has no Catalan. Only the three
+`Config_UsageExport*` keys, which label the setting in the Config window,
+belong to the `.resx` files and the rules above.
+
+Two things to keep in mind when translating it: the text sits on a 344 px high
+screen, so a translation much longer than the English may be cut off or lose
+its label (check on the device), and every key in `en` must exist in the other
+languages or iCUE falls back to English for it.

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>tr('Claude Usage')</title>
+	<link rel="icon" type="image/svg+xml" href="resources/claude-usage.svg" />
+	<meta name="x-icue-restrictions" data-restrictions='[{ "device": "dashboard_lcd" }]' />
+
+	<meta name="x-icue-property" content="endpointPort" data-label="tr('ClaudeStatus port')" data-type="textfield" data-default="'47831'" />
+	<meta name="x-icue-property" content="showFable" data-label="tr('Show the Fable window')" data-type="switch" data-default="true" />
+
+	<meta name="x-icue-property" content="textColor" data-label="tr('Text Color')" data-type="color" data-default="'#FFFFFF'" />
+	<meta name="x-icue-property" content="accentColor" data-label="tr('Accent Color')" data-type="color" data-default="'#FF8900'" />
+	<meta name="x-icue-property" content="backgroundColor" data-label="tr('Background Color')" data-type="color" data-default="'#000000'" />
+	<meta name="x-icue-property" content="transparency" data-label="tr('Background Transparency')" data-type="slider" data-default="80" data-min="0" data-max="100" data-step="1" data-unit-label="'%'" />
+
+	<script type="application/json" id="x-icue-groups">
+	[
+		{
+			"title": "tr('Claude Usage')",
+			"properties": ["endpointPort", "showFable"],
+			"info": "tr('Reads the usage that ClaudeStatus publishes on this PC. In ClaudeStatus, open Config > Behaviour and turn on \"Share the reading with the iCUE widget\". Tap the widget to open the details window.')"
+		},
+		{
+			"title": "tr('Widget Personalization')",
+			"properties": ["textColor", "accentColor", "backgroundColor", "transparency"]
+		}
+	]
+	</script>
+
+	<link rel="stylesheet" type="text/css" href="styles/ClaudeUsage.css" />
+</head>
+<body>
+	<div class="widget-background"></div>
+	<div class="root" id="root">
+		<div class="header" id="header">
+			<div class="title"><div class="title-icon"></div><span class="title-text" id="titleText">CLAUDE STATUS</span></div>
+			<div class="sessions" id="sessions" style="display:none;">
+				<div class="dots" id="sessionDots"></div>
+				<span class="sessions-count" id="sessionsCount">0/0</span>
+				<span class="sessions-label" id="sessionsLabel">SESSIONS</span>
+				<div class="thinking" id="thinking" aria-hidden="true"><i></i><i></i><i></i></div>
+			</div>
+			<div class="chips" id="chips"></div>
+		</div>
+
+		<div class="body">
+			<div class="hero" id="hero">
+				<div class="ring" id="ring">
+					<svg viewBox="0 0 100 100" aria-hidden="true">
+						<circle class="track" cx="50" cy="50" r="44" stroke-width="7" />
+						<circle class="usage" id="ringUsage" cx="50" cy="50" r="44" stroke-width="7" />
+						<circle class="track" cx="50" cy="50" r="35.5" stroke-width="2.6" />
+						<circle class="time" id="ringTime" cx="50" cy="50" r="35.5" stroke-width="2.6" />
+					</svg>
+					<div class="ring-center">
+						<div class="hero-value figure" id="heroValue">—</div>
+						<div class="hero-label" id="heroLabel">5H SESSION</div>
+						<div class="hero-reset"><span class="num" id="heroReset"></span><span class="lbl" id="heroResetLabel"></span></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="rows" id="rows"></div>
+		</div>
+
+		<div class="notice" id="notice"><div class="ico"></div><span id="noticeText"></span></div>
+
+		<div class="state" id="state">
+			<div class="ico"></div>
+			<div class="big" id="stateBig"></div>
+			<div class="small" id="stateSmall"></div>
+			<div class="actions" id="stateActions">
+				<button type="button" class="action" id="retryButton">Retry</button>
+				<button type="button" class="action" id="reloadButton">Reload widget</button>
+				<button type="button" class="action link" id="downloadButton">Get ClaudeStatus</button>
+			</div>
+			<div class="diag" id="stateDiag"></div>
+		</div>
+	</div>
+
+	<script src="scripts/ClaudeUsage.js"></script>
+	<script>
+		// The iCUE bridge, inline because iCUE's validator looks for it here. Bare
+		// assignments on purpose: iCUE may evaluate this in a sandboxed function
+		// context where a declared variable would stay local.
+		// iCUE hands a widget its settings as variables visible to this inline
+		// script, which is where every bundled Corsair widget reads them. The
+		// external script cannot see them, so it asks through this. Plain typeof
+		// checks on fixed names: no eval, nothing dynamic.
+		icueLocal = function (name) {
+			switch (name) {
+				case "textColor": return typeof textColor !== "undefined" ? textColor : undefined;
+				case "accentColor": return typeof accentColor !== "undefined" ? accentColor : undefined;
+				case "backgroundColor": return typeof backgroundColor !== "undefined" ? backgroundColor : undefined;
+				case "transparency": return typeof transparency !== "undefined" ? transparency : undefined;
+				case "endpointPort": return typeof endpointPort !== "undefined" ? endpointPort : undefined;
+				case "showFable": return typeof showFable !== "undefined" ? showFable : undefined;
+				case "widgetPersonalizationCustomStyleEnabled": return typeof widgetPersonalizationCustomStyleEnabled !== "undefined" ? widgetPersonalizationCustomStyleEnabled : undefined;
+				case "widgetPersonalizationCustomStylePresent": return typeof widgetPersonalizationCustomStylePresent !== "undefined" ? widgetPersonalizationCustomStylePresent : undefined;
+				default: return undefined;
+			}
+		};
+		icueEvents = {
+			onDataUpdated: function () { noteCall("onDataUpdated"); onIcueDataUpdated(); },
+			onICUEInitialized: function () { noteCall("onICUEInitialized"); onIcueInitialized(); }
+		};
+		pluginLinkproviderEvents = { onInitialized: function () {} };
+		bootCheck();
+	</script>
+</body>
+</html>

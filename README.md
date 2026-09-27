@@ -131,6 +131,19 @@ whatever the widget itself is showing, plus your Claude Code sessions.
 | <img src="docs/screenshots/report/report-en.png" alt="The full report window" width="330"> | <img src="docs/screenshots/window-config.png" alt="The configuration window" width="300"> |
 | **Full report** — every window the endpoint returned, its own severity labels, exact reset timestamps, and the spend and credit blocks. | **Config** — credential, language, theme, threshold, poll interval, autostart, session watch. |
 
+### CORSAIR XENEON EDGE — Windows only
+
+The same reading can live on a CORSAIR XENEON EDGE, as an iCUE widget in a
+small slot: the 5-hour session as a ring with usage and elapsed time as two
+arcs, the weekly and Fable rows with their bars, reset times and where each is
+heading, your Claude Code sessions as a count with the three working dots
+beside it while a turn is running, and the pace warning as a banner. A tap on
+the screen opens the details window on the PC. Turn on **Share the reading with the
+iCUE widget** in Config → Behaviour, install `ClaudeUsage.icuewidget` from the
+release, and drag *Claude Usage* onto the screen. Nothing leaves the machine:
+the widget reads a local port, and the document on it holds percentages and
+times, never a credential. Details in [`docs/icue-widget.md`](docs/icue-widget.md).
+
 ### Claude Code sessions
 
 ClaudeStatus also keeps an eye on your Claude Code sessions, so you can start a
