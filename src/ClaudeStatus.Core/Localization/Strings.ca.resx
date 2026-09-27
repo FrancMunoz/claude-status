@@ -647,6 +647,15 @@
   <data name="Config_VelocityAlerts_Help" xml:space="preserve">
     <value>Mostra un avís quan el ritme actual esgotaria una finestra abans de reiniciar-se, perquè una tasca descontrolada no et sorprengui. L'avís es manté als detalls mentre dura.</value>
   </data>
+  <data name="Config_UsageExport" xml:space="preserve">
+    <value>Compartir la lectura amb el widget d'iCUE</value>
+  </data>
+  <data name="Config_UsageExport_Help" xml:space="preserve">
+    <value>Serveix l'ús a altre programari d'aquest PC per un port local, per al widget Claude Usage d'un CORSAIR XENEON EDGE. Res no surt de l'equip i no es comparteix cap credencial.</value>
+  </data>
+  <data name="Config_UsageExport_Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
   <data name="Sessions_Notice_Idle" xml:space="preserve">
     <value>{0} t'està esperant.</value>
   </data>

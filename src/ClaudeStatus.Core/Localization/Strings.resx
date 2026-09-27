@@ -647,6 +647,15 @@
   <data name="Config_VelocityAlerts_Help" xml:space="preserve">
     <value>Shows a warning when the current pace would use up a window before it resets, so a runaway task does not surprise you. The warning also stays in the details view while it holds.</value>
   </data>
+  <data name="Config_UsageExport" xml:space="preserve">
+    <value>Share the reading with the iCUE widget</value>
+  </data>
+  <data name="Config_UsageExport_Help" xml:space="preserve">
+    <value>Serves the usage to other software on this PC over a local port, for the Claude Usage widget on a CORSAIR XENEON EDGE. Nothing leaves the machine and no credential is shared.</value>
+  </data>
+  <data name="Config_UsageExport_Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
   <data name="Sessions_Notice_Idle" xml:space="preserve">
     <value>{0} is waiting for you.</value>
   </data>

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using ClaudeStatus.Export;
 using ClaudeStatus.Usage;
 
 namespace ClaudeStatus.Config;
@@ -25,7 +26,9 @@ namespace ClaudeStatus.Config;
 /// <para>
 /// Settings and the snapshot cache share one context and therefore one set of
 /// options. Both are small, hand-inspectable files, so indenting both is a
-/// feature: the cache is a couple of hundred bytes either way.
+/// feature: the cache is a couple of hundred bytes either way. The usage export
+/// (<see cref="UsageExport"/>) is served over loopback HTTP rather than written
+/// to disk, and rides on the same context for the same trimming reason.
 /// </para>
 /// <para>
 /// <b>Nothing here ever holds a secret.</b> See <c>docs/security.md</c> §4.
@@ -41,4 +44,5 @@ namespace ClaudeStatus.Config;
     DefaultIgnoreCondition = JsonIgnoreCondition.Never)]
 [JsonSerializable(typeof(AppSettings))]
 [JsonSerializable(typeof(CachedSnapshot))]
+[JsonSerializable(typeof(UsageExport))]
 internal sealed partial class ClaudeStatusJsonContext : JsonSerializerContext;

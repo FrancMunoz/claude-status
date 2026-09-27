@@ -303,6 +303,22 @@
                                            Text="{Binding L[Config_VelocityAlerts_Help]}" />
                             </StackPanel>
 
+                            <StackPanel>
+                                <CheckBox Content="{Binding L[Config_UsageExport]}"
+                                          IsChecked="{Binding UsageExport}" />
+                                <TextBlock Classes="caption option-help"
+                                           Text="{Binding L[Config_UsageExport_Help]}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0"
+                                            IsEnabled="{Binding UsageExport}">
+                                    <TextBlock VerticalAlignment="Center"
+                                               Text="{Binding L[Config_UsageExport_Port]}" />
+                                    <NumericUpDown Width="130"
+                                                   Minimum="1024" Maximum="65535" Increment="1"
+                                                   FormatString="0"
+                                                   Value="{Binding UsageExportPort}" />
+                                </StackPanel>
+                            </StackPanel>
+
                             <CheckBox Content="{Binding L[Config_FakeData]}"
                                       IsChecked="{Binding UseFakeProvider}" />
                         </StackPanel>

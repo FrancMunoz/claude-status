@@ -117,6 +117,14 @@ public partial class ConfigViewModel : ObservableObject
     [ObservableProperty]
     private bool _velocityAlerts = true;
 
+    /// <summary>Serve the reading over a loopback port for the iCUE widget. See <see cref="AppSettings.EnableUsageExport"/>.</summary>
+    [ObservableProperty]
+    private bool _usageExport;
+
+    /// <summary>The loopback port for the usage export. Decimal because that is what the spinner binds.</summary>
+    [ObservableProperty]
+    private decimal? _usageExportPort = AppSettings.DefaultUsageExportPort;
+
     [ObservableProperty]
     private string _statusMessage = string.Empty;
 
@@ -327,6 +335,8 @@ public partial class ConfigViewModel : ObservableObject
             UseFakeProvider = settings.UseFakeProvider;
             AutomaticUpdates = settings.AutomaticUpdates;
             VelocityAlerts = settings.VelocityAlerts;
+            UsageExport = settings.EnableUsageExport;
+            UsageExportPort = settings.UsageExportPort ?? AppSettings.DefaultUsageExportPort;
             SessionWatch = settings.SessionWatch;
             NotifyOnSessionEnd = settings.NotifyOnSessionEnd;
             SessionRetentionMinutes =
@@ -676,6 +686,12 @@ public partial class ConfigViewModel : ObservableObject
                 UseFakeProvider = UseFakeProvider,
                 DisableAutomaticUpdates = !AutomaticUpdates,
                 DisableVelocityAlerts = !VelocityAlerts,
+                EnableUsageExport = UsageExport,
+                // Normalized() sends anything outside the registered range back to
+                // the default; this only keeps the cast from overflowing.
+                UsageExportPort = UsageExportPort is decimal port
+                    ? (int)Math.Clamp(port, 0, ushort.MaxValue)
+                    : null,
                 LanguageTag = SelectedLanguage?.Tag ?? LanguageCatalog.FollowSystem,
                 ThemeId = SelectedTheme?.Id ?? ThemeCatalog.SystemId,
                 FontFamily = CurrentFontFamily(),

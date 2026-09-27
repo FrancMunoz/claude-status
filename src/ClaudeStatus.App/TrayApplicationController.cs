@@ -12,6 +12,7 @@ using ClaudeStatus.App.Update;
 using ClaudeStatus.App.ViewModels;
 using ClaudeStatus.App.Views;
 using ClaudeStatus.Config;
+using ClaudeStatus.Export;
 using ClaudeStatus.Localization;
 using ClaudeStatus.Platform;
 using ClaudeStatus.Security;
@@ -56,6 +57,9 @@ public sealed class TrayApplicationController : IDisposable
 
     /// <summary>Which Claude Code sessions are running. Null while the feature is off.</summary>
     private SessionWatcher? _sessions;
+
+    /// <summary>Serves the reading to the iCUE widget. Null while the setting is off.</summary>
+    private UsageExportServer? _export;
 
     /// <summary>How long a session notice stays up.</summary>
     /// <remarks>Shorter than the velocity warning: it is news, not a diagnosis.</remarks>
@@ -266,6 +270,7 @@ public sealed class TrayApplicationController : IDisposable
         RenderIndicator(_monitor?.Latest);
 
         StartUpdates();
+        StartExport();
 
         // First run means there is no settings file at all. Open Config so the
         // user is not left staring at a grey icon wondering what to do.
@@ -796,6 +801,7 @@ public sealed class TrayApplicationController : IDisposable
     {
         RenderIndicator(snapshot);
         TrackVelocity(snapshot);
+        PublishExport();
 
         // Only cache a genuinely fresh reading. Re-saving a stale one on every
         // failed poll would keep resetting its age and defeat the staleness cap.
@@ -874,6 +880,109 @@ public sealed class TrayApplicationController : IDisposable
         return localizer.Format("Velocity_Alert", window, untilExhausted, untilReset);
     }
 
+    /// <summary>
+    /// Starts the usage export if the settings ask for it, and stops it if they no
+    /// longer do. Safe to call on every settings change.
+    /// </summary>
+    /// <remarks>
+    /// A port that cannot be bound - taken by something else, most likely - is
+    /// logged and the export stays off. Nothing else in the app depends on it, so
+    /// failing loudly here would punish the tray for the widget's sake.
+    /// </remarks>
+    private void StartExport()
+    {
+        if (_export is { } running)
+        {
+            _export = null;
+            running.OpenRequested -= OnExportOpenRequested;
+            running.Dispose();
+        }
+
+        if (!_settings.EnableUsageExport)
+        {
+            return;
+        }
+
+        ILogger<TrayApplicationController> log = _services.GetRequiredService<ILogger<TrayApplicationController>>();
+        var server = new UsageExportServer(
+            _settings.UsageExportPort ?? AppSettings.DefaultUsageExportPort,
+            _services.GetRequiredService<ILogger<UsageExportServer>>());
+        server.OpenRequested += OnExportOpenRequested;
+
+        try
+        {
+            server.Start();
+        }
+        catch (System.Net.Sockets.SocketException ex)
+        {
+            log.LogWarning(ex, "The usage export could not listen on port {Port}; the iCUE widget will show the app as offline.", _settings.UsageExportPort);
+            server.OpenRequested -= OnExportOpenRequested;
+            server.Dispose();
+            return;
+        }
+
+        _export = server;
+        PublishExport();
+    }
+
+    /// <summary>Hands the export server a fresh document. A no-op while the export is off.</summary>
+    /// <remarks>
+    /// Called after every poll, every session change and every settings change:
+    /// the document is cheap to build and the server keeps only the latest, so
+    /// there is no reason to be clever about which of those actually changed it.
+    /// </remarks>
+    private void PublishExport()
+    {
+        if (_export is not { } server)
+        {
+            return;
+        }
+
+        DateTimeOffset now = _services.GetRequiredService<TimeProvider>().GetUtcNow();
+        UsageExportSessions? sessions = _sessions is { } watcher
+            ? new UsageExportSessions(
+                SessionActivity.CountWorking(watcher.Sessions, now),
+                SessionActivity.CountOpen(watcher.Sessions))
+            : null;
+
+        server.Latest = UsageExportMapper.Map(
+            _monitor?.Latest,
+            CurrentAlert(),
+            _velocity.Current,
+            sessions,
+            _settings.ThresholdPercent,
+            now,
+            InfoViewModel.Version);
+    }
+
+    /// <summary>
+    /// The widget was tapped. Treated as a click on the indicator, minus the
+    /// pointer: the tap happened on another screen, so the popup goes where it
+    /// goes when the platform cannot say.
+    /// </summary>
+    private void OnExportOpenRequested(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _pointerXAtClick = null;
+            _services.GetRequiredService<ILogger<TrayApplicationController>>()
+                .LogInformation("Details requested through the usage export. alert={Alert}", CurrentAlert());
+
+            if (CurrentAlert() == IndicatorAlert.NeedsCredential)
+            {
+                ShowConfig();
+                return;
+            }
+
+            ToggleDetails();
+        });
+    }
+
     /// <summary>Applies settings saved from the Config window.</summary>
     private async Task ApplySettingsAsync(AppSettings settings)
     {
@@ -885,6 +994,9 @@ public sealed class TrayApplicationController : IDisposable
         bool settingsChangedUpdates = settings.AutomaticUpdates != _settings.AutomaticUpdates;
         bool indicatorChanged = settings.Indicator != _settings.Indicator;
         bool sessionWatchChanged = settings.SessionWatch != _settings.SessionWatch;
+        bool exportChanged =
+            settings.EnableUsageExport != _settings.EnableUsageExport
+            || settings.UsageExportPort != _settings.UsageExportPort;
 
         _settings = settings;
 
@@ -921,7 +1033,13 @@ public sealed class TrayApplicationController : IDisposable
             }
         }
 
+        if (exportChanged)
+        {
+            StartExport();
+        }
+
         RenderIndicator(_monitor?.Latest);
+        PublishExport();
     }
 
     /// <summary>
@@ -1034,6 +1152,7 @@ public sealed class TrayApplicationController : IDisposable
 
         IReadOnlyList<ClaudeSession> sessions = watcher.Sessions;
         _indicator.ShowSessions(sessions);
+        PublishExport();
 
         if (_detailsViewModel is { } details)
         {
@@ -1317,6 +1436,7 @@ public sealed class TrayApplicationController : IDisposable
         _services.GetRequiredService<ITrayThemeProvider>().Changed -= OnTaskbarThemeChanged;
         _updateTimer?.Dispose();
         _updates.Dispose();
+        _export?.Dispose();
         _monitor?.Dispose();
         _detailsViewModel?.Dispose();
         _reportViewModel?.Dispose();

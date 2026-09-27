@@ -647,6 +647,15 @@
   <data name="Config_VelocityAlerts_Help" xml:space="preserve">
     <value>Warnt, wenn das aktuelle Tempo ein Fenster vor dem Zurücksetzen aufbrauchen würde, damit eine ausufernde Aufgabe dich nicht überrascht. Die Warnung bleibt in der Detailansicht, solange sie gilt.</value>
   </data>
+  <data name="Config_UsageExport" xml:space="preserve">
+    <value>Messwerte mit dem iCUE-Widget teilen</value>
+  </data>
+  <data name="Config_UsageExport_Help" xml:space="preserve">
+    <value>Stellt die Nutzung anderer Software auf diesem PC über einen lokalen Port bereit, für das Claude-Usage-Widget auf einem CORSAIR XENEON EDGE. Nichts verlässt den Rechner, und es werden keine Anmeldedaten geteilt.</value>
+  </data>
+  <data name="Config_UsageExport_Port" xml:space="preserve">
+    <value>Port</value>
+  </data>
   <data name="Sessions_Notice_Idle" xml:space="preserve">
     <value>{0} wartet auf dich.</value>
   </data>

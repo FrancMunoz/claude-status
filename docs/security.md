@@ -145,6 +145,50 @@ name-validated against path traversal, and skipped entirely when malformed.
   community reports link that to rate limiting on the token endpoint.
 - No proxy configuration is read from the environment for this request.
 
+### 5b. The usage export (added 2026-09-26)
+
+The app can *listen* as well as fetch: `UsageExportServer` (Core) serves the
+reading to the iCUE widget for the CORSAIR XENEON EDGE over plain HTTP on the
+loopback interface. It is off by default (`AppSettings.EnableUsageExport`) and
+the rules are:
+
+- **Loopback only.** Bound to `127.0.0.1` and `[::1]`; nothing off the machine can connect.
+  The port is the user's (default 47831), never `0.0.0.0`.
+- **The document holds no secret.** `UsageExport` is percentages, reset times,
+  the pace verdict, a session *count* and the app version. No token, no
+  organisation id, no spend, no session ids or titles, no paths. Adding a field
+  here is a review item: it must stay something a stranger reading it learns
+  nothing from.
+- **Web pages are refused.** A browser on the machine can `fetch()` loopback.
+  A request carrying an `http://` or `https://` `Origin` header is answered
+  403 without the CORS header, so a page's script never sees the body and
+  cannot POST `/v1/open` to pop the details window. iCUE's widgets and a
+  widget opened from disk send no such origin.
+- **Read-only, GET and one POST.** `GET /v1/usage`, `GET /v1/health`,
+  `POST /v1/open` (opens the details window, exactly as a tray click does),
+  404 for everything else. Request headers are capped at 8 KB and 5 s; a body
+  is never read. Every HTTP response closes the connection.
+- **The WebSocket is the same surface, pushed.** iCUE's browser lets no HTTP
+  request reach a loopback address, so the widget subscribes over
+  `ws://[::1]:<port>/v1/usage` and receives the same document on every
+  change. The upgrade is refused for a web origin exactly as HTTP is. A
+  subscriber may send the text `open`, or a line for the log (below); every
+  other message is read and dropped, and frames come through the runtime's own
+  WebSocket implementation, not hand-parsed. Idle sockets are pinged every
+  30 s and a failed send drops the subscriber.
+- **A subscriber may write to the log, within limits.** The device has no
+  console, so `log:<text>` is written to `claudestatus.log` as
+  `subscriber says: …`. It is capped at 40 lines per connection and 1024 bytes
+  per message, control characters are replaced so a line cannot forge another,
+  and it passes through the redacting logger like every other line. What it
+  allows is a local, non-web page adding a bounded amount of text to a rolling
+  log; it cannot read anything back.
+- **It never talks to the monitor.** The controller hands it a fresh document
+  after every poll and session change; the server holds the latest and nothing
+  else. It cannot trigger a fetch, read the credential, or reach Anthropic.
+- It is not a request the app *makes*; the statement elsewhere that the update
+  check is the only request to anything other than Anthropic still holds.
+
 ## 6. Review checklist
 
 Run through this before merging anything that touches credentials, and at the

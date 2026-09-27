@@ -404,6 +404,37 @@ public sealed record AppSettings
     /// </remarks>
     public double? OsdTransparency { get; init; }
 
+    /// <summary>The loopback port the usage export listens on when no other is chosen.</summary>
+    /// <remarks>
+    /// Unassigned by IANA and outside every ephemeral range the three operating
+    /// systems hand out. The iCUE widget defaults to the same number, so the
+    /// two meet without either being configured.
+    /// </remarks>
+    public const int DefaultUsageExportPort = 47831;
+
+    /// <summary>
+    /// Serve the reading to other software on this machine over loopback HTTP,
+    /// for the iCUE widget. See <see cref="Export.UsageExportServer"/>.
+    /// </summary>
+    /// <remarks>
+    /// Off by default: a usage meter should not open a port unasked, even one
+    /// nothing off the machine can reach. <c>false</c> is <c>default</c>, so this
+    /// one is stored the positive way round - see the warning on this type.
+    /// </remarks>
+    public bool EnableUsageExport { get; init; }
+
+    /// <summary>
+    /// The loopback port for the usage export, or null for
+    /// <see cref="DefaultUsageExportPort"/>.
+    /// </summary>
+    /// <remarks>
+    /// Nullable for the reason <see cref="OsdTransparency"/> is: an absent key
+    /// deserializes to 0, which is not a port a user can mean here, but making
+    /// the type say so keeps "not chosen" and "chosen" apart. <see cref="Normalized"/>
+    /// resolves the null and clamps the rest to the registered range.
+    /// </remarks>
+    public int? UsageExportPort { get; init; }
+
     /// <summary>Clamps anything that arrived from disk into a usable range.</summary>
     public AppSettings Normalized() => this with
     {
@@ -428,6 +459,13 @@ public sealed record AppSettings
             ? Math.Clamp(t, 0d, 1d)
             : DefaultOsdTransparency,
         SessionRetention = SessionRegistry.Clamp(SessionRetention ?? SessionRegistry.DefaultRetention),
+
+        // Absent (null) and out of the registered range both fall back to the
+        // default rather than being clamped: a port is a name, not a quantity, and
+        // "the nearest one that fits" is nobody's intention.
+        UsageExportPort = UsageExportPort is int port && port is >= 1024 and <= ushort.MaxValue
+            ? port
+            : DefaultUsageExportPort,
 
         // An absent key deserializes to null, and every consumer iterates this.
         MutedSessions = MutedSessions is null
