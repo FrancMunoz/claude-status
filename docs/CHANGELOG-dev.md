@@ -2822,3 +2822,241 @@ next.
   Code session would be counted, so the badge could not read the scripted `2/3`.
   `docs/screenshots.md` covers how to pose one from another terminal.
 - Nothing here touches credentials; `docs/security.md` unchanged.
+
+## Phase 10 — iCUE widget for the CORSAIR XENEON EDGE (2026-09-26)
+
+- **Usage export** (`ClaudeStatus.Core/Export`): `UsageExport` is the reading as
+  data - state, the three windows with percent, reset time, span and exhausted
+  flag, the velocity verdict as absolute times, a session count and the app
+  version. `UsageExportMapper` builds it from what the controller already has;
+  `UsageExportServer` serves it over plain HTTP/1.1 on `127.0.0.1` from a
+  `TcpListener` - not `HttpListener` (http.sys URL reservations) and not Kestrel
+  (a framework for two GETs). `GET /v1/usage`, `GET /v1/health`,
+  `POST /v1/open` (opens the details window as a tray click would), 404 else.
+  Requests carrying a web `Origin` are answered 403 without CORS, so a browser
+  page on the same PC gets nothing. Off by default:
+  `AppSettings.EnableUsageExport` and `UsageExportPort` (null → 47831,
+  out-of-range → default rather than clamped). Config → Behaviour gets the
+  checkbox and a port spinner; three `Config_UsageExport*` keys in five files.
+- **Controller**: `StartExport` / `PublishExport` / `OnExportOpenRequested`.
+  Published after every poll, session change and settings save. The tap marshals
+  to the UI thread and goes through the same NeedsCredential → Config rule as a
+  left click, with no pointer position.
+- **The widget** (`widgets/icue/ClaudeUsage`): HTML for the Small horizontal
+  slot (840×344; `1rem = 4.651vh` so the 314×129 settings preview is the same
+  layout). Ring for the 5-hour window with usage and elapsed arcs, rows for the
+  7-day windows with the dual bar, reset weekday/time and a linear projection,
+  sessions as pulsing dots with the `working/open` count, LIVE / STALE / OFFLINE
+  / PACE chips, the pace banner worded by the widget from the numbers, and
+  full-frame states for not signed in, unreachable and app-not-running (a tap
+  there opens the release page through iCUE's link plugin). Conventions taken
+  from Corsair's bundled FPS and Sensor widgets: Bebas Neue Pro + Open Sans from
+  `qrc:/fonts`, white on black at 80 %, the title pill, `--text-color` /
+  `--accent-color` / `--background-color` for iCUE's Custom Style.
+  `translation.json` in en/es/de/fr (Catalan is not an iCUE language).
+  `?mock=<state>` for browser work; `iCUE.isPreview` shows the sample.
+- **CI**: `build.yml` gains a `widget` job (Corsair's `icuewidget-cli@0.4.47`
+  validate + package, uploaded as a workflow artifact). `release.yml` gains
+  `package-widget` on an npm-only runner and the release job downloads it;
+  `.releaserc.json` attaches `ClaudeUsage.icuewidget`.
+- **Docs**: `docs/icue-widget.md` (setup, contract, developing, troubleshooting),
+  `docs/security.md` §5b, README and manual sections.
+- **Tests**: `UsageExportTests` - the mapper (states, spans, exhausted, pace
+  projection, sessions), the settings (default off, port fallback) and the
+  server over a real socket (JSON + CORS, 503 before the first document, 404 /
+  405, the open event, web origins refused, `null`/`file://`/`qrc://` served,
+  preflight, stop releases the port).
+- **Deferred, decided with the user**: spend figures. Adding them to the widget
+  means adding them to the hover card and the details window too, so they wait
+  for their own change. Medium slot: will add the running sessions list.
+
+
+### 2026-09-26, later — the widget speaks WebSocket, because iCUE lets nothing else through
+
+- **Finding.** On iCUE 5.51 (QtWebEngine 6.9.3, Chrome 130) a widget's HTTP
+  requests to a loopback address never leave iCUE's browser: not `fetch` in any
+  mode, not XHR, not a script or image tag, with the `url` permission declared
+  in the manifest (`domain: localhost, port`) and approved, and with both
+  `localhost` and `127.0.0.1` stored as approved. The app's per-request log
+  showed exactly one shape arriving: WebSocket handshakes (`Upgrade: websocket`,
+  `Origin: null`). The page runs from `file://` as a secure context, so this is
+  iCUE's URL-permission layer, not Chromium's Private Network Access.
+- **Server.** `UsageExportServer` now completes the WebSocket handshake on
+  `GET /v1/usage` (SHA-1 accept token per RFC 6455, framing by
+  `WebSocket.CreateFromStream`), sends the document on connect and pushes it on
+  every `Latest` change, treats the text `open` as the details-window request,
+  pings idle sockets every 30 s, and drops subscribers on `Stop`. Same origin
+  rule as HTTP: a web origin is refused before the upgrade. It also listens on
+  `[::1]` beside `127.0.0.1`, because `localhost` resolves to IPv6 first on
+  Windows, and answers CORS with the literal origin (`null`) rather than `*`.
+  HTTP stays for browsers and for anything that prefers to poll; its per-request
+  line is now Debug.
+- **Widget.** Connects to `ws://localhost:47831/v1/usage`, renders each pushed
+  document, reconnects with backoff (2 s doubling to 15 s), sends `open` on
+  tap, and tries one plain fetch per failed socket so a browser on the desk still
+  works. The `refreshSeconds` setting went with the polling. The "not running"
+  screen has Retry, Reload widget and Get ClaudeStatus buttons and prints the
+  socket's close code. The manifest declares the loopback `url` permission,
+  which makes iCUE ask once instead of blocking silently.
+- **Sizes**, at the user's request: header pills at the FPS widget's scale,
+  captions up one step, small grey text up two, ring tuned to fit under the
+  banner.
+- Verified on the device: the widget shows live numbers, and a tap opens the
+  details window on the PC.
+
+### 2026-09-27 — the widget starts before the app, and must keep trying
+
+- **Bug.** At boot iCUE loads the widget before ClaudeStatus is up. The first
+  socket failed (`ws closed 1006`) and the widget never tried again: the retry
+  was scheduled last in the close handler, after a redraw and an HTTP fallback,
+  so anything going wrong in either left it on "not running" for the day. Never
+  seen on the first day because the app was always running first.
+- **Fix** (widget 1.0.1): `lost()` schedules the reconnect before doing anything
+  else and wraps the rest; a 5 s watchdog reconnects whenever no socket is open
+  or pending and no timer is set; the HTTP fallback and the POST are skipped
+  inside iCUE, where they cannot work; the widget connects before it looks up
+  translations; the screen shows the attempt number and time, so "still trying"
+  is visible. Verified in a browser against the real app: app stopped, widget
+  at attempt 4 after 11 s, app started, live numbers without a touch.
+- **Also found:** autostart launches the *installed* release, which predates the
+  export. Until a release ships the feature, a reboot brings back a build with
+  no listener, and that build rewrites `settings.json` without the two export
+  keys.
+
+### 2026-09-27, later — what iCUE really lets a widget reach, and Custom Style
+
+- **Yesterday's finding was half the picture.** "HTTP is refused, WebSocket
+  goes through" was measured on pages imported while iCUE was running, which
+  load half-initialised. On a page iCUE has initialised properly, `localhost`
+  and `127.0.0.1` are refused for WebSocket as well, within milliseconds and
+  without reaching the app. What opens is the IPv6 loopback literal,
+  `ws://[::1]:47831`; `ws://localhost.` and `ws://[::ffff:127.0.0.1]` open too,
+  but only some seconds after load. The manifest's `url` permission and the
+  declared framework version (tried 1.0.0 and 1.3.0) change nothing. For the
+  first moments after load iCUE refuses all network, the internet included.
+  Table in `docs/icue-widget.md`.
+- **Widget 1.1.0** tries the spellings in turn (`[::1]`, `localhost.`,
+  `localhost`, `127.0.0.1`), 250 ms apart, keeps the one that opened, backs off
+  only after a whole round fails, and tries plain HTTP last.
+- **Custom Style.** The widget was getting no settings at all, so neither the
+  toggle nor the colours did anything; the colours on screen were its own
+  defaults. Cause: iCUE installs `qwebchannel.js` and its bootstrap as user
+  scripts on a browser profile it creates per widget, and an import while iCUE
+  is running can leave the page on a profile without them (`Unable to create
+  new Profile…`, then `QWebChannel is not defined`). Proved not to be our
+  code: yesterday's exact files and a ten-line page under the same id failed
+  the same way. After an iCUE restart the settings arrive. A detour on the way:
+  1.0.2 read `widgetPersonalizationCustomStyleEnabled` (found in iCUE's stored
+  data) and forced our own defaults when off; iCUE does not expose that flag to
+  the page and already substitutes the declared defaults itself, so that was
+  removed. Loading `qwebchannel.js` from the page was tried and removed too: it
+  silences the error and fixes nothing, because the bootstrap is missing as well.
+- **Settings are read through the inline script** in `index.html`
+  (`icueLocal`), which is where iCUE's script-level variables are visible and
+  where Corsair's own widgets read them.
+- **A console for the device.** The widget writes a few lines through
+  `console.warn`, which iCUE records in its own log, and through the socket as
+  `log:<text>`, which `UsageExportServer` writes to `claudestatus.log`: 40 lines
+  per connection, 1024 bytes each, control characters replaced
+  (`Printable`). Tests cover the cap on size, the forging case and that the
+  subscriber stays connected. This is what made the rest of this entry possible.
+- **Title** reads CLAUDE STATUS.
+- **Method note.** `Start-Process <file>.icuewidget` imports a package into the
+  running iCUE without a click, so experiments can be run and both logs read
+  without the user; a minor version bump (1.0.x to 1.1.0) was held by iCUE
+  waiting on the user, patch bumps were not.
+
+### 2026-09-27, evening — the working wave, and one height for the top row
+
+- **Working wave** (widget 1.1.1): the taskbar widget's three dots, after the
+  sessions count, while any session has a turn in progress. Same motion as
+  `Ellipse.workingDot` in `Shared.axaml`: 0.9 s round, each dot 0.3 s behind
+  the last, opacity 0.3 to 1, accent colour. Switched by a class on the pill and
+  never rebuilt, so a document arriving does not restart it mid-beat. With
+  reduced motion the dots stay lit and still.
+- **Per-session markers are bars now**, lit for a working session and grey for a
+  waiting one, and they no longer pulse: round dots on this widget mean the wave
+  and nothing else. Capped at six; the count says the rest.
+- **LIVE, STALE, OFFLINE and PACE boxes** take the pills' height (3.4rem), radius
+  and background, so the top row reads as one line.
+- **`fitHeader`**: when the row is too full the sessions pill gives up its label,
+  then its bars; the count and the wave always stay. Measured at 840×344 with
+  the real fonts: nine sessions, the PACE box and the Spanish "EN VIVO" all fit.
+
+### 2026-09-27, night — bigger type, and alignment measured rather than nudged
+
+Widget 1.1.2, from the user reading it on the device.
+
+- **Alignment.** The session count sat off-centre beside its bars and its label.
+  Cause: two sizes of the display face centred by their boxes put their capitals
+  at different heights, and the `padding-top` nudges were tuned against Bebas
+  Neue in a browser, not Bebas Neue Pro in iCUE. `measureDisplayFont` now reads
+  the face in use through a canvas (`fontBoundingBoxAscent`/`Descent`, cap
+  height) and sets `--display-shift` and `--display-top`; pill text is centred
+  on its capitals from the first, and the percent sign hangs from the top of
+  the digits from the second. Re-measured when a font finishes loading.
+  Checked: bar, count and label centres within 0.4 px of the pill's.
+- **Rows.** Name at 2rem (was 1.45), figure at 3.4rem (was 2.9), usage bar
+  0.75rem, the grey time bar 0.45rem (was 0.22). "Resets …" moved under the
+  bars, left; the projection sits on the same line, right.
+- **Ring.** "5H SESSION" at 1.6rem (was 1.15), countdown at 1.35rem. `fitHero`
+  drops the word beside the countdown when the two do not fit the ring's chord
+  at that height (Spanish "restantes" does not; English "left" does).
+- **Pace wording shortened** so it is not cut off beside the reset text:
+  "on course for ~33%" / "heading for ~120%", and the same in es, de, fr.
+- **With the pace banner up** the figures step down a size so both rows and the
+  banner fit the 344 px.
+
+### 2026-09-27, late — alignment by ink, measured in the page
+
+Widget 1.1.5. The user still saw "SESIONES" sitting high beside the count.
+
+- **What was wrong with 1.1.2.** It predicted the baseline from the face's
+  ascent and descent. A probe on the device showed the prediction holds for
+  the 32 px count (baseline at 0.904 em) and not for the 21 px label (0.863 em):
+  the browser rounds a face's ascent and descent to whole pixels at each size,
+  so the smaller text sat 0.9 px higher than the arithmetic said.
+- **Now nothing is predicted.** `inkOf` drops an empty inline-block into the
+  element, which sits exactly on the baseline as laid out, and takes the height
+  of the ink from the element's own characters through a canvas, accents and
+  punctuation left out. `centreInk` moves the title, the count and the label so
+  their ink is centred on their pill; `hangSign` moves each percent sign so its
+  top meets the top of its digits. Run at the end of every render, when a font
+  finishes loading and on resize. No font metric appears anywhere in the code.
+- **`text-box-trim`** is the CSS property for this and was the user's
+  suggestion. It shipped in Chrome 133; iCUE 5.51 embeds Chrome 130, where it
+  is ignored. Worth switching to when iCUE's browser catches up.
+- **Verified** twice. In a browser, against a pixel scan of the painted text
+  that shares no code with the widget: count, label and title ink centres all
+  on the pill's centre, percent tops equal to digit tops. On the device, from
+  the widget's own report: pill centre 40.9, count ink 29.4 to 52.4, label ink
+  33.4 to 48.4, title 29.4 to 52.4 - all centred on 40.9. Bebas Neue Pro's
+  digits and capitals are the same height (70 to 71 per 100 px), so the digits
+  were not the cause, which had been the first guess.
+- The widget writes that report once per load (`ink …`), since it is the one
+  thing about it that cannot be checked anywhere but on the device.
+
+### 2026-09-27, last — whole pixels, and bars as tall as the digits
+
+Widget 1.1.8, checked against captures of the panel itself.
+
+- **The widget's own report was not the truth.** 1.1.5 reported count and label
+  ink centred to a twentieth of a pixel; a capture from the user showed the
+  label a pixel above the digits. Glyphs are drawn on the pixel grid, so a line
+  moved by 0.9 px is drawn moved by 1 or by 0. `inkOf` now snaps the baseline
+  and the ink heights to device pixels and `centreInk` moves text by whole
+  pixels only, so what is computed is what is drawn.
+- **Session bars are as tall as the digits** (`matchBars`): the count's ink
+  decides the height and the two lines, the bars copy them through
+  `--bar-height`. Boxes are moved by the exact fraction, not snapped: a box is
+  not a glyph, and the fraction is what puts its edges on the pixel lines.
+- **The wave** is moved onto the line the text ended up on, which after
+  snapping is up to half a pixel from the pill's middle.
+- **Verified on the panel**, by capturing the XENEON EDGE display and scanning
+  pixel rows: bars 31 to 54, digits 31 to 54, label 35 to 50, wave 36 to 49 -
+  every one centred on row 43. Before: bar 41 to 61, digits 40 to 64, label 43
+  to 58, three different centres.
+- **Method.** The EDGE is an ordinary monitor (2560x720), so
+  `Graphics.CopyFromScreen` with per-monitor DPI awareness captures it; a
+  column scan finds each piece of ink and a row scan measures it. This is the
+  check to trust: it shares no code and no assumption with the widget.
