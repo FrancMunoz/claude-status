@@ -96,3 +96,6 @@ CLAUDE.md
 .aider*
 .github/copilot-instructions.md
 PLAN.md
+
+# The package Corsair's CLI writes beside the widget folder; releases attach the one CI builds.
+widgets/icue/*.icuewidget

@@ -460,6 +460,46 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # Runs npm, holds no secrets, like decide-version. The iCUE widget is HTML
+  # packed by Corsair's CLI, which is an npm package: so it packs here, on a
+  # runner with nothing to sign with, and never on the two signing runners.
+  package-widget:
+    name: package the iCUE widget
+    runs-on: ubuntu-latest
+    needs: decide-version
+    if: needs.decide-version.outputs.version != ''
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The same pinned version build.yml validates with.
+      - name: Install the iCUE Widget CLI
+        run: npm install -g icuewidget-cli@0.4.47
+
+      # The CLI writes the package beside the widget folder, named after the
+      # widget, so it is moved to the name .releaserc.json attaches.
+      - name: Package
+        run: |
+          set -euo pipefail
+          icuewidget validate widgets/icue/ClaudeUsage
+          icuewidget package widgets/icue/ClaudeUsage
+          mkdir -p artifacts/releases
+          mv widgets/icue/claude-usage.icuewidget artifacts/releases/ClaudeUsage.icuewidget
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: widget-release
+          path: artifacts/releases/
+          if-no-files-found: error
+          retention-days: 1
+
   # Runs npm, holds no signing credential. Nothing here can build a binary: both
   # installers arrive as artifacts, already signed on the runners above, and this job
   # only tags them and attaches them to a release.
@@ -468,7 +508,7 @@ jobs:
     # Ubuntu, because nothing here compiles or packs any more. semantic-release needs
     # node and a full clone, and neither is platform-specific.
     runs-on: ubuntu-latest
-    needs: [decide-version, package-macos, package-windows]
+    needs: [decide-version, package-macos, package-windows, package-widget]
     if: needs.decide-version.outputs.version != ''
 
     permissions:
@@ -499,6 +539,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: windows-release
+          path: artifacts/releases
+
+      - name: Download the iCUE widget
+        uses: actions/download-artifact@v8
+        with:
+          name: widget-release
           path: artifacts/releases
 
       # The github plugin logs a warning for an asset path that matches nothing and

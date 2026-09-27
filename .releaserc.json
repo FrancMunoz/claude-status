@@ -43,6 +43,10 @@
             "label": "macOS portable (Apple Silicon)"
           },
           {
+            "path": "artifacts/releases/ClaudeUsage.icuewidget",
+            "label": "iCUE widget for the CORSAIR XENEON EDGE (needs ClaudeStatus on the same PC)"
+          },
+          {
             "path": "artifacts/releases/*.nupkg"
           },
           {

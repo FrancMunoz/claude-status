@@ -45,6 +45,44 @@ jobs:
       - name: Test
         run: dotnet test --no-build --configuration Release
 
+  # The iCUE widget is HTML, not .NET: Corsair's own CLI is what says whether
+  # iCUE will accept it. Validated on every push for the same reason the code is
+  # built on every push - a broken manifest should not wait for a release to be
+  # noticed. The package it produces is uploaded so a reviewer can install it
+  # from the workflow run without a release.
+  widget:
+    name: iCUE widget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Pinned: a new CLI can tighten validation, and a red build should mean the
+      # widget changed, not the validator.
+      - name: Install the iCUE Widget CLI
+        run: npm install -g icuewidget-cli@0.4.47
+
+      - name: Validate
+        run: icuewidget validate widgets/icue/ClaudeUsage
+
+      # The CLI writes the package beside the widget folder, named after the
+      # widget, so it is moved to the name the release attaches.
+      - name: Package
+        run: |
+          set -euo pipefail
+          icuewidget package widgets/icue/ClaudeUsage
+          mkdir -p artifacts/widget
+          mv widgets/icue/claude-usage.icuewidget artifacts/widget/ClaudeUsage.icuewidget
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: icue-widget
+          path: artifacts/widget/ClaudeUsage.icuewidget
+          if-no-files-found: error
+
   format:
     name: format
     runs-on: ubuntu-latest
