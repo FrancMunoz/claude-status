@@ -40,7 +40,7 @@ public sealed class VelopackUpdateService : IUpdateService
     private readonly UpdateManager _manager;
     private readonly ILogger<VelopackUpdateService> _log;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private UpdateInfo? _staged;
+    private VelopackAsset? _staged;
     private bool _disposed;
 
     /// <param name="repositoryUrl">The GitHub repository holding the releases.</param>
@@ -67,6 +67,15 @@ public sealed class VelopackUpdateService : IUpdateService
         // Velopack did not put us. There is no update path from there, so the
         // service reports Unsupported rather than failing a check every six hours.
         Status = _manager.IsInstalled ? new UpdateStatus(UpdateState.Idle) : UpdateStatus.Unsupported;
+
+        // A download from before this service existed: an earlier run, or before
+        // the setting was toggled. Startup normally installs it, so this is the
+        // case where that did not happen, and it should be offered, not fetched again.
+        if (_manager.IsInstalled && _manager.UpdatePendingRestart is { } pending)
+        {
+            _staged = pending;
+            Status = new UpdateStatus(UpdateState.ReadyToApply, pending.Version.ToString());
+        }
     }
 
     /// <summary>Whether a feed location is a web URL rather than a path.</summary>
@@ -112,7 +121,7 @@ public sealed class VelopackUpdateService : IUpdateService
             UpdateInfo? available = await _manager.CheckForUpdatesAsync().ConfigureAwait(false);
             if (available is null)
             {
-                Publish(new UpdateStatus(UpdateState.Idle));
+                Publish(new UpdateStatus(UpdateState.UpToDate));
                 return;
             }
 
@@ -122,7 +131,7 @@ public sealed class VelopackUpdateService : IUpdateService
 
             await _manager.DownloadUpdatesAsync(available, cancelToken: ct).ConfigureAwait(false);
 
-            _staged = available;
+            _staged = available.TargetFullRelease;
             _log.LogInformation("Update {Version} staged; it will apply on next start.", version);
             Publish(new UpdateStatus(UpdateState.ReadyToApply, version));
         }
@@ -147,17 +156,21 @@ public sealed class VelopackUpdateService : IUpdateService
     }
 
     /// <inheritdoc />
-    public void ApplyAndRestart()
+    public bool ApplyAndRestart()
     {
         if (_disposed || _staged is null)
         {
-            return;
+            return false;
         }
 
-        _log.LogInformation("Applying update and restarting at the user's request.");
+        _log.LogInformation("Applying update {Version} and restarting at the user's request.", _staged.Version);
 
-        // Does not return: the process is replaced.
-        _manager.ApplyUpdatesAndRestart(_staged.TargetFullRelease);
+        // Not ApplyUpdatesAndRestart: that one exits the process on the spot, and
+        // the app's shutdown - hooks out of Claude Code's settings, the widget out
+        // of the taskbar - never runs. This starts the updater, which waits for
+        // us to exit on our own, applies, and launches the new version.
+        _manager.WaitExitThenApplyUpdates(_staged, silent: false, restart: true);
+        return true;
     }
 
     private void Publish(UpdateStatus status)

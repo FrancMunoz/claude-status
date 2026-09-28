@@ -573,6 +573,30 @@
   <data name="Update_Restart" xml:space="preserve">
     <value>Jetzt neu starten</value>
   </data>
+  <data name="Update_Check" xml:space="preserve">
+    <value>Nach Updates suchen</value>
+  </data>
+  <data name="Update_Status_Checking" xml:space="preserve">
+    <value>Suche nach Updates…</value>
+  </data>
+  <data name="Update_Status_UpToDate" xml:space="preserve">
+    <value>ClaudeStatus ist auf dem neuesten Stand.</value>
+  </data>
+  <data name="Update_Status_Downloading" xml:space="preserve">
+    <value>Version {0} wird heruntergeladen…</value>
+  </data>
+  <data name="Update_Status_Failed" xml:space="preserve">
+    <value>Die Suche nach Updates ist fehlgeschlagen. Bitte später erneut versuchen.</value>
+  </data>
+  <data name="Update_Status_Unsupported" xml:space="preserve">
+    <value>Nur die installierte App kann sich selbst aktualisieren.</value>
+  </data>
+  <data name="Update_Notification_Title" xml:space="preserve">
+    <value>Update bereit</value>
+  </data>
+  <data name="Update_Notification_Body" xml:space="preserve">
+    <value>ClaudeStatus {0} ist bereit zur Installation. Klicken, um jetzt neu zu starten.</value>
+  </data>
   <data name="Config_AutomaticUpdates" xml:space="preserve">
     <value>Automatisch nach neuen Versionen suchen</value>
   </data>

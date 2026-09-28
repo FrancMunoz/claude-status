@@ -327,7 +327,7 @@ public class WindowLoadTests(HeadlessAppFixture fixture)
             new NullTokenSource(),
             _ => new FakeUsageProvider(FakeUsageScenario.Healthy, new FakeTimeProvider(Now)));
 
-    private static ConfigViewModel BuildConfigViewModel()
+    internal static ConfigViewModel BuildConfigViewModel()
         => new(
             BuildCredentialService(),
             new StubAutostart(),

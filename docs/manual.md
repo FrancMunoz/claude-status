@@ -318,14 +318,18 @@ See [`theming.md`](theming.md).
 
 ### Updates
 
-The app asks GitHub Releases for a newer version every six hours, downloads it in
-the background, and installs it **the next time it starts**. It is never
-restarted underneath you. When one is staged the popup offers a *Restart now*
-shortcut; ignoring it is fine.
+The app asks GitHub Releases for a newer version two minutes after it starts and
+every six hours after that, downloads it in the background, and installs it
+**the next time it starts**. It is never restarted underneath you. When one is
+staged a notification says so — click it to restart into the new version now —
+and the popup and **Config → Behaviour** offer the same *Restart now*; ignoring
+all of them is fine.
 
-Turn it off in **Config → Behaviour**. Off means the request is not made at all,
-not that the notice is hidden — this is the only host the app contacts other than
-Anthropic. The feed is read anonymously, so no credential ships inside the app.
+**Config → Behaviour → Check for updates** asks right away and says what it
+found. Turning automatic checks off stops the timer, so the request is not made
+at all unless you press that button — this is the only host the app contacts
+other than Anthropic. The feed is read anonymously, so no credential ships
+inside the app.
 
 The portable zip cannot update itself and reports nothing rather than failing
 forever.

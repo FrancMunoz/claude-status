@@ -13,7 +13,7 @@ public enum UpdateState
     /// </remarks>
     Unsupported = 0,
 
-    /// <summary>Installed and up to date, as far as the last check could tell.</summary>
+    /// <summary>Installed, and not checked yet in this run.</summary>
     Idle = 1,
 
     /// <summary>Asking the release feed what the newest version is.</summary>
@@ -41,6 +41,16 @@ public enum UpdateState
     /// check simply tries again.
     /// </remarks>
     Failed = 5,
+
+    /// <summary>
+    /// The last check found nothing newer.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="Idle"/> so that "Check for updates" in Config can
+    /// answer the question it was asked: "up to date" is a result, and a check
+    /// that has not happened yet is not.
+    /// </remarks>
+    UpToDate = 6,
 }
 
 /// <summary>What the updater is doing, and which version it is talking about.</summary>
@@ -93,14 +103,21 @@ public interface IUpdateService : IDisposable
     Task CheckAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Applies a staged update and restarts, if one is staged.
+    /// Hands a staged update to the installer, which applies it once this process
+    /// has exited and then starts the app again.
     /// </summary>
+    /// <returns>
+    /// True when the installer is waiting, and the caller must now shut the app
+    /// down - promptly, because the installer gives up after about a minute.
+    /// False, and nothing happened, unless <see cref="Status"/> is
+    /// <see cref="UpdateState.ReadyToApply"/>.
+    /// </returns>
     /// <remarks>
-    /// Does nothing unless <see cref="Status"/> is
-    /// <see cref="UpdateState.ReadyToApply"/>. The process does not return from
-    /// this call when it does act.
+    /// It does not exit the process itself. Doing so skipped the app's own
+    /// shutdown - the hooks it removes, the widget it takes out of the taskbar -
+    /// and is not this interface's decision.
     /// </remarks>
-    void ApplyAndRestart();
+    bool ApplyAndRestart();
 }
 
 /// <summary>
@@ -129,9 +146,7 @@ public sealed class NullUpdateService : IUpdateService
     public Task CheckAsync(CancellationToken ct = default) => Task.CompletedTask;
 
     /// <inheritdoc />
-    public void ApplyAndRestart()
-    {
-    }
+    public bool ApplyAndRestart() => false;
 
     /// <inheritdoc />
     public void Dispose()

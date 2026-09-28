@@ -102,11 +102,20 @@ public sealed class TrayApplicationController : IDisposable
     /// </remarks>
     private DateTimeOffset _detailsDismissedAt = DateTimeOffset.MinValue;
 
-    /// <summary>The updater, or a no-op one when the setting is off. Never null after start.</summary>
+    /// <summary>The updater. Reports Unsupported outside an install. Never null.</summary>
     private IUpdateService _updates = new NullUpdateService();
 
-    /// <summary>Drives the periodic update check. Null while updates are off.</summary>
+    /// <summary>Drives the periodic update check. Null while automatic updates are off.</summary>
     private Timer? _updateTimer;
+
+    /// <summary>
+    /// The tag an update notification carries, so its click restarts rather than
+    /// looking for a session. Session ids are GUIDs; this cannot collide with one.
+    /// </summary>
+    private const string UpdateNotificationTag = "claudestatus:update";
+
+    /// <summary>The staged version already announced, so it is announced once.</summary>
+    private string? _announcedUpdate;
 
     private bool _disposed;
 
@@ -359,10 +368,11 @@ public sealed class TrayApplicationController : IDisposable
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Turning the setting off disposes the service and the timer rather than
-    /// leaving them running and hiding the result. This is the only request the
-    /// app makes to anything other than Anthropic, so "off" has to mean no
-    /// traffic, not a suppressed notice.
+    /// Turning the setting off stops the timer rather than leaving it running and
+    /// hiding the result. This is the only request the app makes to anything
+    /// other than Anthropic, so "off" has to mean no traffic, not a suppressed
+    /// notice. The service itself stays, so that "Check for updates" in Config
+    /// still works: a check the user asked for is not automatic.
     /// </para>
     /// <para>
     /// The first check is delayed rather than run at startup. A tray app is
@@ -377,12 +387,6 @@ public sealed class TrayApplicationController : IDisposable
         _updateTimer = null;
         _updates.Dispose();
 
-        if (!_settings.AutomaticUpdates)
-        {
-            _updates = new NullUpdateService();
-            return;
-        }
-
         var service = new VelopackUpdateService(
             InfoViewModel.ProjectUrl,
             _services.GetRequiredService<ILogger<VelopackUpdateService>>());
@@ -393,9 +397,12 @@ public sealed class TrayApplicationController : IDisposable
         // from a bug report: an unsupported build and a healthy one that simply
         // found nothing look identical from the outside.
         _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
-            "Update checks: {State}. Installed version: {Version}.",
+            "Update checks: {State}, automatic {Automatic}. Installed version: {Version}.",
             service.Status.State,
+            _settings.AutomaticUpdates ? "on" : "off",
             service.CurrentVersion ?? "unknown");
+
+        OnUpdateStatus(service.Status);
 
         if (service.Status.State == UpdateState.Unsupported)
         {
@@ -404,6 +411,11 @@ public sealed class TrayApplicationController : IDisposable
         }
 
         service.StatusChanged += (_, status) => Dispatcher.UIThread.Post(() => OnUpdateStatus(status));
+
+        if (!_settings.AutomaticUpdates)
+        {
+            return;
+        }
 
         _updateTimer = new Timer(
             _ => _ = CheckForUpdatesAsync(),
@@ -434,8 +446,65 @@ public sealed class TrayApplicationController : IDisposable
         }
     }
 
-    /// <summary>Pushes a new update status into any open window.</summary>
-    private void OnUpdateStatus(UpdateStatus status) => _detailsViewModel?.ApplyUpdate(status);
+    /// <summary>
+    /// Restarts into a staged update, from the popup, Config or a notification.
+    /// </summary>
+    /// <remarks>
+    /// The updater waits for this process to exit, so the app shuts down the
+    /// ordinary way - the same path as Quit - and the updater relaunches it.
+    /// </remarks>
+    private void RestartToUpdate()
+    {
+        if (_updates.ApplyAndRestart())
+        {
+            _lifetime.Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// Pushes a new update status into any open window, and announces a staged update once.
+    /// </summary>
+    /// <remarks>
+    /// The popup's banner alone was not enough: nobody opens the popup to look for
+    /// an update, so a staged one sat unseen until the app happened to restart. A
+    /// notification is the one thing the user sees without going looking, and
+    /// clicking it restarts into the new version. Once per version, however many
+    /// checks report the same staged update.
+    /// </remarks>
+    private void OnUpdateStatus(UpdateStatus status)
+    {
+        _detailsViewModel?.ApplyUpdate(status);
+        (_configWindow?.DataContext as ConfigViewModel)?.ApplyUpdate(status);
+
+        if (status.State != UpdateState.ReadyToApply
+            || status.Version is null
+            || string.Equals(status.Version, _announcedUpdate, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _announcedUpdate = status.Version;
+
+        ILocalizer localizer = _services.GetRequiredService<ILocalizer>();
+        INotifier notifier = _services.GetRequiredService<INotifier>();
+        bool shown = notifier.Notify(
+            localizer["Update_Notification_Title"],
+            localizer.Format("Update_Notification_Body", status.Version),
+            UpdateNotificationTag);
+
+        _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
+            "Update {Version} announced: {Notifier} {Result}.",
+            status.Version,
+            notifier.GetType().Name,
+            shown ? "accepted it" : "refused it, showing the card");
+
+        // The card cannot be clicked, so it says what the popup's banner says: it
+        // installs by itself at the next start, and the popup has the button.
+        if (!shown)
+        {
+            _indicator.ShowNotice(localizer.Format("Update_Ready", status.Version), SessionNoticeDuration);
+        }
+    }
 
     /// <summary>Builds and starts a monitor for the current settings.</summary>
     private void StartMonitor()
@@ -667,7 +736,7 @@ public sealed class TrayApplicationController : IDisposable
 
             // Restarting into a staged update is the controller's business too:
             // the view model must not know that applying an update ends the process.
-            _detailsViewModel.UpdateRequested += (_, _) => _updates.ApplyAndRestart();
+            _detailsViewModel.UpdateRequested += (_, _) => RestartToUpdate();
 
             // The popup's switches go through the same path as Config's Save, so
             // the watcher and our hooks follow the switch at once.
@@ -759,6 +828,9 @@ public sealed class TrayApplicationController : IDisposable
                 _services.GetRequiredService<IHookManager>(),
                 () => _sessions?.Sessions ?? []);
 
+            viewModel.UpdateCheckRequested += (_, _) => _ = CheckForUpdatesAsync();
+            viewModel.UpdateRestartRequested += (_, _) => RestartToUpdate();
+
             _configWindow = new ConfigWindow { DataContext = viewModel };
 
             // Hide rather than close: the view model holds a live credential
@@ -772,6 +844,7 @@ public sealed class TrayApplicationController : IDisposable
         if (!_configWindow.IsVisible && _configWindow.DataContext is ConfigViewModel config)
         {
             _ = config.LoadAsync();
+            config.ApplyUpdate(_updates.Status);
         }
 
         ShowWindow(_configWindow);
@@ -1278,6 +1351,15 @@ public sealed class TrayApplicationController : IDisposable
     /// </remarks>
     private void OnNotificationActivated(object? sender, NotificationActivatedEventArgs e)
     {
+        // Restarting needs no foreground permission, so it is posted rather than
+        // invoked: it ends the process, and must not do so from inside a click
+        // that a thread-pool thread is still blocked on.
+        if (string.Equals(e.Tag, UpdateNotificationTag, StringComparison.Ordinal))
+        {
+            Dispatcher.UIThread.Post(RestartToUpdate);
+            return;
+        }
+
         if (!Dispatcher.UIThread.CheckAccess())
         {
             Dispatcher.UIThread.Invoke(() => OnNotificationActivated(sender, e));

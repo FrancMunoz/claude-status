@@ -9,6 +9,7 @@ using ClaudeStatus.Platform;
 using ClaudeStatus.Security;
 using ClaudeStatus.Sessions;
 using ClaudeStatus.Theming;
+using ClaudeStatus.Update;
 using ClaudeStatus.Usage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -113,6 +114,9 @@ public partial class ConfigViewModel : ObservableObject
     [ObservableProperty]
     private bool _automaticUpdates = true;
 
+    /// <summary>What the updater last reported. Kept rather than worded, so a language change re-words it.</summary>
+    private UpdateStatus _updateStatus = UpdateStatus.Unsupported;
+
     /// <summary>Warn when usage climbs fast enough to run out before a window resets.</summary>
     [ObservableProperty]
     private bool _velocityAlerts = true;
@@ -195,6 +199,53 @@ public partial class ConfigViewModel : ObservableObject
 
     /// <summary>The localizer, for static labels bound as <c>L[Key]</c>.</summary>
     public ILocalizer L => _localizer;
+
+    /// <summary>Raised by "Check for updates". The controller owns the updater.</summary>
+    public event EventHandler? UpdateCheckRequested;
+
+    /// <summary>Raised by "Restart now". Applying an update ends the process, which is not a view model's call.</summary>
+    public event EventHandler? UpdateRestartRequested;
+
+    /// <summary>One line about where the updater is, under the button. Empty before any check.</summary>
+    public string UpdateStatusText => _updateStatus.State switch
+    {
+        UpdateState.Unsupported => _localizer["Update_Status_Unsupported"],
+        UpdateState.Checking => _localizer["Update_Status_Checking"],
+        UpdateState.UpToDate => _localizer["Update_Status_UpToDate"],
+        UpdateState.Downloading => _localizer.Format("Update_Status_Downloading", _updateStatus.Version ?? string.Empty),
+        UpdateState.ReadyToApply => _localizer.Format("Update_Ready", _updateStatus.Version ?? string.Empty),
+        UpdateState.Failed => _localizer["Update_Status_Failed"],
+        _ => string.Empty,
+    };
+
+    /// <summary>Whether a check can start: installed, and not already checking or holding an update.</summary>
+    public bool CanCheckForUpdates => _updateStatus.State is UpdateState.Idle or UpdateState.UpToDate or UpdateState.Failed;
+
+    /// <summary>Whether an update is staged and can be installed by restarting.</summary>
+    public bool CanRestartToUpdate => _updateStatus.State == UpdateState.ReadyToApply;
+
+    /// <summary>
+    /// Shows the updater's state beside the "Check for updates" button.
+    /// </summary>
+    /// <remarks>
+    /// Unlike the details popup, every state is worded here, a failure included:
+    /// in this window the user asked the question, so each answer is theirs.
+    /// </remarks>
+    public void ApplyUpdate(UpdateStatus status)
+    {
+        ArgumentNullException.ThrowIfNull(status);
+
+        _updateStatus = status;
+        OnPropertyChanged(nameof(UpdateStatusText));
+        OnPropertyChanged(nameof(CanCheckForUpdates));
+        OnPropertyChanged(nameof(CanRestartToUpdate));
+    }
+
+    [RelayCommand]
+    private void CheckForUpdates() => UpdateCheckRequested?.Invoke(this, EventArgs.Empty);
+
+    [RelayCommand]
+    private void RestartToUpdate() => UpdateRestartRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>The lowest poll interval the UI will let the user choose.</summary>
     public static double MinimumPollSeconds => PollingOptions.MinimumInterval.TotalSeconds;

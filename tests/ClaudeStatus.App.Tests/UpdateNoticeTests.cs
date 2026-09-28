@@ -31,6 +31,7 @@ public class UpdateNoticeTests
     [Theory]
     [InlineData(UpdateState.Unsupported)]
     [InlineData(UpdateState.Idle)]
+    [InlineData(UpdateState.UpToDate)]
     [InlineData(UpdateState.Checking)]
     [InlineData(UpdateState.Downloading)]
     [InlineData(UpdateState.Failed)]
@@ -108,16 +109,85 @@ public class UpdateNoticeTests
         service.Status.State.Should().Be(UpdateState.Unsupported);
         service.Status.IsNoteworthy.Should().BeFalse();
 
-        // Neither of these may throw, and neither may reach the network.
+        // Neither of these may throw, and neither may reach the network. Above all
+        // it must not tell the controller to shut down for a restart that will
+        // never come.
         service.CheckAsync(TestContext.Current.CancellationToken)
             .IsCompletedSuccessfully.Should().BeTrue();
-        service.ApplyAndRestart();
+        service.ApplyAndRestart().Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(UpdateState.Unsupported, "installed app")]
+    [InlineData(UpdateState.Checking, "Checking")]
+    [InlineData(UpdateState.UpToDate, "up to date")]
+    [InlineData(UpdateState.Downloading, "9.9.9")]
+    [InlineData(UpdateState.ReadyToApply, "9.9.9")]
+    [InlineData(UpdateState.Failed, "Could not")]
+    public void Config_answers_every_state_because_there_the_user_asked(UpdateState state, string expected)
+    {
+        // The opposite of the popup: a failed check in Config is the answer to a
+        // button press, and saying nothing would read as the button not working.
+        ConfigViewModel model = WindowLoadTests.BuildConfigViewModel();
+
+        model.ApplyUpdate(new UpdateStatus(state, "9.9.9"));
+
+        model.UpdateStatusText.Should().Contain(expected);
+    }
+
+    [Fact]
+    public void Config_says_nothing_before_the_first_check()
+    {
+        ConfigViewModel model = WindowLoadTests.BuildConfigViewModel();
+
+        model.ApplyUpdate(new UpdateStatus(UpdateState.Idle));
+
+        model.UpdateStatusText.Should().BeEmpty();
+        model.CanCheckForUpdates.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(UpdateState.Unsupported, false, false)]
+    [InlineData(UpdateState.Idle, true, false)]
+    [InlineData(UpdateState.UpToDate, true, false)]
+    [InlineData(UpdateState.Failed, true, false)]
+    [InlineData(UpdateState.Checking, false, false)]
+    [InlineData(UpdateState.Downloading, false, false)]
+    [InlineData(UpdateState.ReadyToApply, false, true)]
+    public void Config_offers_the_button_that_fits(UpdateState state, bool canCheck, bool canRestart)
+    {
+        // No check while one runs or while a download is already staged, and no
+        // check at all where nothing can be installed.
+        ConfigViewModel model = WindowLoadTests.BuildConfigViewModel();
+
+        model.ApplyUpdate(new UpdateStatus(state, "9.9.9"));
+
+        model.CanCheckForUpdates.Should().Be(canCheck);
+        model.CanRestartToUpdate.Should().Be(canRestart);
+    }
+
+    [Fact]
+    public void Config_buttons_ask_the_controller()
+    {
+        ConfigViewModel model = WindowLoadTests.BuildConfigViewModel();
+
+        int checks = 0;
+        int restarts = 0;
+        model.UpdateCheckRequested += (_, _) => checks++;
+        model.UpdateRestartRequested += (_, _) => restarts++;
+
+        model.CheckForUpdatesCommand.Execute(null);
+        model.RestartToUpdateCommand.Execute(null);
+
+        checks.Should().Be(1);
+        restarts.Should().Be(1);
     }
 
     [Theory]
     [InlineData(UpdateState.Downloading, true)]
     [InlineData(UpdateState.ReadyToApply, true)]
     [InlineData(UpdateState.Idle, false)]
+    [InlineData(UpdateState.UpToDate, false)]
     [InlineData(UpdateState.Failed, false)]
     [InlineData(UpdateState.Unsupported, false)]
     public void Noteworthy_means_something_is_actually_happening(UpdateState state, bool expected)

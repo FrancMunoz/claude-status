@@ -219,15 +219,26 @@ list of assemblies ever grows, re-check it rather than raising the suppression.
 
 ## Updates
 
-The app checks GitHub Releases for a newer version every six hours, downloads it
-in the background, and installs it the next time it starts. It is never restarted
-underneath anyone; the popup offers a "Restart now" shortcut when an update is
-staged, and taking it is optional.
+The app checks GitHub Releases for a newer version two minutes after start and
+every six hours after that, downloads it in the background, and installs it the
+next time it starts. It is never restarted underneath anyone; when an update is
+staged a notification (once per version) offers a restart, as do the popup and
+Config, and taking it is optional.
 
 - Controlled by **Config → Behaviour → "Check for new versions automatically"**,
-  on by default. Off means the request is not made at all, not that the notice is
-  hidden — this is the only request the app makes to anything other than the
-  Anthropic endpoint, so it has to be genuinely switchable.
+  on by default. Off means the timer does not run and the request is not made at
+  all, not that the notice is hidden — this is the only request the app makes to
+  anything other than the Anthropic endpoint, so it has to be genuinely
+  switchable. **Check for updates** in the same place checks once, on demand,
+  whatever the setting.
+- **A Claude Code hook run never applies an update.** The hook is this same
+  executable, and Velopack's apply-on-startup closes every running copy and then
+  restarts *the process that asked* — the hook, which exits at once. 1.2.0 shipped
+  with that: the tray app vanished at the end of a Claude Code turn. `Program.cs`
+  now turns auto-apply off when the hook marker is on the command line.
+- **Restart now** uses `WaitExitThenApplyUpdates` and then shuts the app down the
+  ordinary way, rather than `ApplyUpdatesAndRestart`, which exits on the spot and
+  skips the app's own cleanup.
 - The feed is read **anonymously**. A token would lift GitHub's limit from 60
   requests an hour to 5000 and would also mean shipping a credential inside the
   application, which this project does not do (`docs/manual.md` §8). One check every

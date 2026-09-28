@@ -294,6 +294,20 @@
                                           IsChecked="{Binding AutomaticUpdates}" />
                                 <TextBlock Classes="caption option-help"
                                            Text="{Binding L[Config_AutomaticUpdates_Help]}" />
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,8,0,0">
+                                    <Button Content="{Binding L[Update_Check]}"
+                                            Command="{Binding CheckForUpdatesCommand}"
+                                            IsEnabled="{Binding CanCheckForUpdates}" />
+                                    <Button Classes="accent"
+                                            Content="{Binding L[Update_Restart]}"
+                                            Command="{Binding RestartToUpdateCommand}"
+                                            IsVisible="{Binding CanRestartToUpdate}" />
+                                </StackPanel>
+                                <TextBlock Classes="caption option-help"
+                                           Margin="28,4,0,0"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           Text="{Binding UpdateStatusText}" />
                             </StackPanel>
 
                             <StackPanel>

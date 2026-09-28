@@ -573,6 +573,30 @@
   <data name="Update_Restart" xml:space="preserve">
     <value>Reiniciar ahora</value>
   </data>
+  <data name="Update_Check" xml:space="preserve">
+    <value>Buscar actualizaciones</value>
+  </data>
+  <data name="Update_Status_Checking" xml:space="preserve">
+    <value>Buscando actualizaciones…</value>
+  </data>
+  <data name="Update_Status_UpToDate" xml:space="preserve">
+    <value>ClaudeStatus está actualizado.</value>
+  </data>
+  <data name="Update_Status_Downloading" xml:space="preserve">
+    <value>Descargando la versión {0}…</value>
+  </data>
+  <data name="Update_Status_Failed" xml:space="preserve">
+    <value>No se han podido buscar actualizaciones. Inténtalo más tarde.</value>
+  </data>
+  <data name="Update_Status_Unsupported" xml:space="preserve">
+    <value>Solo la aplicación instalada puede actualizarse.</value>
+  </data>
+  <data name="Update_Notification_Title" xml:space="preserve">
+    <value>Actualización lista</value>
+  </data>
+  <data name="Update_Notification_Body" xml:space="preserve">
+    <value>ClaudeStatus {0} está listo para instalarse. Haz clic para reiniciar ahora.</value>
+  </data>
   <data name="Config_AutomaticUpdates" xml:space="preserve">
     <value>Buscar nuevas versiones automáticamente</value>
   </data>
