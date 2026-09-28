@@ -22,11 +22,19 @@ internal sealed class Program
         // refuses to package a build where this call is missing, which is how
         // that mistake gets caught rather than shipped.
         //
-        // Auto-apply on startup is left at its default of on: an update
-        // downloaded in the background is installed the next time the app
-        // starts, which is what makes "check now, apply on quit" work without
-        // ever restarting the app underneath someone.
-        VelopackApp.Build().Run();
+        // Auto-apply on startup is on for a real launch: an update downloaded
+        // in the background is installed the next time the app starts, which
+        // is what makes "check now, apply on quit" work without ever restarting
+        // the app underneath someone.
+        //
+        // It is off for a Claude Code hook. Applying an update closes every
+        // running copy of the app and then restarts the process that asked -
+        // which for a hook is a process that writes one file and exits. The
+        // result was the tray app vanishing at the end of somebody's turn and
+        // not coming back.
+        VelopackApp.Build()
+            .SetAutoApplyOnStartup(!HookEntryPoint.IsHook(args))
+            .Run();
 
         // Claude Code runs this same executable as a hook at the end of every
         // turn. That invocation writes one file and exits; it must never reach

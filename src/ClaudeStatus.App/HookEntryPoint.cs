@@ -29,6 +29,11 @@ namespace ClaudeStatus.App;
 /// </remarks>
 internal static class HookEntryPoint
 {
+    /// <summary>Whether this process was started by Claude Code as a hook.</summary>
+    /// <param name="args">The process arguments.</param>
+    public static bool IsHook(string[]? args)
+        => args is not null && Array.IndexOf(args, ClaudeCodeHooks.Marker) >= 0;
+
     /// <summary>
     /// Handles the hook invocation, if this is one.
     /// </summary>
@@ -37,7 +42,7 @@ internal static class HookEntryPoint
     /// <returns>True when this process was a hook and is now done.</returns>
     public static bool TryHandle(string[] args, string configDirectory)
     {
-        if (args is null || Array.IndexOf(args, ClaudeCodeHooks.Marker) < 0)
+        if (!IsHook(args))
         {
             return false;
         }
