@@ -159,6 +159,14 @@ the rules are:
   organisation id, no spend, no session ids or titles, no paths. Adding a field
   here is a review item: it must stay something a stranger reading it learns
   nothing from.
+  *Reviewed 2026-10-18:* `breakdown` (the week's usage share per surface:
+  Claude Code, chats, Cowork, other) and, on the Fable window,
+  `weeklySharePercent` / `weeklyAllowancePercent`. All are percentages of the
+  user's own usage. They say which Claude products this person leans on, a
+  little more than "how busy", and nothing about what was done in them: no
+  titles, no counts of conversations, no identifiers, no money. Accepted on that
+  basis. The `label` beside each key is the endpoint's generic English name for
+  the surface, never user text.
 - **Web pages are refused.** A browser on the machine can `fetch()` loopback.
   A request carrying an `http://` or `https://` `Origin` header is answered
   403 without the CORS header, so a page's script never sees the body and

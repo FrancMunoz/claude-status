@@ -58,7 +58,28 @@ public sealed record UsageExport(
 
     /// <summary>The id of the 7-day, top-tier-models window.</summary>
     public const string WeekFableWindowId = "weekFable";
+
+    /// <summary>
+    /// The week's usage split by surface, or null when the endpoint sent none.
+    /// </summary>
+    /// <remarks>
+    /// Added 2026-10-18 without a schema bump: a reader of schema 1 ignores it.
+    /// Shares of the usage by product - Claude Code, chats, Cowork - and nothing
+    /// that says what was done there. Reviewed in <c>docs/security.md</c> §5b.
+    /// </remarks>
+    public UsageExportBreakdown? Breakdown { get; init; }
 }
+
+/// <summary>The week's usage split by surface.</summary>
+/// <param name="AsOf">When the endpoint computed the split. It lags the windows.</param>
+/// <param name="Rows">One per surface, in the endpoint's order.</param>
+public sealed record UsageExportBreakdown(DateTimeOffset? AsOf, IReadOnlyList<UsageExportShare> Rows);
+
+/// <summary>One surface's share of the week's usage.</summary>
+/// <param name="Key">The endpoint's identifier, e.g. <c>claude_code</c>. The consumer translates the ones it knows.</param>
+/// <param name="Label">The endpoint's own English label, for a key the consumer does not know.</param>
+/// <param name="Percent">The share of the week's usage, 0 to 100. The rows add up to about 100.</param>
+public sealed record UsageExportShare(string Key, string? Label, double Percent);
 
 /// <summary>Why a reading may be missing. Mirrors what the indicators draw.</summary>
 public enum UsageExportState
@@ -90,7 +111,17 @@ public sealed record UsageExportWindow(
     double Percent,
     DateTimeOffset? ResetsAt,
     int? SpanSeconds,
-    bool Exhausted);
+    bool Exhausted)
+{
+    /// <summary>
+    /// For a scoped window: how much of the weekly limit its usage amounts to.
+    /// Null for the others and when the endpoint did not say.
+    /// </summary>
+    public double? WeeklySharePercent { get; init; }
+
+    /// <summary>For a scoped window: its limit as a share of the weekly limit.</summary>
+    public double? WeeklyAllowancePercent { get; init; }
+}
 
 /// <summary>The velocity tracker's verdict, as data.</summary>
 /// <param name="WindowId">Which window is climbing too fast.</param>

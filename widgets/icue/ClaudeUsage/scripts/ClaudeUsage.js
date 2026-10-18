@@ -47,6 +47,8 @@ var S = {
 	windowSession: "5h", windowWeek: "7d",
 	paceOk: "on course for ~{p}%",
 	paceHigh: "heading for ~{p}%",
+	srfCode: "Code", srfChats: "Chats", srfCowork: "Cowork", srfOther: "Other",
+	shareOfWeek: "{p}% of 7d", shareOfWeekCap: "{p}% of 7d, cap {m}%",
 	paceOut: "At this pace the {w} window runs out at {t}, {d} before it resets.",
 	appOffline: "ClaudeStatus is not running",
 	appOfflineHint: "Start ClaudeStatus and turn on \"Share the reading with the iCUE widget\" in Config > Behaviour (port {port}).",
@@ -163,9 +165,11 @@ function render() {
 	}
 
 	var rows = [];
-	if (week) { rows.push(rowHtml(week, S.week, S.weekSub, threshold, now)); }
+	var showBreakdown = getIcueProperty("showBreakdown");
+	var split = showBreakdown !== false && showBreakdown !== "false" ? surfaces(data.breakdown) : [];
+	if (week) { rows.push(rowHtml(week, S.week, S.weekSub, threshold, now, split)); }
 	var showFable = getIcueProperty("showFable");
-	if (fable && showFable !== false && showFable !== "false") { rows.push(rowHtml(fable, S.week, S.fableSub, threshold, now)); }
+	if (fable && showFable !== false && showFable !== "false") { rows.push(rowHtml(fable, S.week, S.fableSub, threshold, now, null)); }
 	els.rows.innerHTML = rows.join("");
 
 	if (data.pace && data.pace.runsOutAt && data.pace.resetsAt) {
@@ -175,6 +179,7 @@ function render() {
 	}
 
 	// Last, once every size and every piece of text is final.
+	fitNotes();
 	fitHero();
 	alignInk();
 }
@@ -222,13 +227,74 @@ function fitHeader() {
 	h.classList.add("tighter");
 }
 
-function rowHtml(w, label, sub, threshold, now) {
+// The week's usage by surface, biggest first, with what each is called and how
+// bright its segment is. Biggest first so the brightest segment is always the
+// largest share, whatever order the app sent them in; empty shares are dropped.
+var SPLIT_SHADES = [1, 0.62, 0.38, 0.22];
+var SURFACE_NAMES = { claude_code: "srfCode", chat: "srfChats", cowork: "srfCowork", other: "srfOther" };
+function surfaces(breakdown) {
+	if (!breakdown || !Array.isArray(breakdown.rows)) { return []; }
+	return breakdown.rows
+		.map(function (r) { return { key: String(r.key || ""), name: SURFACE_NAMES[r.key] ? S[SURFACE_NAMES[r.key]] : String(r.label || r.key || ""), share: clamp(r.percent, 0, 100, 0) }; })
+		.filter(function (r) { return r.share >= 0.5 && r.name; })
+		.sort(function (a, b) { return b.share - a.share; })
+		.slice(0, SPLIT_SHADES.length)
+		.map(function (r, i) { r.shade = SPLIT_SHADES[i]; return r; });
+}
+
+// The usage fill, either whole or cut into one segment per surface. The
+// segments share the fill's width, so the bar still reads as the window's
+// percentage first and as a split second.
+function usageFill(p, split) {
+	if (!split || !split.length) { return '<i style="width:' + p + '%"></i>'; }
+	var total = split.reduce(function (s, r) { return s + r.share; }, 0) || 1;
+	return '<i class="split" style="width:' + p + '%">' + split.map(function (r) {
+		return '<b style="flex-grow:' + (r.share / total).toFixed(4) + ';opacity:' + r.shade + '"></b>';
+	}).join("") + "</i>";
+}
+
+// What sits between the name and the figure: the split's legend on the week,
+// the scoped window's slice of the week on Fable.
+function rowNote(w, split) {
+	if (split && split.length) {
+		return split.map(function (r) {
+			return '<span class="key"><i style="opacity:' + r.shade + '"></i>' + esc(r.name) + " <b>" + Math.round(r.share) + "</b></span>";
+		}).join("");
+	}
+	if (typeof w.weeklySharePercent !== "number") { return ""; }
+	var vars = { p: Math.round(w.weeklySharePercent), m: typeof w.weeklyAllowancePercent === "number" ? Math.round(w.weeklyAllowancePercent) : "" };
+	var short = esc(fmt(S.shareOfWeek, vars));
+	return vars.m === "" ? short : '<span class="long">' + esc(fmt(S.shareOfWeekCap, vars)) + '</span><span class="short">' + short + "</span>";
+}
+
+// Makes each note fit between its row's name and figure. The legend loses its
+// smallest surfaces first, the Fable note its cap; what still does not fit goes.
+// A note never pushes the name or the figure: those are what the row is for.
+function fitNotes() {
+	var notes = els.rows.querySelectorAll(".row-note");
+	for (var i = 0; i < notes.length; i++) {
+		var note = notes[i];
+		note.classList.remove("short", "gone");
+		var keys = note.querySelectorAll(".key");
+		for (var k = 0; k < keys.length; k++) { keys[k].style.display = ""; }
+		// The content is measured, not the note's scrollWidth: right-aligned, it
+		// overflows to the left, which scrollWidth does not count.
+		var inner = note.firstElementChild;
+		var over = function () { return !!inner && inner.getBoundingClientRect().width > note.clientWidth + 0.5; };
+		for (var j = keys.length - 1; j > 0 && over(); j--) { keys[j].style.display = "none"; }
+		if (over()) { note.classList.add("short"); }
+		if (over()) { note.classList.add("gone"); }
+	}
+}
+
+function rowHtml(w, label, sub, threshold, now, split) {
 	var p = clamp(w.percent, 0, 100, 0), tp = timePercent(w, now), r = resetText(w, now), pace = paceText(w, now);
 	var reset = !r ? "" : r.soon ? esc(S.resetsIn) + " <b>" + esc(r.num) + "</b>" : esc(S.resetsAt) + " <b>" + esc(r.num) + "</b> · " + esc(r.lbl);
 	return '<div class="row' + (p >= threshold ? " over" : "") + '">' +
 		'<div class="row-top"><span class="row-label">' + esc(label) + ' <span class="sub">' + esc(sub) + "</span></span>" +
+		'<span class="row-note"><span class="note-in">' + rowNote(w, split) + "</span></span>" +
 		'<div class="row-value figure">' + figure(p, w.exhausted) + "</div></div>" +
-		'<div class="bars"><div class="bar usage"><i style="width:' + p + '%"></i></div><div class="bar time"><i style="width:' + tp + '%"></i></div></div>' +
+		'<div class="bars"><div class="bar usage">' + usageFill(p, split) + '</div><div class="bar time"><i style="width:' + tp + '%"></i></div></div>' +
 		'<div class="row-bottom"><span class="row-reset">' + reset + "</span>" +
 		'<span class="row-pace' + (pace.bad ? " bad" : "") + '">' + esc(pace.text) + "</span></div></div>";
 }
@@ -586,9 +652,12 @@ function mockSnapshot(kind) {
 		windows: [
 			{ id: "session", percent: 56, resetsAt: new Date(now + 2 * h + 11 * 60000).toISOString(), spanSeconds: 5 * 3600, exhausted: false },
 			{ id: "week", percent: 18, resetsAt: new Date(now + 3 * 24 * h + 4 * h).toISOString(), spanSeconds: 7 * 86400, exhausted: false },
-			{ id: "weekFable", percent: 41, resetsAt: new Date(now + 3 * 24 * h + 4 * h).toISOString(), spanSeconds: 7 * 86400, exhausted: false }
+			{ id: "weekFable", percent: 41, resetsAt: new Date(now + 3 * 24 * h + 4 * h).toISOString(), spanSeconds: 7 * 86400, exhausted: false, weeklySharePercent: 21, weeklyAllowancePercent: 50 }
 		],
-		pace: null, sessions: { working: 1, open: 3 }
+		pace: null, sessions: { working: 1, open: 3 },
+		breakdown: { asOf: new Date(now - 60 * 60000).toISOString(), rows: [
+			{ key: "claude_code", label: "Claude Code", percent: 64 }, { key: "chat", label: "Chats", percent: 9 },
+			{ key: "cowork", label: "Cowork", percent: 27 }, { key: "other", label: "Other", percent: 0 }] }
 	};
 	switch (kind) {
 		case "preview": return Object.assign({}, base, { preview: true });
