@@ -101,6 +101,7 @@
                 </Grid>
                 <controls:UsageBar Classes="widgetBar"
                                    Percent="{Binding Percent}"
+                                   Segments="{Binding Segments}"
                                    Classes.exceeded="{Binding IsExceeded}"
                                    Classes.unknown="{Binding !IsKnown}" />
 

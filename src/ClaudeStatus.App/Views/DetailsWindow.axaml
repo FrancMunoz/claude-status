@@ -59,8 +59,25 @@
                 </Grid>
 
                 <controls:UsageBar Percent="{Binding Percent}"
+                                   Segments="{Binding Segments}"
                                    Classes.exceeded="{Binding IsExceeded}"
                                    Classes.unknown="{Binding !IsKnown}" />
+
+                <!-- Only the weekly bar has a split; the others leave this empty. -->
+                <ItemsControl Classes="splitLegend"
+                              Classes.exceeded="{Binding IsExceeded}"
+                              IsVisible="{Binding HasSplit}"
+                              ItemsSource="{Binding SplitKeys}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:UsageShareKeyViewModel">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <Border Classes="splitSwatch" Opacity="{Binding Opacity}" />
+                                <TextBlock Classes="caption" Text="{Binding Label}" />
+                                <TextBlock Classes="caption" FontFeatures="+tnum" Text="{Binding PercentText}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </DataTemplate>
     </Window.Resources>

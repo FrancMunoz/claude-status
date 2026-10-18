@@ -340,7 +340,7 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
             ThresholdEvaluator.EvaluateAll(snapshot, threshold);
 
         Session.Update(snapshot?.Session, session, now);
-        Week.Update(snapshot?.Week, week, now);
+        Week.Update(snapshot?.Week, week, now, split: snapshot?.WeekBreakdown);
         WeekFable.Update(
             snapshot?.WeekFable, fable, now, snapshot?.WeekFableSharesWeeklyReset ?? false);
 

@@ -218,6 +218,31 @@
         <Setter Property="Fill" Value="{x:Null}" />
     </Style>
 
+    <!--
+        A split bar's legend: one swatch per segment, the bar's own fill at the
+        segment's strength (the opacity comes from the item), so the key and the
+        bar cannot disagree about colour - including when the bar turns red.
+    -->
+    <Style Selector="ItemsControl.splitLegend">
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" ItemSpacing="12" LineSpacing="2" />
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="Border.splitSwatch">
+        <Setter Property="Width" Value="8" />
+        <Setter Property="Height" Value="8" />
+        <Setter Property="CornerRadius" Value="2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource Theme.Primary}" />
+    </Style>
+
+    <Style Selector="ItemsControl.splitLegend.exceeded Border.splitSwatch">
+        <Setter Property="Background" Value="{DynamicResource Theme.Alert}" />
+    </Style>
+
     <!-- ==============================================================
          Controls
          ============================================================== -->
