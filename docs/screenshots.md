@@ -41,6 +41,7 @@ Both machines then show exactly:
 | session (5 h) | **29 %**, resetting in **2:37** |
 | week (7 d) | **58 %** |
 | week, Fable | **44 %** — only where the Fable column is switched on |
+| where the week went | Claude Code **64 %**, Cowork **27 %**, chats **9 %** (`FakeUsageProvider.SampleBreakdown`, shared with the generated images) |
 
 `Screenshot` is `Healthy` with one difference, and it is the whole reason the
 scenario exists: the session window's reset carries fifty seconds of slack, so

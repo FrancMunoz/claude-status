@@ -12,8 +12,9 @@ The number lives in the tray icon itself, so the answer to "do I have enough
 session left to start this?" is already on screen. Click it for the detail.
 
 It also watches your **Claude Code sessions** — which ones are working, which
-are waiting for you, and a notification when one needs you — and warns you when
-usage is climbing fast enough to hit a limit before it resets.
+are waiting for you, and a notification when one needs you — warns you when
+usage is climbing fast enough to hit a limit before it resets, and shows
+**where the week went**: the weekly bar is split by Claude Code, Cowork and chats.
 
 > **Looking for the detail?** [`docs/manual.md`](docs/manual.md) is the full
 > handbook — how it works, every setting, building, packaging, the rules the code
@@ -120,7 +121,8 @@ The widget is themed, so the card follows whichever theme you pick:
 </p>
 
 Hovering the widget opens a card with all three limits and their reset times,
-whatever the widget itself is showing, plus your Claude Code sessions.
+whatever the widget itself is showing, where the week went, and your Claude Code
+sessions.
 
 - **Left click** — the details popup. Click again to dismiss it.
 - **Right click** — Details, Full report…, Show ▸ (switch metric), Refresh,
@@ -129,14 +131,35 @@ whatever the widget itself is showing, plus your Claude Code sessions.
 | | |
 | --- | --- |
 | <img src="docs/screenshots/report/report-en.png" alt="The full report window" width="330"> | <img src="docs/screenshots/window-config.png" alt="The configuration window" width="300"> |
-| **Full report** — every window the endpoint returned, its own severity labels, exact reset timestamps, and the spend and credit blocks. | **Config** — credential, language, theme, threshold, poll interval, autostart, session watch. |
+| **Full report** — every window the endpoint returned, its own severity labels, exact reset timestamps, where the week went surface by surface, and the spend and credit blocks. | **Config** — credential, language, theme, threshold, poll interval, autostart, session watch. |
+
+### Where the week went
+
+<img src="docs/screenshots/taskbar-widget-hover.png" alt="The hover card: a bar split into Claude Code 64 %, Cowork 27 % and Chats 9 % under the three limits" width="300" align="right">
+
+The weekly limit is shared by everything you do with Claude, so the weekly bar
+is cut into one segment per surface — **Claude Code, Cowork, chats** — biggest
+share brightest, with a key underneath in the details popup and the hover card.
+The taskbar card shows the segments alone; the iCUE widget and the full report
+show both. The shares are of your usage, not of the limit: together they fill
+exactly as much of the bar as the week's percentage.
+
+The Fable limit is a slice of the weekly one, and the full report and the iCUE
+widget say how big: *takes 44 % of the weekly limit, out of the 50 % it is
+allowed*.
+
+Both come from the same unofficial endpoint as the limits, which started
+reporting them in October 2026; when it does not, the bar is simply whole.
+
+<br clear="right">
 
 ### CORSAIR XENEON EDGE — Windows only
 
 The same reading can live on a CORSAIR XENEON EDGE, as an iCUE widget in a
 small slot: the 5-hour session as a ring with usage and elapsed time as two
 arcs, the weekly and Fable rows with their bars, reset times and where each is
-heading, your Claude Code sessions as a count with the three working dots
+heading, the weekly bar split by surface with its key and Fable's slice of the
+week beside its name, your Claude Code sessions as a count with the three working dots
 beside it while a turn is running, and the pace warning as a banner. A tap on
 the screen opens the details window on the PC. Turn on **Share the reading with the
 iCUE widget** in Config → Behaviour, install `ClaudeUsage.icuewidget` from the

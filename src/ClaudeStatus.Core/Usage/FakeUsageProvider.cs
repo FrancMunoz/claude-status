@@ -137,9 +137,33 @@ public sealed class FakeUsageProvider : IUsageProvider
         return new UsageSnapshot(
             Session: UsageWindow.Create(session, sessionReset),
             Week: UsageWindow.Create(week, weekReset),
-            WeekFable: fable is null ? null : UsageWindow.Create(fable.Value, weekReset),
+            WeekFable: fable is null ? null : UsageWindow.Create(fable.Value, weekReset) with
+            {
+                // A 50 % allowance, the share the recorded capture reported.
+                WeeklySharePercent = Math.Round(fable.Value / 2d),
+                WeeklyAllowancePercent = 50d,
+            },
             OtherWindows: new Dictionary<string, UsageWindow>(),
             FetchedAt: now,
-            IsStale: false);
+            IsStale: false)
+        {
+            WeekBreakdown = SampleBreakdown(now),
+        };
     }
+
+    /// <summary>
+    /// The week's split by surface the fake day reports: mostly Claude Code, a
+    /// fair amount of Cowork, a little chat. Shared with the screenshot generator
+    /// so the readme and a fake-data run show the same split.
+    /// </summary>
+    public static UsageBreakdown SampleBreakdown(DateTimeOffset now) => new(
+        AsOf: now.AddMinutes(-40),
+        WindowStartedAt: now.AddDays(-4).AddHours(-18),
+        Rows:
+        [
+            new UsageBreakdownRow("claude_code", "Claude Code", 64d),
+            new UsageBreakdownRow("chat", "Chats", 9d),
+            new UsageBreakdownRow("cowork", "Cowork", 27d),
+            new UsageBreakdownRow("other", "Other", 0d),
+        ]);
 }

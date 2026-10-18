@@ -154,6 +154,9 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
                 Path.Combine(root!, "taskbar-widget-working.png"));
             Save(RenderDetails(Theme("claude"), Sessions()), Path.Combine(root!, "window-details-sessions.png"));
             Save(RenderUsageCard(Theme("claude")), Path.Combine(root!, "usage-card-notice.png"));
+
+            // The hover card on its own: the limits and where the week went.
+            Save(RenderUsageCard(Theme("claude"), busy: false), Path.Combine(root!, "taskbar-widget-hover.png"));
         });
     }
 
@@ -173,13 +176,26 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
     /// window in each of the three states the bars can be in, so a screenshot
     /// shows the normal, the busy and the alert colour at once.
     /// </remarks>
+    /// <remarks>
+    /// The week is split by surface, so every shot of the weekly bar shows its
+    /// segments, and Fable carries its slice of the week (88 % of a 50 %
+    /// allowance is 44 % of the week), as the endpoint has reported since
+    /// 2026-10-17.
+    /// </remarks>
     private static UsageSnapshot Snapshot() => new(
         Session: UsageWindow.Create(29d, Now.AddHours(2).AddMinutes(37)),
         Week: UsageWindow.Create(58d, Now.AddDays(2)),
-        WeekFable: UsageWindow.Create(88d, Now.AddDays(2)),
+        WeekFable: UsageWindow.Create(88d, Now.AddDays(2)) with
+        {
+            WeeklySharePercent = 44d,
+            WeeklyAllowancePercent = 50d,
+        },
         OtherWindows: new Dictionary<string, UsageWindow>(),
         FetchedAt: Now,
-        IsStale: false);
+        IsStale: false)
+    {
+        WeekBreakdown = FakeUsageProvider.SampleBreakdown(Now),
+    };
 
     /// <summary>
     /// Renders a window and hands back its pixels.
@@ -291,7 +307,8 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
         return Render(window);
     }
 
-    private static WriteableBitmap RenderUsageCard(Theme theme)
+    /// <param name="busy">With the session list and a pace warning, as the pace shot shows it.</param>
+    private static WriteableBitmap RenderUsageCard(Theme theme, bool busy = true)
     {
         ThemeApplier.Apply(Application.Current!, theme, string.Empty, osdTransparency: 0d);
 
@@ -299,6 +316,11 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
         var viewModel = new TaskbarWidgetViewModel(l);
         viewModel.Configure(80d, showFable: false);
         viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+        if (!busy)
+        {
+            return Render(new UsageCardWindow { DataContext = viewModel });
+        }
+
         viewModel.ShowSessions = true;
         viewModel.UpdateSessions(Sessions(), Now);
         viewModel.NoticeText = l.Format(
@@ -349,7 +371,10 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
 
         public string OperatingSystemName => "Test OS";
 
-        public string ConfigDirectory => Path.Combine(Path.GetTempPath(), "claudestatus-shotgen");
+        // Printed in the report's footer, so, as with the config store above, a
+        // placeholder: a temp path put the account name of whoever regenerated
+        // the images into the readme. Nothing writes here during a render.
+        public string ConfigDirectory => @"C:\Users\you\AppData\Roaming\ClaudeStatus";
 
         public TraySupport TraySupport => TraySupport.Available;
 
