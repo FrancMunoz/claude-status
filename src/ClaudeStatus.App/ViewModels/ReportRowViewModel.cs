@@ -70,6 +70,9 @@ public sealed class ReportRowViewModel
         LockedReason = window.LockedReason ?? string.Empty;
         IsLocked = LockedReason.Length > 0;
 
+        WeeklyShareText = FormatWeeklyShare(localizer, window);
+        HasWeeklyShare = WeeklyShareText.Length > 0;
+
         HasScope = window.ScopeModel is { Length: > 0 };
         ScopeModel = HasScope ? localizer.Format("Report_Scope", window.ScopeModel!) : string.Empty;
     }
@@ -130,6 +133,29 @@ public sealed class ReportRowViewModel
 
     /// <summary>Whether to show the locked line at all.</summary>
     public bool IsLocked { get; }
+
+    /// <summary>For a scoped window: how much of the weekly limit it takes, and how much it may.</summary>
+    public string WeeklyShareText { get; }
+
+    /// <summary>Whether to show the weekly-share line at all.</summary>
+    public bool HasWeeklyShare { get; }
+
+    private static string FormatWeeklyShare(ILocalizer localizer, UsageWindow window)
+    {
+        if (window.WeeklySharePercent is null && window.WeeklyAllowancePercent is null)
+        {
+            return string.Empty;
+        }
+
+        return localizer.Format(
+            "Report_WeeklyShare",
+            Format(localizer, window.WeeklySharePercent),
+            Format(localizer, window.WeeklyAllowancePercent));
+
+        static string Format(ILocalizer localizer, double? value) => value is { } percent
+            ? localizer.Format("Bar_Percent", percent)
+            : localizer["Common_Unknown"];
+    }
 
     private static string FormatDollars(ILocalizer localizer, UsageWindow window)
     {

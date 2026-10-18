@@ -4,8 +4,9 @@ Status: **undocumented / unofficial**. Reverse-engineered by the community from
 Claude Code's bundled `cli.js`; used by ccusage, Claude-Code-Usage-Monitor,
 claude-usage-panel, claude-usage-widget, claude-codex-battery and Claude Code's
 own `/usage` and `/status` commands. May change or break without notice.
-Last verified: **2026-09-04 by a live call from this repo** (200 OK, Max plan,
-`req_011CeiYQXCFiHHLt96fGrNDU`). Sources listed at the end.
+Last verified: **2026-10-17 by a live call from this repo** (200 OK, Max plan;
+see "Second drift" below). First verified 2026-09-04
+(`req_011CeiYQXCFiHHLt96fGrNDU`). Sources listed at the end.
 
 ## Endpoint
 
@@ -101,6 +102,46 @@ Mapping to our domain (unchanged):
 Parsing rules: tolerate unknown keys, unknown `kind`s, unknown `severity`
 values, nulls (including `resets_at: null`), and a missing `limits` array (fall
 back to the flat keys). Percentages are 0–100 and may be int or float.
+
+### Second drift: 2026-10-17
+
+Recorded as `tests/ClaudeStatus.Core.Tests/Fixtures/usage-breakdown.json`
+(a live 200 on a Max plan, pretty-printed, no headers). Two new blocks, both
+parsed:
+
+```jsonc
+"seven_day_breakdown": {
+  "as_of": "2026-10-17T13:00:43.236067+02:00",      // lags the limits
+  "window_started_at": "2026-10-12T01:00:00.194467+02:00",
+  "rows": [ { "key": "claude_code", "display_name": "Claude Code", "percent": 21 },
+            { "key": "chat",        "display_name": "Chats",       "percent": 3 },
+            { "key": "cowork",      "display_name": "Cowork",      "percent": 76 },
+            { "key": "other",       "display_name": "Other",       "percent": 0 } ] },
+
+"weekly_scoped_shares": [
+  { "limit_index": 2, "used_percent_of_weekly": 27, "allowance_percent_of_weekly": 50 } ]
+```
+
+| Field | Meaning | Where it goes |
+|---|---|---|
+| `seven_day_breakdown.rows[]` | Share of the **week's usage** per surface. Adds up to 100 whatever the weekly window stands at (it was at 85 %). | `UsageSnapshot.WeekBreakdown`; the report window's "Where this week's usage went". Known keys are translated; an unknown key shows its `display_name`. |
+| `weekly_scoped_shares[].limit_index` | Index into the **raw** `limits[]` array, unreadable entries included. | Attaches the two figures below to that window. |
+| `used_percent_of_weekly` | How much of the weekly limit the scoped window's usage amounts to. Checked: Fable 54 % × allowance 50 % = 27. | `UsageWindow.WeeklySharePercent` |
+| `allowance_percent_of_weekly` | The scoped limit's size as a share of the weekly limit. | `UsageWindow.WeeklyAllowancePercent` |
+
+Also new, and **not** read: eleven more codenamed top-level buckets
+(`copper_kite`, `brass_thimble`, `harbor_lantern`, `wattle_ember`,
+`granite_teacup`, `amber_cistern`, `cedar_ember`, `starry_waterfall`,
+`amber_gauge`, …), all null, and `iguana_necktie`, which came back populated as
+a dollar bucket (`limit_dollars: 250`, its own `resets_at` a month out). Its
+meaning is unknown, so it stays unread under the never-enumerate rule.
+
+**What the endpoint does not carry.** Claude Code 2.1.299's new `/usage`
+warnings (max effort, workflows, always-on context over 40k tokens, tool
+results over 10k) are not in this response. Claude Code computes them from the
+local transcripts on the machine it runs on. They are exposed through the SDK
+control request `get_usage` (experimental, `behaviors.day` / `behaviors.week`),
+not through this endpoint. Not used yet.
 
 ### Response headers — do not record these
 
