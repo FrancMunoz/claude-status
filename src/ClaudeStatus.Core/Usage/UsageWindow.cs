@@ -76,6 +76,23 @@ public sealed record UsageWindow(double Percent, DateTimeOffset? ResetsAt)
     /// <summary>Why this window is unavailable, when the source says it is.</summary>
     public string? LockedReason { get; init; }
 
+    /// <summary>
+    /// For a scoped window: how much of the <i>weekly</i> limit its usage amounts to.
+    /// </summary>
+    /// <remarks>
+    /// From <c>weekly_scoped_shares[].used_percent_of_weekly</c>. On the recorded
+    /// capture Fable stood at 54 % of its own limit, its allowance was 50 % of the
+    /// weekly limit, and this read 27 - so it is the scoped percentage scaled by
+    /// <see cref="WeeklyAllowancePercent"/>, which is what pins down its meaning.
+    /// </remarks>
+    public double? WeeklySharePercent { get; init; }
+
+    /// <summary>
+    /// For a scoped window: how large its limit is, as a share of the weekly limit.
+    /// </summary>
+    /// <remarks>From <c>weekly_scoped_shares[].allowance_percent_of_weekly</c>.</remarks>
+    public double? WeeklyAllowancePercent { get; init; }
+
     /// <summary>True when the source labelled this window as anything but normal.</summary>
     /// <remarks>
     /// The check is "not normal" rather than "is warning", so a severity we have

@@ -279,6 +279,87 @@ public class ReportViewModelTests
         }
     }
 
+    private static UsageBreakdown Breakdown() => new(
+        AsOf: Now,
+        WindowStartedAt: Now.AddDays(-5),
+        Rows:
+        [
+            new UsageBreakdownRow("claude_code", "Claude Code", 21d),
+            new UsageBreakdownRow("chat", "Chats", 3d),
+            new UsageBreakdownRow("brand_new_surface", "Something new", 76d),
+            new UsageBreakdownRow("unlabelled", null, 0d),
+        ]);
+
+    [Fact]
+    public void The_breakdown_becomes_one_row_per_surface_in_the_sources_order()
+    {
+        (ReportViewModel model, UsageMonitor monitor) = Build(Snapshot() with { WeekBreakdown = Breakdown() });
+        using (monitor)
+        {
+            model.HasBreakdown.Should().BeTrue();
+            model.Breakdown.Select(row => row.Label).Should().Equal(
+                "Claude Code", "Chats", "Something new", "unlabelled");
+            model.Breakdown[0].PercentText.Should().Be("21 %");
+            model.Breakdown[2].Percent.Should().Be(76d);
+            model.BreakdownAsOfText.Should().StartWith("Shares of the usage, not of the limit.");
+        }
+    }
+
+    [Fact]
+    public void A_known_surface_is_translated_and_an_unknown_one_keeps_the_sources_name()
+    {
+        var localizer = TestLocalizer.English();
+        (ReportViewModel model, UsageMonitor monitor) = Build(
+            Snapshot() with { WeekBreakdown = Breakdown() }, localizer);
+
+        using (monitor)
+        {
+            localizer.SetCulture(System.Globalization.CultureInfo.GetCultureInfo("ca"));
+
+            model.Breakdown[1].Label.Should().Be("Xats");
+            model.Breakdown[2].Label.Should().Be("Something new");
+        }
+    }
+
+    [Fact]
+    public void No_breakdown_hides_the_section()
+    {
+        (ReportViewModel model, UsageMonitor monitor) = Build(Snapshot());
+        using (monitor)
+        {
+            model.HasBreakdown.Should().BeFalse();
+            model.Breakdown.Should().BeEmpty();
+
+            model.Apply(Snapshot() with { WeekBreakdown = new UsageBreakdown(null, null, []) });
+            model.HasBreakdown.Should().BeFalse("an empty split has nothing to show");
+        }
+    }
+
+    [Fact]
+    public void A_scoped_window_says_how_much_of_the_weekly_limit_it_takes()
+    {
+        UsageWindow fable = UsageWindow.Create(54d, Now.AddDays(2)) with
+        {
+            WeeklySharePercent = 27d,
+            WeeklyAllowancePercent = 50d,
+        };
+
+        var row = new ReportRowViewModel(TestLocalizer.English(), "Week (Fable)", fable, Now);
+
+        row.HasWeeklyShare.Should().BeTrue();
+        row.WeeklyShareText.Should().Be("Takes 27 % of the weekly limit, out of the 50 % it is allowed.");
+    }
+
+    [Fact]
+    public void A_window_with_no_share_has_no_share_line()
+    {
+        var row = new ReportRowViewModel(
+            TestLocalizer.English(), "Session", UsageWindow.Create(10d, Now.AddHours(1)), Now);
+
+        row.HasWeeklyShare.Should().BeFalse();
+        row.WeeklyShareText.Should().BeEmpty();
+    }
+
     [Fact]
     public void The_report_never_fetches_on_its_own()
     {

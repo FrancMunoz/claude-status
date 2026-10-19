@@ -498,6 +498,27 @@
   <data name="Report_Scope" xml:space="preserve">
     <value>Scoped to {0}</value>
   </data>
+  <data name="Report_Section_Breakdown" xml:space="preserve">
+    <value>Where this week's usage went</value>
+  </data>
+  <data name="Report_Breakdown_AsOf" xml:space="preserve">
+    <value>Shares of the usage, not of the limit. Calculated: {0}.</value>
+  </data>
+  <data name="Report_Surface_ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
+  <data name="Report_Surface_Chat" xml:space="preserve">
+    <value>Chats</value>
+  </data>
+  <data name="Report_Surface_Cowork" xml:space="preserve">
+    <value>Cowork</value>
+  </data>
+  <data name="Report_Surface_Other" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="Report_WeeklyShare" xml:space="preserve">
+    <value>Takes {0} of the weekly limit, out of the {1} it is allowed.</value>
+  </data>
   <data name="Config_Tab_Theme" xml:space="preserve">
     <value>Theme</value>
   </data>

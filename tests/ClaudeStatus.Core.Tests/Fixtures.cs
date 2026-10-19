@@ -8,6 +8,7 @@ internal static class Fixture
     public const string LegacyFlatOnly = "usage-legacy-flat-only.json";
     public const string UnknownShapes = "usage-unknown-shapes.json";
     public const string RateLimited = "error-rate-limited.json";
+    public const string Breakdown = "usage-breakdown.json";
 
     /// <summary>An arbitrary but fixed clock reading, so assertions never depend on "now".</summary>
     public static readonly DateTimeOffset FixedNow = new(2026, 9, 4, 14, 0, 0, TimeSpan.Zero);

@@ -65,13 +65,18 @@ public static class UsageResponseParser
             UsageWindow? week = null;
             UsageWindow? weekFable = null;
             Dictionary<string, UsageWindow> other = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<int, (double? Used, double? Allowance)> shares = ReadScopedShares(root);
 
             // Preferred source: the structured limits[] array.
             if (root.TryGetProperty("limits", out JsonElement limits)
                 && limits.ValueKind == JsonValueKind.Array)
             {
+                // Counted over every element, skipped ones included, because
+                // weekly_scoped_shares[].limit_index addresses the raw array.
+                int index = -1;
                 foreach (JsonElement limit in limits.EnumerateArray())
                 {
+                    index++;
                     if (limit.ValueKind != JsonValueKind.Object)
                     {
                         continue;
@@ -82,6 +87,15 @@ public static class UsageResponseParser
                     if (kind is null || window is null)
                     {
                         continue;
+                    }
+
+                    if (shares.TryGetValue(index, out (double? Used, double? Allowance) share))
+                    {
+                        window = window with
+                        {
+                            WeeklySharePercent = share.Used,
+                            WeeklyAllowancePercent = share.Allowance,
+                        };
                     }
 
                     switch (kind)
@@ -132,9 +146,80 @@ public static class UsageResponseParser
             {
                 Spend = ReadSpend(root),
                 ExtraUsage = ReadExtraUsage(root),
+                WeekBreakdown = ReadBreakdown(root),
             };
         }
     }
+
+    /// <summary>
+    /// Reads <c>weekly_scoped_shares[]</c>, keyed by the <c>limits[]</c> index each
+    /// entry points at.
+    /// </summary>
+    /// <remarks>
+    /// An entry without a usable index cannot be attached to anything and is
+    /// dropped. The first entry for an index wins, as it does for the windows.
+    /// </remarks>
+    private static Dictionary<int, (double? Used, double? Allowance)> ReadScopedShares(JsonElement root)
+    {
+        Dictionary<int, (double? Used, double? Allowance)> shares = [];
+        if (!root.TryGetProperty("weekly_scoped_shares", out JsonElement array)
+            || array.ValueKind != JsonValueKind.Array)
+        {
+            return shares;
+        }
+
+        foreach (JsonElement entry in array.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.Object
+                || ReadNumber(entry, "limit_index") is not { } index
+                || index < 0 || index > int.MaxValue || index != Math.Floor(index))
+            {
+                continue;
+            }
+
+            shares.TryAdd(
+                (int)index,
+                (ClampPercent(ReadNumber(entry, "used_percent_of_weekly")),
+                 ClampPercent(ReadNumber(entry, "allowance_percent_of_weekly"))));
+        }
+
+        return shares;
+    }
+
+    /// <summary>Reads the <c>seven_day_breakdown</c> block: the week's usage by surface.</summary>
+    private static UsageBreakdown? ReadBreakdown(JsonElement root)
+    {
+        if (!root.TryGetProperty("seven_day_breakdown", out JsonElement breakdown)
+            || breakdown.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        List<UsageBreakdownRow> rows = [];
+        if (breakdown.TryGetProperty("rows", out JsonElement array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement row in array.EnumerateArray())
+            {
+                if (row.ValueKind != JsonValueKind.Object
+                    || ReadString(row, "key") is not { Length: > 0 } key
+                    || ClampPercent(ReadNumber(row, "percent")) is not { } percent)
+                {
+                    continue;
+                }
+
+                rows.Add(new UsageBreakdownRow(key, ReadString(row, "display_name"), percent));
+            }
+        }
+
+        return new UsageBreakdown(
+            AsOf: ReadTimestamp(breakdown, "as_of"),
+            WindowStartedAt: ReadTimestamp(breakdown, "window_started_at"),
+            Rows: rows);
+    }
+
+    /// <summary>Clamps a percentage into 0-100, the same way <see cref="UsageWindow.Create"/> does.</summary>
+    private static double? ClampPercent(double? value)
+        => value is { } number && double.IsFinite(number) ? Math.Clamp(number, 0d, 100d) : null;
 
     /// <summary>Reads a <c>limits[]</c> entry, which carries <c>percent</c>.</summary>
     private static UsageWindow? ReadLimitWindow(JsonElement limit)

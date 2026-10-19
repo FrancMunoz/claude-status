@@ -91,11 +91,26 @@ public partial class UsageBarViewModel : ObservableObject
     /// </remarks>
     private static readonly TimeSpan ClockCeiling = IndicatorText.CountdownCeiling;
 
+    /// <summary>
+    /// The fill's split by surface, biggest first, for <see cref="Controls.UsageBar.Segments"/>.
+    /// Null when this bar has no split.
+    /// </summary>
+    [ObservableProperty]
+    private IReadOnlyList<double>? _segments;
+
+    /// <summary>Whether <see cref="SplitKeys"/> has anything to show.</summary>
+    [ObservableProperty]
+    private bool _hasSplit;
+
+    /// <summary>The legend for <see cref="Segments"/>, in the same order and shades.</summary>
+    public System.Collections.ObjectModel.ObservableCollection<UsageShareKeyViewModel> SplitKeys { get; } = [];
+
     private readonly TimeSpan? _span;
     private UsageWindow? _window;
     private ThresholdState _state;
     private DateTimeOffset _asOf;
     private bool _sharesWeeklyReset;
+    private UsageBreakdown? _split;
 
     /// <param name="localizer">Shared localizer; the bar re-renders when it changes language.</param>
     /// <param name="labelKey">Resource key for the metric name, e.g. <c>"Details_Metric_Session"</c>.</param>
@@ -131,17 +146,61 @@ public partial class UsageBarViewModel : ObservableObject
     /// countdown is replaced by a note saying so - see
     /// <see cref="UsageSnapshot.WeekFableSharesWeeklyReset"/>.
     /// </param>
+    /// <param name="split">
+    /// Where this window's usage went, by surface. Only the weekly all-models bar
+    /// is given one: the breakdown is of that window, not of the others.
+    /// </param>
     public void Update(
         UsageWindow? window,
         ThresholdState state,
         DateTimeOffset now,
-        bool sharesWeeklyReset = false)
+        bool sharesWeeklyReset = false,
+        UsageBreakdown? split = null)
     {
         _window = window;
         _state = state;
         _asOf = now;
         _sharesWeeklyReset = sharesWeeklyReset;
+        _split = split;
         Refresh();
+    }
+
+    /// <summary>
+    /// The surfaces worth drawing, biggest first, at most one per shade.
+    /// </summary>
+    /// <remarks>
+    /// Biggest first so the strongest shade is always the largest share, whatever
+    /// order the endpoint sent. Below half a percent a segment is narrower than
+    /// the gap around it, so it is left out. The iCUE widget ranks the same way.
+    /// </remarks>
+    internal static IReadOnlyList<UsageBreakdownRow> RankSurfaces(UsageBreakdown? split)
+        => split is null
+            ? []
+            : [.. split.Rows
+                .Where(row => row.Percent >= 0.5)
+                .OrderByDescending(row => row.Percent)
+                .Take(Controls.UsageBar.SegmentShades.Count)];
+
+    private void RefreshSplit()
+    {
+        SplitKeys.Clear();
+        IReadOnlyList<UsageBreakdownRow> ranked = _window is null ? [] : RankSurfaces(_split);
+
+        // One surface is no split at all: the plain fill says the same thing.
+        HasSplit = ranked.Count > 1;
+        Segments = HasSplit ? [.. ranked.Select(row => row.Percent)] : null;
+        if (!HasSplit)
+        {
+            return;
+        }
+
+        for (int index = 0; index < ranked.Count; index++)
+        {
+            SplitKeys.Add(new UsageShareKeyViewModel(
+                ReportShareViewModel.Name(_l, ranked[index]),
+                _l.Format("Bar_Percent", ranked[index].Percent),
+                Controls.UsageBar.SegmentShades[index]));
+        }
     }
 
     private void Refresh()
@@ -149,6 +208,7 @@ public partial class UsageBarViewModel : ObservableObject
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(PercentSign));
 
+        RefreshSplit();
         IsKnown = _window is not null;
         IsExceeded = _state == ThresholdState.Exceeded;
 

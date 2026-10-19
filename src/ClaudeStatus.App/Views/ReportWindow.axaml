@@ -128,6 +128,9 @@
                                                    IsVisible="{Binding HasScope}"
                                                    Text="{Binding ScopeModel}" />
                                         <TextBlock Classes="caption"
+                                                   IsVisible="{Binding HasWeeklyShare}"
+                                                   Text="{Binding WeeklyShareText}" />
+                                        <TextBlock Classes="caption"
                                                    IsVisible="{Binding HasDollars}"
                                                    Text="{Binding DollarsText}" />
                                         <TextBlock Classes="caption"
@@ -145,6 +148,41 @@
                 <TextBlock Classes="caption"
                            IsVisible="{Binding !HasReading}"
                            Text="{Binding L[Report_NoReading]}" />
+
+                <!--
+                    The week split by surface. Shares of the usage, so they add up
+                    to 100 whatever the weekly window stands at - which is why the
+                    caption says so and the bars never take the warning colour.
+                -->
+                <StackPanel Spacing="8" IsVisible="{Binding HasBreakdown}">
+                    <StackPanel Spacing="3">
+                        <TextBlock Classes="label" Text="{Binding L[Report_Section_Breakdown]}" />
+                        <TextBlock Classes="caption" Text="{Binding BreakdownAsOfText}" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Breakdown}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:ReportShareViewModel">
+                                <Grid ColumnDefinitions="110,*,Auto"
+                                      ColumnSpacing="10"
+                                      Margin="0,0,0,6">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="caption"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="{Binding Label}" />
+                                    <controls:UsageBar Grid.Column="1"
+                                                       VerticalAlignment="Center"
+                                                       Percent="{Binding Percent}" />
+                                    <TextBlock Grid.Column="2"
+                                               Classes="caption"
+                                               VerticalAlignment="Center"
+                                               FontFeatures="+tnum"
+                                               Text="{Binding PercentText}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
 
                 <Border Classes="rule" />
 

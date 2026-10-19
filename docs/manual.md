@@ -160,9 +160,13 @@ is nothing there to fix.
   in sequence - Claude's own thinking sign - and the box breathes between two
   shades of the theme's accent. The mark is back the moment nothing is working;
   an open but idle session (`0/1`) shows the mark.
-- Hovering opens a card with all three limits, their reset times, the sessions
-  list, and the pace warning when there is one. Left and right click do what
-  they do on the tray icon.
+- The weekly spend bar is cut into one segment per surface - Claude Code,
+  Cowork, chats - biggest share at full strength, the rest fainter, when the
+  endpoint reports the split. Too small for a key here; the hover card and the
+  details popup carry one.
+- Hovering opens a card with all three limits, their reset times, where the
+  week went (the split bar and its key), the sessions list, and the pace warning
+  when there is one. Left and right click do what they do on the tray icon.
 - Falls back to the tray icon when the taskbar cannot be joined (a vertical
   taskbar, or a Windows update that moves things).
 
@@ -174,6 +178,10 @@ is nothing there to fix.
   a count with one bar per session, the three working dots while a turn is in
   progress, and the pace warning as a banner. Red past the threshold, `✕` when
   spent, faded with a `STALE` box when old.
+- The weekly bar is split by surface, with a key between the row's name and its
+  figure (`■ Code 64  ■ Cowork 27`), and the Fable row says how much of the
+  weekly limit it takes (`44% of 7d, cap 50%`). Both give way when space is
+  short; **Show where the week went** in the widget's settings turns them off.
 - It reaches the app over a WebSocket to the IPv6 loopback address, the one
   route iCUE leaves open to a widget; the app listens on `127.0.0.1` and `[::1]`.
 - Fed by the app over a local port, on when **Config → Behaviour → Share the
@@ -226,7 +234,8 @@ is nothing there to fix.
 ### The two windows
 
 **Details** is the glance: three bars with big percentages and "resets in 2h 37m"
-under each. It closes when it loses focus. **Refresh** forces a poll, subject to
+under each, the weekly one split by surface with a key under it - Claude Code,
+Cowork, chats, as shares of the week's usage. It closes when it loses focus. **Refresh** forces a poll, subject to
 a 30-second cooldown that exists so leaning on the button cannot get you rate
 limited — if you hit it, the window says so rather than appearing to do nothing.
 
@@ -242,7 +251,8 @@ but do nothing when clicked.
 
 **Full report** (the *More…* button, or the context menu) is for looking things
 up: every window the endpoint returned, its own severity labels, exact reset
-timestamps, and the pay-as-you-go and prepaid-credit blocks — including when they
+timestamps, how much of the weekly limit the Fable window takes and may take,
+where the week went surface by surface, and the pay-as-you-go and prepaid-credit blocks — including when they
 are switched off, because "off" is itself an answer. It is resizable, has a
 taskbar entry, and survives being clicked away from.
 

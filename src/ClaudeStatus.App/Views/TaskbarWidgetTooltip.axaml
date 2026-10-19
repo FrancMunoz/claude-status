@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ClaudeStatus.App.ViewModels"
              xmlns:branding="using:ClaudeStatus.App.Branding"
+             xmlns:controls="using:ClaudeStatus.App.Controls"
              x:Class="ClaudeStatus.App.Views.TaskbarWidgetTooltip"
              x:DataType="vm:TaskbarWidgetViewModel">
 
@@ -78,6 +79,40 @@
             <ContentControl Content="{Binding TooltipSession}" ContentTemplate="{StaticResource TooltipRow}" />
             <ContentControl Content="{Binding TooltipWeek}" ContentTemplate="{StaticResource TooltipRow}" />
             <ContentControl Content="{Binding TooltipWeekFable}" ContentTemplate="{StaticResource TooltipRow}" />
+        </StackPanel>
+
+        <!--
+            Where the week went. The rows above are text, so the split gets a bar
+            of its own here: the weekly reading cut by surface, as on the widget
+            and the iCUE panel, with its key underneath.
+        -->
+        <StackPanel Spacing="6" IsVisible="{Binding TooltipWeek.HasSplit}">
+            <Border Classes="rule" />
+            <TextBlock Classes="caption" Text="{Binding L[Report_Section_Breakdown]}" />
+            <ContentControl Content="{Binding TooltipWeek}">
+                <ContentControl.ContentTemplate>
+                    <DataTemplate DataType="vm:UsageBarViewModel">
+                        <StackPanel Spacing="6">
+                            <controls:UsageBar Percent="{Binding Percent}"
+                                               Segments="{Binding Segments}"
+                                               Classes.exceeded="{Binding IsExceeded}" />
+                            <ItemsControl Classes="splitLegend"
+                                          Classes.exceeded="{Binding IsExceeded}"
+                                          ItemsSource="{Binding SplitKeys}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:UsageShareKeyViewModel">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <Border Classes="splitSwatch" Opacity="{Binding Opacity}" />
+                                            <TextBlock Classes="caption" Text="{Binding Label}" />
+                                            <TextBlock Classes="caption" FontFeatures="+tnum" Text="{Binding PercentText}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ContentControl.ContentTemplate>
+            </ContentControl>
         </StackPanel>
 
         <!--

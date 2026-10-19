@@ -498,6 +498,27 @@
   <data name="Report_Scope" xml:space="preserve">
     <value>Limitat a {0}</value>
   </data>
+  <data name="Report_Section_Breakdown" xml:space="preserve">
+    <value>On ha anat l'ús d'aquesta setmana</value>
+  </data>
+  <data name="Report_Breakdown_AsOf" xml:space="preserve">
+    <value>Proporcions de l'ús, no del límit. Calculat: {0}.</value>
+  </data>
+  <data name="Report_Surface_ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
+  <data name="Report_Surface_Chat" xml:space="preserve">
+    <value>Xats</value>
+  </data>
+  <data name="Report_Surface_Cowork" xml:space="preserve">
+    <value>Cowork</value>
+  </data>
+  <data name="Report_Surface_Other" xml:space="preserve">
+    <value>Altres</value>
+  </data>
+  <data name="Report_WeeklyShare" xml:space="preserve">
+    <value>Ocupa {0} del límit setmanal, d'un màxim de {1}.</value>
+  </data>
   <data name="Config_Tab_Theme" xml:space="preserve">
     <value>Tema</value>
   </data>

@@ -498,6 +498,27 @@
   <data name="Report_Scope" xml:space="preserve">
     <value>Beschränkt auf {0}</value>
   </data>
+  <data name="Report_Section_Breakdown" xml:space="preserve">
+    <value>Wofür die Nutzung dieser Woche verwendet wurde</value>
+  </data>
+  <data name="Report_Breakdown_AsOf" xml:space="preserve">
+    <value>Anteile an der Nutzung, nicht am Limit. Berechnet: {0}.</value>
+  </data>
+  <data name="Report_Surface_ClaudeCode" xml:space="preserve">
+    <value>Claude Code</value>
+  </data>
+  <data name="Report_Surface_Chat" xml:space="preserve">
+    <value>Chats</value>
+  </data>
+  <data name="Report_Surface_Cowork" xml:space="preserve">
+    <value>Cowork</value>
+  </data>
+  <data name="Report_Surface_Other" xml:space="preserve">
+    <value>Sonstiges</value>
+  </data>
+  <data name="Report_WeeklyShare" xml:space="preserve">
+    <value>Belegt {0} des Wochenlimits, bei einem Höchstanteil von {1}.</value>
+  </data>
   <data name="Config_Tab_Theme" xml:space="preserve">
     <value>Design</value>
   </data>

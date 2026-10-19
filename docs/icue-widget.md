@@ -18,6 +18,15 @@ In the **Small horizontal slot** (1/6 of the screen, 840×344):
   the name and the percentage on one line, the usage bar with the elapsed-time
   bar under it, and below them when the window resets (left) and where it is
   heading at this pace (right, "on course for ~33%").
+- **Where the week went**: the 7-day all-models bar is cut into one segment per
+  surface (Claude Code, Cowork, chats, other), brightest for the biggest share,
+  with a legend between the name and the figure: `■ Code 64  ■ Cowork 27`. The
+  shares are of the usage, so the segments together fill exactly the bar's
+  percentage. When the legend does not fit it drops its smallest surfaces;
+  the bar keeps all of them. Off with *Show where the week went*.
+- **Fable's slice of the week**: on the Fable row, how much of the weekly limit
+  its usage amounts to and the most it may take, `27% of 7d, cap 50%`; just
+  `27% of 7d` when space is short.
 - **Claude Code sessions**: one bar per open session, lit for a working one and
   grey for a waiting one, as tall as the digits of the `working/open` count
   beside them. Hidden when the session watch is off in ClaudeStatus.
@@ -114,7 +123,7 @@ Spanish, German and French.
 Nothing leaves the machine. ClaudeStatus listens on the loopback addresses only
 (`127.0.0.1` and `[::1]`), and the
 document it serves is percentages, reset times, the pace verdict, a session
-*count* and its version. No token, no organisation id, no session titles. A web
+*count*, the week's split by surface (shares only) and its version. No token, no organisation id, no session titles. A web
 page open on the same PC is refused (see `docs/security.md` §5b).
 
 The widget makes one outbound link: the release page, and only when you tap it
@@ -154,10 +163,14 @@ previous shape.
   "windows": [
     { "id": "session",   "percent": 56, "resetsAt": "2026-09-26T10:15:00+00:00", "spanSeconds": 18000,  "exhausted": false },
     { "id": "week",      "percent": 18, "resetsAt": "2026-09-29T12:00:00+00:00", "spanSeconds": 604800, "exhausted": false },
-    { "id": "weekFable", "percent": 41, "resetsAt": "2026-09-29T12:00:00+00:00", "spanSeconds": 604800, "exhausted": false }
+    { "id": "weekFable", "percent": 54, "resetsAt": "2026-09-29T12:00:00+00:00", "spanSeconds": 604800, "exhausted": false,
+      "weeklySharePercent": 27, "weeklyAllowancePercent": 50 }
   ],
   "pace": { "windowId": "session", "percentPerHour": 38, "runsOutAt": "…", "resetsAt": "…" },
-  "sessions": { "working": 1, "open": 3 }
+  "sessions": { "working": 1, "open": 3 },
+  "breakdown": { "asOf": "2026-09-26T07:00:43+00:00",
+                 "rows": [ { "key": "claude_code", "label": "Claude Code", "percent": 21 },
+                           { "key": "cowork", "label": "Cowork", "percent": 76 } ] }
 }
 ```
 
@@ -167,6 +180,8 @@ previous shape.
 | `windows` | The indicators' order. `weekFable` is absent when the plan lacks it. `spanSeconds` is the window length, the one assumption the app makes about it. |
 | `pace` | `null` while the pace is safe. Otherwise the window climbing too fast, the fitted rate, and the projected run-out and reset times. |
 | `sessions` | `null` while the session watch is off. |
+| `weeklySharePercent`, `weeklyAllowancePercent` | On a scoped window (`weekFable`): its usage as a share of the weekly limit, and its limit's size as one. `null` elsewhere or when the endpoint did not say. Added 2026-10-18 without a schema bump. |
+| `breakdown` | The week's usage split by surface, or `null`. Shares of the usage, adding up to about 100. `key` is the endpoint's identifier (translate the ones you know); `label` its English name, for the rest. `asOf` lags the windows. Added 2026-10-18 without a schema bump. |
 
 Other paths: `GET /v1/health` answers `{"ok":true}` as soon as the server is up;
 `POST /v1/open` opens the details window; anything else is 404. Before the first

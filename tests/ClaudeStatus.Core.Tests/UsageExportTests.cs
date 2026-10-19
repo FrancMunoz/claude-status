@@ -51,6 +51,60 @@ public class UsageExportTests
     }
 
     [Fact]
+    public void The_breakdown_and_the_scoped_share_pass_through()
+    {
+        UsageSnapshot snapshot = Snapshot() with
+        {
+            WeekFable = UsageWindow.Create(54, Now + TimeSpan.FromDays(3)) with
+            {
+                WeeklySharePercent = 27,
+                WeeklyAllowancePercent = 50,
+            },
+            WeekBreakdown = new UsageBreakdown(
+                Now - TimeSpan.FromHours(1),
+                Now - TimeSpan.FromDays(4),
+                [new UsageBreakdownRow("claude_code", "Claude Code", 21), new UsageBreakdownRow("cowork", null, 79)]),
+        };
+
+        UsageExport export = Map(snapshot);
+
+        export.Breakdown!.AsOf.Should().Be(Now - TimeSpan.FromHours(1));
+        export.Breakdown.Rows.Should().Equal(
+            new UsageExportShare("claude_code", "Claude Code", 21),
+            new UsageExportShare("cowork", null, 79));
+        export.Windows[2].WeeklySharePercent.Should().Be(27);
+        export.Windows[2].WeeklyAllowancePercent.Should().Be(50);
+        export.Windows[1].WeeklySharePercent.Should().BeNull();
+    }
+
+    [Fact]
+    public void No_breakdown_or_an_empty_one_is_null()
+    {
+        Map(Snapshot()).Breakdown.Should().BeNull();
+        Map(Snapshot() with { WeekBreakdown = new UsageBreakdown(Now, null, []) }).Breakdown.Should().BeNull();
+        Map(null).Breakdown.Should().BeNull();
+    }
+
+    [Fact]
+    public void The_new_fields_are_serialized_in_camel_case()
+    {
+        UsageExport export = Map(Snapshot() with
+        {
+            WeekFable = UsageWindow.Create(54, null) with { WeeklySharePercent = 27, WeeklyAllowancePercent = 50 },
+            WeekBreakdown = new UsageBreakdown(Now, null, [new UsageBreakdownRow("chat", "Chats", 3)]),
+        });
+
+        using JsonDocument json = JsonDocument.Parse(JsonSerializer.Serialize(export, ClaudeStatusJsonContext.Default.UsageExport));
+        JsonElement root = json.RootElement;
+
+        root.GetProperty("breakdown").GetProperty("rows")[0].GetProperty("key").GetString().Should().Be("chat");
+        root.GetProperty("breakdown").GetProperty("rows")[0].GetProperty("percent").GetDouble().Should().Be(3);
+        root.GetProperty("windows")[2].GetProperty("weeklySharePercent").GetDouble().Should().Be(27);
+        root.GetProperty("windows")[2].GetProperty("weeklyAllowancePercent").GetDouble().Should().Be(50);
+        root.GetProperty("schema").GetInt32().Should().Be(1, "the additions are optional, so schema 1 readers still work");
+    }
+
+    [Fact]
     public void A_plan_without_a_fable_window_omits_it()
         => Map(Snapshot(fable: null)).Windows.Select(w => w.Id).Should().Equal("session", "week");
 

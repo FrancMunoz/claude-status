@@ -58,8 +58,18 @@ public static class UsageExportMapper
             ThresholdEvaluator.Clamp(thresholdPercent),
             windows,
             pace is null ? null : MapPace(pace, now),
-            sessions);
+            sessions)
+        {
+            Breakdown = MapBreakdown(snapshot?.WeekBreakdown),
+        };
     }
+
+    private static UsageExportBreakdown? MapBreakdown(UsageBreakdown? breakdown)
+        => breakdown is { Rows.Count: > 0 }
+            ? new UsageExportBreakdown(
+                breakdown.AsOf,
+                [.. breakdown.Rows.Select(row => new UsageExportShare(row.Key, row.DisplayName, row.Percent))])
+            : null;
 
     private static void Add(List<UsageExportWindow> windows, string id, UsageWindow? window, TimeSpan span)
     {
@@ -73,7 +83,11 @@ public static class UsageExportMapper
             window.Percent,
             window.ResetsAt,
             (int)span.TotalSeconds,
-            IndicatorText.IsExhausted(window.Percent)));
+            IndicatorText.IsExhausted(window.Percent))
+        {
+            WeeklySharePercent = window.WeeklySharePercent,
+            WeeklyAllowancePercent = window.WeeklyAllowancePercent,
+        });
     }
 
     private static UsageExportPace MapPace(VelocityAlert alert, DateTimeOffset now)

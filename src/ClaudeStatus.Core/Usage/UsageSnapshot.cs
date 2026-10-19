@@ -94,6 +94,12 @@ public sealed record UsageSnapshot(
     public ExtraUsageInfo? ExtraUsage { get; init; }
 
     /// <summary>
+    /// The week's usage split by surface, when the source reported a
+    /// <c>seven_day_breakdown</c> block.
+    /// </summary>
+    public UsageBreakdown? WeekBreakdown { get; init; }
+
+    /// <summary>
     /// Every window in the reading, in the order the report window shows them.
     /// </summary>
     /// <remarks>
@@ -179,6 +185,7 @@ public sealed record UsageSnapshot(
         && IsStale == other.IsStale
         && Spend == other.Spend
         && ExtraUsage == other.ExtraUsage
+        && WeekBreakdown == other.WeekBreakdown
         && SameOtherWindows(OtherWindows, other.OtherWindows);
 
     /// <inheritdoc />
@@ -192,6 +199,7 @@ public sealed record UsageSnapshot(
         hash.Add(IsStale);
         hash.Add(Spend);
         hash.Add(ExtraUsage);
+        hash.Add(WeekBreakdown);
         hash.Add(OtherWindows.Count);
 
         // Order-independent, so two dictionaries built in different orders agree.

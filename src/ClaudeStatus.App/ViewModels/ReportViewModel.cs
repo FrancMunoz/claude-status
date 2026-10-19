@@ -79,6 +79,20 @@ public partial class ReportViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _creditsLimitReached;
 
+    /// <summary>
+    /// Whether the source sent a breakdown at all.
+    /// </summary>
+    /// <remarks>
+    /// The section is hidden rather than saying "not reported", unlike spend: the
+    /// breakdown is a recent addition, and a missing one says nothing about the
+    /// account.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _hasBreakdown;
+
+    [ObservableProperty]
+    private string _breakdownAsOfText = string.Empty;
+
     public ReportViewModel(
         IUsageMonitor monitor,
         IUsageProvider provider,
@@ -103,6 +117,9 @@ public partial class ReportViewModel : ObservableObject, IDisposable
 
     /// <summary>One row per usage window the source reported.</summary>
     public ObservableCollection<ReportRowViewModel> Rows { get; } = [];
+
+    /// <summary>One row per surface in the week's breakdown.</summary>
+    public ObservableCollection<ReportShareViewModel> Breakdown { get; } = [];
 
     /// <summary>Asks the monitor for a fresh reading, subject to its cooldown.</summary>
     [RelayCommand]
@@ -130,6 +147,7 @@ public partial class ReportViewModel : ObservableObject, IDisposable
         DateTimeOffset now = _clock.GetUtcNow();
 
         Rows.Clear();
+        ApplyBreakdown(snapshot?.WeekBreakdown);
         HasReading = snapshot is not null;
 
         SourceText = _l.Format(
@@ -167,6 +185,29 @@ public partial class ReportViewModel : ObservableObject, IDisposable
 
         ApplySpend(snapshot.Spend);
         ApplyCredits(snapshot.ExtraUsage);
+    }
+
+    /// <summary>Rebuilds the week's split by surface.</summary>
+    private void ApplyBreakdown(UsageBreakdown? breakdown)
+    {
+        Breakdown.Clear();
+        HasBreakdown = breakdown is { Rows.Count: > 0 };
+        if (!HasBreakdown)
+        {
+            BreakdownAsOfText = string.Empty;
+            return;
+        }
+
+        foreach (UsageBreakdownRow row in breakdown!.Rows)
+        {
+            Breakdown.Add(new ReportShareViewModel(_l, row));
+        }
+
+        BreakdownAsOfText = _l.Format(
+            "Report_Breakdown_AsOf",
+            breakdown.AsOf is { } asOf
+                ? asOf.ToLocalTime().ToString("f", _l.Culture)
+                : _l["Common_Unknown"]);
     }
 
     /// <summary>

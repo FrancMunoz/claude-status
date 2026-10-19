@@ -286,11 +286,11 @@ public partial class TaskbarWidgetViewModel : ObservableObject
         ThresholdState fable = Evaluate(_snapshot.WeekFable);
 
         Session.Update(_snapshot.Session, session, _now);
-        Week.Update(_snapshot.Week, week, _now);
+        Week.Update(_snapshot.Week, week, _now, split: _snapshot.WeekBreakdown);
         WeekFable.Update(_snapshot.WeekFable, fable, _now, _snapshot.WeekFableSharesWeeklyReset);
 
         TooltipSession.Update(_snapshot.Session, session, _now);
-        TooltipWeek.Update(_snapshot.Week, week, _now);
+        TooltipWeek.Update(_snapshot.Week, week, _now, split: _snapshot.WeekBreakdown);
         TooltipWeekFable.Update(_snapshot.WeekFable, fable, _now, _snapshot.WeekFableSharesWeeklyReset);
     }
 

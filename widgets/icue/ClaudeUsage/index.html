@@ -9,6 +9,7 @@
 
 	<meta name="x-icue-property" content="endpointPort" data-label="tr('ClaudeStatus port')" data-type="textfield" data-default="'47831'" />
 	<meta name="x-icue-property" content="showFable" data-label="tr('Show the Fable window')" data-type="switch" data-default="true" />
+	<meta name="x-icue-property" content="showBreakdown" data-label="tr('Show where the week went')" data-type="switch" data-default="true" />
 
 	<meta name="x-icue-property" content="textColor" data-label="tr('Text Color')" data-type="color" data-default="'#FFFFFF'" />
 	<meta name="x-icue-property" content="accentColor" data-label="tr('Accent Color')" data-type="color" data-default="'#FF8900'" />
@@ -19,7 +20,7 @@
 	[
 		{
 			"title": "tr('Claude Usage')",
-			"properties": ["endpointPort", "showFable"],
+			"properties": ["endpointPort", "showFable", "showBreakdown"],
 			"info": "tr('Reads the usage that ClaudeStatus publishes on this PC. In ClaudeStatus, open Config > Behaviour and turn on \"Share the reading with the iCUE widget\". Tap the widget to open the details window.')"
 		},
 		{
@@ -97,6 +98,7 @@
 				case "transparency": return typeof transparency !== "undefined" ? transparency : undefined;
 				case "endpointPort": return typeof endpointPort !== "undefined" ? endpointPort : undefined;
 				case "showFable": return typeof showFable !== "undefined" ? showFable : undefined;
+				case "showBreakdown": return typeof showBreakdown !== "undefined" ? showBreakdown : undefined;
 				case "widgetPersonalizationCustomStyleEnabled": return typeof widgetPersonalizationCustomStyleEnabled !== "undefined" ? widgetPersonalizationCustomStyleEnabled : undefined;
 				case "widgetPersonalizationCustomStylePresent": return typeof widgetPersonalizationCustomStylePresent !== "undefined" ? widgetPersonalizationCustomStylePresent : undefined;
 				default: return undefined;
