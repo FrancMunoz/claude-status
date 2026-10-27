@@ -304,7 +304,12 @@ public static class UsageResponseParser
             UsedCredits: ReadNumber(extra, "used_credits"),
             Utilization: ReadNumber(extra, "utilization"),
             Currency: ReadString(extra, "currency"),
-            DisabledReason: ReadString(extra, "disabled_reason"));
+            DisabledReason: ReadString(extra, "disabled_reason"))
+        {
+            DecimalPlaces = ReadNumber(extra, "decimal_places") is { } places
+                ? (int)Math.Clamp(places, 0d, 6d)
+                : null,
+        };
     }
 
     /// <summary>Reads a <c>{ amount_minor, currency, exponent }</c> money object.</summary>

@@ -435,8 +435,13 @@ public sealed class NativeStatusIndicator : IStatusIndicator
             ? IndicatorText.FormatCountdown(single.Window?.TimeUntilReset(_clock.GetUtcNow()))
             : string.Empty;
 
+        // Credits ride along whichever window is picked: being charged is news
+        // whether the week or the session is the one that ran out.
+        string credits = IndicatorText.CreditsToken(snapshot, alert);
+
         return $"{single.Label} {countdown}{(countdown.Length > 0 ? " " : string.Empty)}"
-            + IndicatorText.WindowValue(single.Window, alert, withSign: true);
+            + IndicatorText.WindowValue(single.Window, alert, withSign: true)
+            + (credits.Length > 0 ? " · " + credits : string.Empty);
     }
 
     /// <summary>Picks the colour, or leaves it to the menu bar.</summary>

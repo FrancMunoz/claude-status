@@ -105,6 +105,7 @@ public partial class TaskbarWidgetViewModel : ObservableObject
         TooltipSession = new UsageBarViewModel(_l, "Details_Metric_Session");
         TooltipWeek = new UsageBarViewModel(_l, "Details_Metric_Week");
         TooltipWeekFable = new UsageBarViewModel(_l, "Details_Metric_WeekFable");
+        Credits = new CreditsViewModel(_l);
 
         // The alert sentence is composed here, so a language change has to redo it.
         _l.PropertyChanged += (_, _) => Refresh();
@@ -216,6 +217,38 @@ public partial class TaskbarWidgetViewModel : ObservableObject
 
     public UsageBarViewModel TooltipWeekFable { get; }
 
+    /// <summary>
+    /// Usage credits. The hover card lists them whenever they are on; the widget
+    /// gives them a column only while usage is past the limits.
+    /// </summary>
+    public CreditsViewModel Credits { get; }
+
+    /// <summary>Whether the 5h column is drawn. False while credits are paying for it.</summary>
+    /// <remarks>
+    /// A spent window on credits is folded into the credits column rather than
+    /// shown beside it: "7d 100 %" next to "Credits 5.62 €" said one thing twice.
+    /// The credits column carries the latest one's time bar, so until when survives.
+    /// Only while paying: a spent window with the cap also spent is a block, and
+    /// keeps its own column.
+    /// </remarks>
+    [ObservableProperty]
+    private bool _showSessionColumn = true;
+
+    /// <inheritdoc cref="ShowSessionColumn" />
+    [ObservableProperty]
+    private bool _showWeekColumn = true;
+
+    /// <summary>Whether the Fable column is drawn: asked for, and not folded into credits.</summary>
+    [ObservableProperty]
+    private bool _showFableColumn;
+
+    /// <summary>
+    /// How far through its span the last of those windows to reset is. Credits
+    /// keep paying until then, so this is the clock the credits column carries.
+    /// </summary>
+    [ObservableProperty]
+    private double _creditsTimePercent;
+
     /// <summary>Where a metric turns red. Set by the controller from settings.</summary>
     public double ThresholdPercent { get; private set; } = 80d;
 
@@ -292,6 +325,38 @@ public partial class TaskbarWidgetViewModel : ObservableObject
         TooltipSession.Update(_snapshot.Session, session, _now);
         TooltipWeek.Update(_snapshot.Week, week, _now, split: _snapshot.WeekBreakdown);
         TooltipWeekFable.Update(_snapshot.WeekFable, fable, _now, _snapshot.WeekFableSharesWeeklyReset);
+        Credits.Update(_snapshot);
+        FoldSpentWindows(_snapshot);
+    }
+
+    /// <summary>Hides the windows credits are paying for, and gives their clock to the credits column.</summary>
+    private void FoldSpentWindows(UsageSnapshot snapshot)
+    {
+        bool paying = CreditStatus.From(snapshot) is { State: CreditState.InUse };
+        var spent = new List<(UsageBarViewModel Bar, UsageWindow Window)>(3);
+        if (paying)
+        {
+            AddIfSpent(spent, Session, snapshot.Session);
+            AddIfSpent(spent, Week, snapshot.Week);
+            AddIfSpent(spent, WeekFable, snapshot.WeekFable);
+        }
+
+        ShowSessionColumn = !spent.Any(entry => entry.Bar == Session);
+        ShowWeekColumn = !spent.Any(entry => entry.Bar == Week);
+        ShowFableColumn = ShowFable && !spent.Any(entry => entry.Bar == WeekFable);
+
+        CreditsTimePercent = spent.Count == 0
+            ? 0d
+            : spent.MaxBy(entry => entry.Window.ResetsAt ?? DateTimeOffset.MinValue).Bar.TimePercent;
+    }
+
+    private static void AddIfSpent(
+        List<(UsageBarViewModel Bar, UsageWindow Window)> spent, UsageBarViewModel bar, UsageWindow? window)
+    {
+        if (window is not null && IndicatorText.IsExhausted(window.Percent))
+        {
+            spent.Add((bar, window));
+        }
     }
 
     private ThresholdState Evaluate(UsageWindow? window)
@@ -301,6 +366,7 @@ public partial class TaskbarWidgetViewModel : ObservableObject
     {
         HasReading = false;
         IsStale = false;
+        Credits.Update((CreditStatus?)null);
         AlertGlyph = glyph;
         AlertText = text;
         StatusText = text;

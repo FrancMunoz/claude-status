@@ -155,8 +155,9 @@ the rules are:
 - **Loopback only.** Bound to `127.0.0.1` and `[::1]`; nothing off the machine can connect.
   The port is the user's (default 47831), never `0.0.0.0`.
 - **The document holds no secret.** `UsageExport` is percentages, reset times,
-  the pace verdict, a session *count* and the app version. No token, no
-  organisation id, no spend, no session ids or titles, no paths. Adding a field
+  the pace verdict, a session *count*, the month's credit spend and the app
+  version. No token, no organisation id, no billing detail, no session ids or
+  titles, no paths. Adding a field
   here is a review item: it must stay something a stranger reading it learns
   nothing from.
   *Reviewed 2026-10-18:* `breakdown` (the week's usage share per surface:
@@ -167,6 +168,14 @@ the rules are:
   titles, no counts of conversations, no identifiers, no money. Accepted on that
   basis. The `label` beside each key is the endpoint's generic English name for
   the surface, never user text.
+  *Reviewed 2026-10-23:* `credits` - whether usage credits are being drawn on
+  (`Standby` / `InUse` / `CapReached`), the month's spend and cap in minor
+  units, and the currency code. This is the first money in the export and it
+  says more than "how busy": what this person pays past their plan this month.
+  It carries no card, invoice, balance, billing address or account id, and is
+  `null` while credits are off. Accepted because the export is loopback-only,
+  refuses web origins, and is off by default - the reader is software the user
+  installed on their own machine to show exactly this.
 - **Web pages are refused.** A browser on the machine can `fetch()` loopback.
   A request carrying an `http://` or `https://` `Origin` header is answered
   403 without the CORS header, so a page's script never sees the body and

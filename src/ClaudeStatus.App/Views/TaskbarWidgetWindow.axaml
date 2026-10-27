@@ -198,12 +198,53 @@
                             IsVisible="{Binding HasReading}"
                             Classes.stale="{Binding IsStale}">
                     <ContentControl Content="{Binding Session}"
+                                    IsVisible="{Binding ShowSessionColumn}"
                                     ContentTemplate="{StaticResource WidgetMetricTemplate}" />
                     <ContentControl Content="{Binding Week}"
+                                    IsVisible="{Binding ShowWeekColumn}"
                                     ContentTemplate="{StaticResource WidgetMetricTemplate}" />
                     <ContentControl Content="{Binding WeekFable}"
-                                    IsVisible="{Binding ShowFable}"
+                                    IsVisible="{Binding ShowFableColumn}"
                                     ContentTemplate="{StaticResource WidgetMetricTemplate}" />
+
+                    <!--
+                        Credits, only while usage is past the plan's limits. The
+                        windows credits are paying for give up their own columns
+                        (see TaskbarWidgetViewModel.ShowWeekColumn). The amount and
+                        its currency are set exactly as the other columns set a
+                        number and its "%" - same two blocks, same classes - so
+                        the sign sits small and tight against the digits. The bar
+                        is the month's cap; the time bar is the spent window's, so
+                        the column still says until when.
+                    -->
+                    <StackPanel Classes="widgetMetric"
+                                Spacing="0"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding Credits.IsPastLimits}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,0,0,1">
+                            <TextBlock Grid.Column="0"
+                                       Classes="widgetLabel"
+                                       VerticalAlignment="Bottom"
+                                       Text="{Binding Credits.ShortLabel}" />
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center">
+                                <TextBlock Classes="widgetValue"
+                                           VerticalAlignment="Bottom"
+                                           Classes.exceeded="{Binding Credits.IsExceeded}"
+                                           Text="{Binding Credits.AmountNumberText}" />
+                                <TextBlock Classes="widgetValue widgetSign"
+                                           VerticalAlignment="Bottom"
+                                           Classes.exceeded="{Binding Credits.IsExceeded}"
+                                           Text="{Binding Credits.CurrencySign}" />
+                            </StackPanel>
+                        </Grid>
+                        <controls:UsageBar Classes="widgetBar"
+                                           Percent="{Binding Credits.Percent}"
+                                           Classes.exceeded="{Binding Credits.IsExceeded}" />
+                        <controls:UsageBar Classes="widgetTimeBar" Percent="{Binding CreditsTimePercent}" />
+                    </StackPanel>
                 </StackPanel>
 
                 <!--

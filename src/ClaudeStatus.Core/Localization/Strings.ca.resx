@@ -767,4 +767,31 @@
   <data name="Sessions_Waiting" xml:space="preserve">
     <value>t'espera</value>
   </data>
+  <data name="Credits_Label" xml:space="preserve">
+    <value>Crèdits</value>
+  </data>
+  <data name="Widget_Credits" xml:space="preserve">
+    <value>Crèdits</value>
+  </data>
+  <data name="Credits_State_InUse" xml:space="preserve">
+    <value>Fent servir crèdits</value>
+  </data>
+  <data name="Credits_State_Standby" xml:space="preserve">
+    <value>A punt si s'esgota un límit</value>
+  </data>
+  <data name="Credits_State_CapReached" xml:space="preserve">
+    <value>Límit mensual assolit</value>
+  </data>
+  <data name="Credits_Spent" xml:space="preserve">
+    <value>{0} de {1}</value>
+  </data>
+  <data name="Credits_Spent_NoCap" xml:space="preserve">
+    <value>{0} gastats</value>
+  </data>
+  <data name="Credits_SpentAndLeft" xml:space="preserve">
+    <value>{0} · en queden {1} aquest mes</value>
+  </data>
+  <data name="Tray_Tooltip_Credits" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
 </root>

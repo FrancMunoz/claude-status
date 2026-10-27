@@ -125,6 +125,7 @@ html, body {
 .chip.live .cdot { animation: breathe 3s ease-in-out infinite; }
 .chip.stale { color: var(--warn-color); } .chip.stale .cdot { background: var(--warn-color); }
 .chip.pace  { color: var(--alert-color); background: rgba(255, 61, 65, 0.14); } .chip.pace .cdot { background: var(--alert-color); animation: pulse 1.2s ease-in-out infinite; }
+.chip.credits { color: var(--warn-color); } .chip.credits .cdot { background: var(--warn-color); }
 .chip.off   { color: var(--text-color-secondary); } .chip.off .cdot { background: var(--text-color-secondary); }
 @keyframes breathe {
 	0%, 100% { opacity: 1; }

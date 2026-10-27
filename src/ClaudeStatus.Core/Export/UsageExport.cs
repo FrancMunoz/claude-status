@@ -12,8 +12,8 @@ namespace ClaudeStatus.Export;
 /// </para>
 /// <para>
 /// <b>Nothing here identifies the account.</b> Percentages, reset times, a pace
-/// verdict and a session count are the whole of it: no token, no organisation id,
-/// no spend, no session ids or titles. A page that can read this learns how busy
+/// verdict, a session count and the month's credit spend are the whole of it: no
+/// token, no organisation id, no billing detail, no session ids or titles. A page that can read this learns how busy
 /// the user is and nothing else. See <c>docs/security.md</c> §5.
 /// </para>
 /// <para>
@@ -68,7 +68,30 @@ public sealed record UsageExport(
     /// that says what was done there. Reviewed in <c>docs/security.md</c> §5b.
     /// </remarks>
     public UsageExportBreakdown? Breakdown { get; init; }
+
+    /// <summary>
+    /// Usage credits, or null while they are switched off or not reported.
+    /// </summary>
+    /// <remarks>
+    /// Added 2026-10-23 without a schema bump. The amount spent past the plan
+    /// and the monthly cap - money, but no account, card or invoice detail.
+    /// Reviewed in <c>docs/security.md</c> §5b.
+    /// </remarks>
+    public UsageExportCredits? Credits { get; init; }
 }
+
+/// <summary>Usage credits: whether they are being drawn on, and how much.</summary>
+/// <param name="State">The verdict every indicator shows. See <see cref="Usage.CreditStatus"/>.</param>
+/// <param name="UsedMinor">Spent this month, in the currency's minor units. Null when not reported.</param>
+/// <param name="LimitMinor">The monthly cap, in minor units. Null without one.</param>
+/// <param name="Currency">ISO 4217 code, e.g. <c>EUR</c>.</param>
+/// <param name="Exponent">Decimal places of the currency: 562 with 2 is 5.62.</param>
+public sealed record UsageExportCredits(
+    Usage.CreditState State,
+    long? UsedMinor,
+    long? LimitMinor,
+    string? Currency,
+    int Exponent);
 
 /// <summary>The week's usage split by surface.</summary>
 /// <param name="AsOf">When the endpoint computed the split. It lags the windows.</param>

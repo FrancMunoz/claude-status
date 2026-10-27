@@ -61,7 +61,29 @@ public static class UsageExportMapper
             sessions)
         {
             Breakdown = MapBreakdown(snapshot?.WeekBreakdown),
+            Credits = MapCredits(CreditStatus.From(snapshot)),
         };
+    }
+
+    private static UsageExportCredits? MapCredits(CreditStatus? credits)
+    {
+        if (credits is null)
+        {
+            return null;
+        }
+
+        MoneyAmount? reference = credits.Used ?? credits.Limit;
+        return new UsageExportCredits(
+            credits.State,
+            credits.Used?.AmountMinor,
+
+            // A cap in another precision than the spend cannot share one exponent
+            // field; leaving it out is better than a figure off by powers of ten.
+            credits.Limit is { } limit && limit.Exponent == (reference?.Exponent ?? limit.Exponent)
+                ? limit.AmountMinor
+                : null,
+            reference?.Currency,
+            reference?.Exponent ?? 2);
     }
 
     private static UsageExportBreakdown? MapBreakdown(UsageBreakdown? breakdown)

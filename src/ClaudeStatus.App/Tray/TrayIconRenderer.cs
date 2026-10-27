@@ -224,7 +224,7 @@ public static class TrayIconRenderer
             }
             else
             {
-                DrawPercentage(context, window, palette);
+                DrawPercentage(context, window, palette, CreditStatus.From(snapshot));
             }
         }
 
@@ -232,7 +232,8 @@ public static class TrayIconRenderer
     }
 
     /// <summary>Draws the percentage as a bare number, which is what most people want at a glance.</summary>
-    private static void DrawPercentage(DrawingContext context, UsageWindow? window, Palette palette)
+    private static void DrawPercentage(
+        DrawingContext context, UsageWindow? window, Palette palette, CreditStatus? credits)
     {
         // At the limit the number stops being the useful thing to show. "100" and
         // "99" differ by one glyph and mean quite different things - one is nearly
@@ -240,6 +241,22 @@ public static class TrayIconRenderer
         // a number, which is legible at 16 px in a way a third digit is not.
         if (window is not null && IsExhausted(window.Percent))
         {
+            // Spent, but credits are paying for what comes next: the currency's
+            // symbol instead of the cross, because the user is not cut off - they
+            // are being charged. A currency with no one-glyph symbol keeps the
+            // cross; the tooltip says the rest either way.
+            string? currency = credits?.Used?.Currency ?? credits?.Limit?.Currency;
+            if (credits is { State: CreditState.InUse } && CreditStatus.HasGlyph(currency))
+            {
+                DrawGlyph(
+                    context,
+                    CreditStatus.Symbol(currency),
+                    palette,
+                    Size.Width * 0.86,
+                    Size.Height);
+                return;
+            }
+
             DrawExhausted(context, palette, Size.Height);
             return;
         }
