@@ -767,4 +767,31 @@
   <data name="Sessions_Waiting" xml:space="preserve">
     <value>te espera</value>
   </data>
+  <data name="Credits_Label" xml:space="preserve">
+    <value>Créditos</value>
+  </data>
+  <data name="Widget_Credits" xml:space="preserve">
+    <value>Créditos</value>
+  </data>
+  <data name="Credits_State_InUse" xml:space="preserve">
+    <value>Usando créditos</value>
+  </data>
+  <data name="Credits_State_Standby" xml:space="preserve">
+    <value>Listos si se agota un límite</value>
+  </data>
+  <data name="Credits_State_CapReached" xml:space="preserve">
+    <value>Tope mensual alcanzado</value>
+  </data>
+  <data name="Credits_Spent" xml:space="preserve">
+    <value>{0} de {1}</value>
+  </data>
+  <data name="Credits_Spent_NoCap" xml:space="preserve">
+    <value>{0} gastados</value>
+  </data>
+  <data name="Credits_SpentAndLeft" xml:space="preserve">
+    <value>{0} · quedan {1} este mes</value>
+  </data>
+  <data name="Tray_Tooltip_Credits" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
 </root>

@@ -157,8 +157,29 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
 
             // The hover card on its own: the limits and where the week went.
             Save(RenderUsageCard(Theme("claude"), busy: false), Path.Combine(root!, "taskbar-widget-hover.png"));
+
+            // On usage credits: the week spent, the credits row and column up.
+            Save(
+                RenderWidget(Theme("claude"), TrayBackground.Dark, followSystem: true, showFable: false, reading: OnCredits()),
+                Path.Combine(root!, "taskbar-widget-credits.png"));
+            Save(RenderDetails(Theme("claude"), reading: OnCredits()), Path.Combine(root!, "window-details-credits.png"));
+            Save(
+                RenderUsageCard(Theme("claude"), busy: false, reading: OnCredits()),
+                Path.Combine(root!, "taskbar-widget-hover-credits.png"));
         });
     }
+
+    /// <summary>
+    /// The week and Fable spent, credits paying: the shape of the live capture
+    /// in <c>usage-credits.json</c>, 5.62 of 100.00 EUR.
+    /// </summary>
+    private static UsageSnapshot OnCredits() => Snapshot() with
+    {
+        Week = UsageWindow.Create(100d, Now.AddDays(2)),
+        WeekFable = UsageWindow.Create(100d, Now.AddDays(2)),
+        Spend = new SpendInfo(
+            true, new MoneyAmount(562, "EUR", 2), new MoneyAmount(10000, "EUR", 2), 6d, "normal", null),
+    };
 
     /// <summary>Two sessions busy and one waiting, as the session shots show them.</summary>
     private static IReadOnlyList<ClaudeSession> Sessions() =>
@@ -218,7 +239,8 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
         return frame;
     }
 
-    private static WriteableBitmap RenderDetails(Theme theme, IReadOnlyList<ClaudeSession>? sessions = null)
+    private static WriteableBitmap RenderDetails(
+        Theme theme, IReadOnlyList<ClaudeSession>? sessions = null, UsageSnapshot? reading = null)
     {
         // Fully opaque, which is not the app's default. The default 10 % lets the
         // black the headless session clears to show through, and the readme would
@@ -231,7 +253,7 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
 
         using var viewModel = new DetailsViewModel(
             monitor, () => new AppSettings(), TestLocalizer.English(), clock);
-        viewModel.Apply(Snapshot());
+        viewModel.Apply(reading ?? Snapshot());
 
         // The watch as it ships: on (AppSettings.SessionWatch). A switch drawn off in
         // the readme would advertise the wrong default.
@@ -276,13 +298,14 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
         TrayBackground taskbar,
         bool followSystem,
         bool showFable,
-        IReadOnlyList<ClaudeSession>? sessions = null)
+        IReadOnlyList<ClaudeSession>? sessions = null,
+        UsageSnapshot? reading = null)
     {
         ThemeApplier.Apply(Application.Current!, theme, string.Empty, osdTransparency: 0d);
 
         var viewModel = new TaskbarWidgetViewModel(TestLocalizer.English());
         viewModel.Configure(80d, showFable: showFable, followSystem: followSystem);
-        viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+        viewModel.Update(reading ?? Snapshot(), IndicatorAlert.None, Now);
         if (sessions is not null)
         {
             // The badge is up exactly while the watch is on, which is what a pushed
@@ -308,14 +331,14 @@ public class ScreenshotGenerator(HeadlessAppFixture fixture)
     }
 
     /// <param name="busy">With the session list and a pace warning, as the pace shot shows it.</param>
-    private static WriteableBitmap RenderUsageCard(Theme theme, bool busy = true)
+    private static WriteableBitmap RenderUsageCard(Theme theme, bool busy = true, UsageSnapshot? reading = null)
     {
         ThemeApplier.Apply(Application.Current!, theme, string.Empty, osdTransparency: 0d);
 
         var l = TestLocalizer.English();
         var viewModel = new TaskbarWidgetViewModel(l);
         viewModel.Configure(80d, showFable: false);
-        viewModel.Update(Snapshot(), IndicatorAlert.None, Now);
+        viewModel.Update(reading ?? Snapshot(), IndicatorAlert.None, Now);
         if (!busy)
         {
             return Render(new UsageCardWindow { DataContext = viewModel });

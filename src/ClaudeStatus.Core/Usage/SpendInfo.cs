@@ -46,12 +46,17 @@ public sealed record MoneyAmount(long AmountMinor, string? Currency, int Exponen
     /// </remarks>
     public string Format(CultureInfo culture)
     {
+        string number = FormatNumber(culture);
+        return string.IsNullOrEmpty(Currency) ? number : $"{number} {Currency}";
+    }
+
+    /// <summary>The number alone, to as many places as the currency has.</summary>
+    public string FormatNumber(CultureInfo culture)
+    {
         ArgumentNullException.ThrowIfNull(culture);
 
-        string number = Value.ToString(
+        return Value.ToString(
             "N" + Math.Clamp(Exponent, 0, 6).ToString(CultureInfo.InvariantCulture), culture);
-
-        return string.IsNullOrEmpty(Currency) ? number : $"{number} {Currency}";
     }
 }
 
@@ -99,4 +104,26 @@ public sealed record ExtraUsageInfo(
     double? UsedCredits,
     double? Utilization,
     string? Currency,
-    string? DisabledReason);
+    string? DisabledReason)
+{
+    /// <summary>
+    /// Where the decimal point goes in <see cref="MonthlyLimit"/> and
+    /// <see cref="UsedCredits"/>, which are minor units: 562 with 2 is 5.62.
+    /// </summary>
+    public int? DecimalPlaces { get; init; }
+
+    /// <summary>
+    /// Turns one of this block's figures into money. They are minor units:
+    /// <c>used_credits: 562.0</c> beside <c>decimal_places: 2</c> was 5.62 EUR,
+    /// matching <c>spend.used</c> in the same response (2026-10-23). Without
+    /// <c>decimal_places</c>, 2 is assumed, which is what every currency the
+    /// account can be billed in has used so far.
+    /// </summary>
+    public MoneyAmount? ToMoney(double? minor)
+        => minor is { } value && double.IsFinite(value)
+            ? new MoneyAmount(
+                (long)Math.Round(Math.Clamp(value, 0d, long.MaxValue / 2d)),
+                Currency,
+                Math.Clamp(DecimalPlaces ?? 2, 0, 6))
+            : null;
+}

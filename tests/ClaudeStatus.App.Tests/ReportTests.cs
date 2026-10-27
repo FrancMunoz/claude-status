@@ -213,6 +213,22 @@ public class ReportViewModelTests
     }
 
     [Fact]
+    public void Credits_are_read_as_minor_units()
+    {
+        (ReportViewModel model, UsageMonitor monitor) = Build(
+            Snapshot(credits: new ExtraUsageInfo(true, false, false, true, 10000d, 562d, 5.62d, "EUR", null)
+            {
+                DecimalPlaces = 2,
+            }));
+
+        using (monitor)
+        {
+            model.CreditsText.Should().StartWith(
+                "5.62 EUR of 100.00 EUR", "562 with two places used to be printed as 562.00");
+        }
+    }
+
+    [Fact]
     public void A_reached_credit_limit_raises_a_warning()
     {
         (ReportViewModel model, UsageMonitor monitor) = Build(

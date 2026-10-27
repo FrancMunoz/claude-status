@@ -141,6 +141,21 @@ public static class IndicatorText
     }
 
     /// <summary>
+    /// What credits add to an indicator: the amount spent, <c>€5.62</c>, while
+    /// usage is past the plan's limits; empty otherwise.
+    /// </summary>
+    /// <remarks>
+    /// Only past the limits, the same rule as the widget's credits column: on
+    /// standby the figure is last month's business as far as a glance goes. A
+    /// cap that is spent gets the amount too, with the cross beside the window
+    /// saying the rest. Nothing under an alert - see <see cref="ComposeRow"/>.
+    /// </remarks>
+    public static string CreditsToken(UsageSnapshot? snapshot, IndicatorAlert alert)
+        => alert == IndicatorAlert.None && CreditStatus.From(snapshot) is { IsPastLimits: true } credits
+            ? CreditStatus.Compact(credits.Used)
+            : string.Empty;
+
+    /// <summary>
     /// The session count as every indicator writes it: <c>1/3</c>, busy over open.
     /// </summary>
     /// <remarks>
@@ -235,6 +250,11 @@ public static class IndicatorText
         if (showWeekFable && snapshot?.WeekFable is not null)
         {
             parts.Add($"{labels.WeekFable} {WindowValue(snapshot.WeekFable, alert, withSign: true)}");
+        }
+
+        if (CreditsToken(snapshot, alert) is { Length: > 0 } credits)
+        {
+            parts.Add(credits);
         }
 
         return string.Join(separator, parts);

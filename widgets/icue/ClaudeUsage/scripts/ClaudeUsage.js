@@ -43,6 +43,7 @@ var S = {
 	title: "CLAUDE STATUS", session: "5H SESSION", week: "7D", weekSub: "ALL MODELS", fableSub: "FABLE",
 	sessions: "SESSIONS",
 	live: "LIVE", stale: "STALE", offline: "OFFLINE", paceChip: "PACE", preview: "PREVIEW",
+	creditsCap: "CAP",
 	resetsIn: "resets in", resetsAt: "resets", left: "left",
 	windowSession: "5h", windowWeek: "7d",
 	paceOk: "on course for ~{p}%",
@@ -143,6 +144,7 @@ function render() {
 	else if (stale) { chips += chip("stale", S.stale + when); }
 	else { chips += chip("live", S.live + when); }
 	if (data.pace) { chips += chip("pace", S.paceChip); }
+	chips += creditsChip(data.credits);
 	if (snapshot && snapshot.preview) { chips += chip("off", S.preview); }
 	els.chips.innerHTML = chips;
 	if (stale) { root.classList.add("stale"); }
@@ -182,6 +184,18 @@ function render() {
 	fitNotes();
 	fitHero();
 	alignInk();
+}
+
+// Credits, while usage is past the plan: what it has cost this month. The app
+// decides the state (CreditStatus); this only draws it. A spent cap takes the
+// alert colour, as the pace chip does: nothing is covering usage any more.
+var CURRENCY_SIGNS = { EUR: "€", USD: "$", GBP: "£", JPY: "¥" };
+function creditsChip(credits) {
+	if (!credits || (credits.state !== "InUse" && credits.state !== "CapReached") || typeof credits.usedMinor !== "number") { return ""; }
+	var places = clamp(credits.exponent, 0, 6, 2), code = String(credits.currency || "").toUpperCase();
+	var amount = (credits.usedMinor / Math.pow(10, places)).toFixed(places);
+	var text = CURRENCY_SIGNS[code] ? CURRENCY_SIGNS[code] + amount : amount + (code ? " " + code : "");
+	return credits.state === "CapReached" ? chip("pace", S.creditsCap + " " + text) : chip("credits", text);
 }
 
 function renderSessions(sessions) {
@@ -668,6 +682,7 @@ function mockSnapshot(kind) {
 			base.sessions = { working: 3, open: 4 };
 			return base;
 		case "exhausted": base.windows[0].percent = 100; base.windows[0].exhausted = true; base.windows[0].resetsAt = new Date(now + 1.2 * h).toISOString(); return base;
+		case "credits": base.windows[1].percent = 100; base.windows[1].exhausted = true; base.credits = { state: "InUse", usedMinor: 562, limitMinor: 10000, currency: "EUR", exponent: 2 }; return base;
 		case "hot": base.windows[0].percent = 91; base.windows[1].percent = 83; base.windows[2].percent = 97; base.sessions = { working: 2, open: 2 }; return base;
 		case "idle": base.sessions = { working: 0, open: 2 }; return base;
 		case "noSessions": base.sessions = null; return base;

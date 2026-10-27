@@ -141,6 +141,7 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
         Session = new UsageBarViewModel(_l, "Details_Metric_Session");
         Week = new UsageBarViewModel(_l, "Details_Metric_Week");
         WeekFable = new UsageBarViewModel(_l, "Details_Metric_WeekFable");
+        Credits = new CreditsViewModel(_l);
 
         // A language change has to redraw the composed sentences too, not only the
         // static labels, so the last snapshot is replayed through Apply.
@@ -161,6 +162,9 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
 
     /// <summary>The 7-day Fable-scoped window.</summary>
     public UsageBarViewModel WeekFable { get; }
+
+    /// <summary>Usage credits, when they are switched on.</summary>
+    public CreditsViewModel Credits { get; }
 
     /// <summary>Asks the monitor for a fresh reading, subject to its cooldown.</summary>
     [RelayCommand]
@@ -343,6 +347,7 @@ public partial class DetailsViewModel : ObservableObject, IDisposable
         Week.Update(snapshot?.Week, week, now, split: snapshot?.WeekBreakdown);
         WeekFable.Update(
             snapshot?.WeekFable, fable, now, snapshot?.WeekFableSharesWeeklyReset ?? false);
+        Credits.Update(snapshot);
 
         HasReading = snapshot is not null;
         HasStaleReading = snapshot is { IsStale: true };

@@ -256,6 +256,25 @@ where the week went surface by surface, and the pay-as-you-go and prepaid-credit
 are switched off, because "off" is itself an answer. It is resizable, has a
 taskbar entry, and survives being clicked away from.
 
+### Usage credits
+
+If usage credits are switched on for your account, every view shows them. Claude
+does not report whether you are using credits right now, so ClaudeStatus works
+it out: credits are on and a limit is at 100 %.
+
+- **Details popup and hover card:** a *Credits* row showing the amount spent this
+  month, the state (*On credits*, *Ready if a limit runs out*, *Monthly cap
+  reached*) and how much of the cap is left.
+- **Taskbar widget:** an extra column showing the amount (`€ 5.62`), only while
+  you are on credits or the cap is spent.
+- **Tray icon:** a spent window shows the currency sign instead of the cross, and
+  the tooltip adds the credits line.
+- **macOS menu bar:** the amount goes at the end of the row (`… · 7d x · €5.62`).
+- **iCUE widget:** a chip in the header, red with *CAP* once the cap is spent.
+
+"Left" is the cap minus what has been spent. Claude reports no prepaid balance
+and no date for the cap's reset, so ClaudeStatus does not show either.
+
 ### The pace warning
 
 If usage is climbing fast enough to exhaust a window before it resets, a small

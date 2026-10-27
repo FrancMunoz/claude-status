@@ -270,8 +270,10 @@ public partial class ReportViewModel : ObservableObject, IDisposable
 
         CreditsText = _l.Format(
             "Report_Credits_On",
-            credits.UsedCredits?.ToString("N2", _l.Culture) ?? _l["Common_Unknown"],
-            credits.MonthlyLimit?.ToString("N2", _l.Culture) ?? _l["Common_NotAvailable"],
+            // Minor units, like spend's: printing them as they come said 562.00
+            // for 5.62 EUR.
+            credits.ToMoney(credits.UsedCredits)?.Format(_l.Culture) ?? _l["Common_Unknown"],
+            credits.ToMoney(credits.MonthlyLimit)?.Format(_l.Culture) ?? _l["Common_NotAvailable"],
             credits.Utilization is { } utilization
                 ? _l.Format("Bar_Percent", utilization)
                 : _l["Common_Unknown"]);

@@ -116,6 +116,35 @@
                                 ContentTemplate="{StaticResource UsageBarTemplate}" />
                 <ContentControl Content="{Binding WeekFable}"
                                 ContentTemplate="{StaticResource UsageBarTemplate}" />
+
+                <!--
+                    Usage credits, only when they are switched on. Laid out like the
+                    bars above so it reads as one more limit: the state where the
+                    reset text goes, the amount where the percentage goes, and the
+                    bar is the monthly cap. The state takes the alert colour once
+                    usage is past the plan, because that is when money is moving.
+                -->
+                <StackPanel Spacing="7" IsVisible="{Binding Credits.IsShown}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
+                            <TextBlock Classes="label" Text="{Binding Credits.Label}" />
+                            <TextBlock Classes="caption"
+                                       Classes.exceeded="{Binding Credits.IsPastLimits}"
+                                       Text="{Binding Credits.StateText}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Classes="metric"
+                                   VerticalAlignment="Center"
+                                   FontFeatures="+tnum"
+                                   Classes.exceeded="{Binding Credits.IsExceeded}"
+                                   Text="{Binding Credits.AmountText}" />
+                    </Grid>
+                    <controls:UsageBar Percent="{Binding Credits.Percent}"
+                                       Classes.exceeded="{Binding Credits.IsExceeded}" />
+                    <TextBlock Classes="caption"
+                               TextWrapping="Wrap"
+                               Text="{Binding Credits.DetailText}" />
+                </StackPanel>
             </StackPanel>
 
             <!--

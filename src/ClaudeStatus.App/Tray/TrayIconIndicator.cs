@@ -362,9 +362,21 @@ public sealed class TrayIconIndicator : IStatusIndicator
             : Describe(localizer, snapshot.WeekFable);
 
         string body = localizer.Format("Tray_Tooltip_Body", session, week, fable);
-        return localizer.Format(
+        string tooltip = localizer.Format(
             snapshot.IsStale ? "Tray_Tooltip_Stale" : "Tray_Tooltip", body);
+
+        // The icon can only swap its cross for a currency sign; the amount is here.
+        return CreditStatus.From(snapshot) is { IsPastLimits: true } credits
+            ? tooltip + Environment.NewLine + DescribeCredits(localizer, credits)
+            : tooltip;
     }
+
+    /// <summary>"On credits: 5.62 EUR of 100.00 EUR · 94.38 EUR left".</summary>
+    internal static string DescribeCredits(ILocalizer localizer, CreditStatus credits)
+        => localizer.Format(
+            "Tray_Tooltip_Credits",
+            localizer[ViewModels.CreditsViewModel.StateKey(credits.State)],
+            ViewModels.CreditsViewModel.Describe(localizer, credits));
 
     private static string Describe(ILocalizer localizer, UsageWindow? window)
         => window is null

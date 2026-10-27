@@ -7,6 +7,7 @@ network access.
 |---|---|
 | `usage-normal.json` | **Real capture**, 2026-09-04, Max plan. Pretty-printed, otherwise byte-faithful. The canonical shape. |
 | `usage-breakdown.json` | **Real capture**, 2026-10-17, Max plan. Adds `seven_day_breakdown`, `weekly_scoped_shares` and more codenamed buckets. Pretty-printed, no headers. |
+| `usage-credits.json` | **Real capture, excerpt**, 2026-10-23, Max plan on usage credits: weekly and Fable at 100 %, 5.62 of 100.00 EUR spent. `limits`, `extra_usage`, `spend` and two flat buckets verbatim; the codenamed buckets, breakdown and shares left out. |
 | `usage-no-scoped-window.json` | Plan with no `weekly_scoped` entry — `WeekFable` must come out null, not throw. |
 | `usage-legacy-flat-only.json` | No `limits` array at all — parser must fall back to the flat `five_hour` / `seven_day` keys. |
 | `usage-unknown-shapes.json` | Unknown `kind`, unknown scoped model, unknown top-level keys, `null` `resets_at`, float percents. Nothing here may break parsing. |

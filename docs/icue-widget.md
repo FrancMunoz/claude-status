@@ -170,7 +170,8 @@ previous shape.
   "sessions": { "working": 1, "open": 3 },
   "breakdown": { "asOf": "2026-09-26T07:00:43+00:00",
                  "rows": [ { "key": "claude_code", "label": "Claude Code", "percent": 21 },
-                           { "key": "cowork", "label": "Cowork", "percent": 76 } ] }
+                           { "key": "cowork", "label": "Cowork", "percent": 76 } ] },
+  "credits": { "state": "InUse", "usedMinor": 562, "limitMinor": 10000, "currency": "EUR", "exponent": 2 }
 }
 ```
 
@@ -182,6 +183,7 @@ previous shape.
 | `sessions` | `null` while the session watch is off. |
 | `weeklySharePercent`, `weeklyAllowancePercent` | On a scoped window (`weekFable`): its usage as a share of the weekly limit, and its limit's size as one. `null` elsewhere or when the endpoint did not say. Added 2026-10-18 without a schema bump. |
 | `breakdown` | The week's usage split by surface, or `null`. Shares of the usage, adding up to about 100. `key` is the endpoint's identifier (translate the ones you know); `label` its English name, for the rest. `asOf` lags the windows. Added 2026-10-18 without a schema bump. |
+| `credits` | Usage credits, or `null` while they are off. `state` is the app's verdict: `Standby` (on, no limit spent), `InUse` (a window is spent, so usage is being paid for), `CapReached` (the monthly cap is spent). Amounts are minor units; `exponent` says where the point goes (562 with 2 is 5.62). `limitMinor` is `null` without a cap. The widget shows a chip only for `InUse` and `CapReached`. Added 2026-10-23 without a schema bump. |
 
 Other paths: `GET /v1/health` answers `{"ok":true}` as soon as the server is up;
 `POST /v1/open` opens the details window; anything else is 404. Before the first

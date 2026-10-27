@@ -85,8 +85,8 @@ the clearest possible argument for tolerant parsing:
 | `scope.model` gained `id`; `scope` gained `surface` | Match on `display_name`, tolerate `id: null`. |
 | Flat window objects gained `limit_dollars`, `used_dollars`, `remaining_dollars`, `locked_reason` | Unused. `locked_reason` is worth watching — likely how a hard lock surfaces. |
 | New codenamed top-level buckets (`tangelo`, `iguana_necktie`, `nimbus_quill`, `cinder_cove`, `amber_ladder`, `juniper_tide`, `omelette_promotional`, `seven_day_omelette`) | Unreleased-feature placeholders. **Never enumerate top-level keys**; read only the ones we know. |
-| New top-level `spend` object and `member_dashboard_available` | Unused in Iteration 1. |
-| `extra_usage` grew from 4 fields to 12 | Unused. |
+| New top-level `spend` object and `member_dashboard_available` | `spend` is read since the report window, and drives the credits row since 2026-10-23 (below). |
+| `extra_usage` grew from 4 fields to 12 | Read; `used_credits` / `monthly_limit` are **minor units** beside `decimal_places`. |
 | `percent` came back as an **integer** (29, 58, 88) while `utilization` was a **float** (29.0) | Parse both as `double`. Do not assume a decimal point. |
 | `severity` observed: `"normal"`, `"warning"` | Treat as an open string set. Do not deserialize into a closed enum. |
 
@@ -135,6 +135,30 @@ Also new, and **not** read: eleven more codenamed top-level buckets
 `amber_gauge`, …), all null, and `iguana_necktie`, which came back populated as
 a dollar bucket (`limit_dollars: 250`, its own `resets_at` a month out). Its
 meaning is unknown, so it stays unread under the never-enumerate rule.
+
+### Usage credits — observed live on 2026-10-23
+
+Recorded as `usage-credits.json` (excerpt): an account with the weekly and
+Fable windows at 100 % (`severity: critical`) and credits switched on.
+
+| Field | Observed | Meaning |
+|---|---|---|
+| `spend.used` / `spend.limit` | `{562, EUR, 2}` / `{10000, EUR, 2}` | Spent this month and the monthly cap, typed money. Preferred source. |
+| `spend.percent` | `6` | Rounded to a whole number; we compute 5.62 from the amounts instead. |
+| `spend.enabled`, `extra_usage.is_enabled` | `true` | Credits are **switched on**. Not "being used": true with every limit untouched too. |
+| `extra_usage.used_credits` / `monthly_limit` | `562.0` / `10000` | Same amounts in minor units, with `decimal_places: 2` and `currency`. Fallback source. |
+| `extra_usage.spend_limit_reached` | `false` | The cap is spent. |
+| `spend.balance`, `spend.auto_reload`, `extra_usage.daily` / `weekly` | `null` | No prepaid balance, no reset date for the cap. "Left" can only be cap − spent. |
+
+**There is no "on credits" flag.** `CreditStatus` (Core) infers it: credits on
+and any window spent by the indicators' own rule (`IndicatorText.IsExhausted`).
+Spend was seen rising while the week sat at 100 %, which is what this matches.
+`limits[].is_active` marked the binding window (`weekly_all`) but is not needed
+for the verdict. `locked_reason` on the flat buckets stayed `null` while on
+credits; it may be what a hard block looks like, unconfirmed.
+
+`iguana_necktie` came back as a **$250** bucket with $0 used while €5.62 of
+credits had been spent, so it is not the credit spend. Still unread.
 
 **What the endpoint does not carry.** Claude Code 2.1.299's new `/usage`
 warnings (max effort, workflows, always-on context over 40k tokens, tool
