@@ -186,7 +186,7 @@ public class ThemeCatalogTests
     {
         // OnPrimary is the label on a filled accent button. Picking black or white
         // by the primary's own luminance is only correct if it actually clears the
-        // body-text threshold on all eleven - a mid-tone accent is where that goes
+        // body-text threshold on every built-in - a mid-tone accent is where that goes
         // wrong, and the Save button is not a place to discover it.
         Theme theme = ById(id);
 
@@ -269,6 +269,42 @@ public class ThemeCatalogTests
     {
         ThemeCatalog.Resolve(id, ThemeCatalog.BuiltIn, systemIsDark)
             .Id.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("claude", false, "claude")]
+    [InlineData("claude", true, "claude-dark")]
+    [InlineData("claude-dark", false, "claude")]
+    [InlineData("light", true, "dark")]
+    [InlineData("dark", false, "light")]
+    [InlineData("sakura", true, "orchid")]
+    [InlineData("ember", false, "solar")]
+    [InlineData("matcha", true, "aurora")]
+    [InlineData("ocean", true, "ocean")]
+    [InlineData("ocean", false, "light")]
+    [InlineData("system", true, "dark")]
+    [InlineData("nonexistent", false, "light")]
+    public void Following_the_system_swaps_a_theme_for_its_counterpart(
+        string id, bool systemIsDark, string expected)
+    {
+        ThemeCatalog.Resolve(id, ThemeCatalog.BuiltIn, systemIsDark, followSystem: true)
+            .Id.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Every_counterpart_exists_and_has_the_opposite_brightness()
+    {
+        foreach (Theme theme in ThemeCatalog.BuiltIn)
+        {
+            if (ThemeCatalog.CounterpartOf(theme.Id) is not { } otherId)
+            {
+                continue;
+            }
+
+            Theme other = ById(otherId);
+            other.IsDark.Should().Be(!theme.IsDark, $"'{otherId}' is the other half of '{theme.Id}'");
+            ThemeCatalog.CounterpartOf(otherId).Should().Be(theme.Id);
+        }
     }
 
     [Theory]

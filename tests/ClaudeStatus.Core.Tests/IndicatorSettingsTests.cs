@@ -15,6 +15,8 @@ public class IndicatorSettingsTests
             "most plans hit the session or weekly limit long before the Fable one");
         settings.WidgetFollowsSystem.Should().BeTrue(
             "a taskbar widget should look like part of the taskbar; the card is opt-in");
+        settings.ThemeFollowsSystem.Should().BeTrue(
+            "the windows should go dark with the system, as the widget does");
     }
 
     [Fact]

@@ -256,6 +256,10 @@ public sealed class TrayApplicationController : IDisposable
         ApplyTheme();
 
         _services.GetRequiredService<ITrayThemeProvider>().Changed += OnTaskbarThemeChanged;
+        if (Application.Current?.PlatformSettings is { } platformSettings)
+        {
+            platformSettings.ColorValuesChanged += OnSystemColoursChanged;
+        }
 
         _services.GetRequiredService<ILogger<TrayApplicationController>>().LogInformation(
             "ClaudeStatus starting. Source: {Source}. Poll interval: {Interval}.",
@@ -310,10 +314,11 @@ public sealed class TrayApplicationController : IDisposable
     /// Puts the chosen theme, font and OSD opacity into the application resources.
     /// </summary>
     /// <remarks>
-    /// The "system" theme follows the same signal the tray icon uses for its own
-    /// contrast, so the app and its icon agree about whether the desktop is dark.
-    /// Reading it fresh here, and running again on <see cref="ITrayThemeProvider.Changed"/>,
-    /// means a theme change on the OS is picked up as it happens.
+    /// The windows follow the OS's <em>app</em> appearance (<see cref="AppsAreDark"/>),
+    /// not the taskbar's: they are app windows, and the two differ under Windows'
+    /// "Custom" mode. Reading it fresh here, and running again on
+    /// <see cref="IPlatformSettings.ColorValuesChanged"/>, means a switch on the OS
+    /// is picked up as it happens, on every platform Avalonia can ask.
     /// </remarks>
     private void ApplyTheme()
     {
@@ -322,13 +327,13 @@ public sealed class TrayApplicationController : IDisposable
             return;
         }
 
-        bool systemIsDark =
-            _services.GetRequiredService<ITrayThemeProvider>().Current != TrayBackground.Light;
+        bool systemIsDark = AppsAreDark();
 
         Theme theme = ThemeCatalog.Resolve(
             _settings.ThemeId,
             _services.GetRequiredService<JsonThemeStore>().All(),
-            systemIsDark);
+            systemIsDark,
+            _settings.ThemeFollowsSystem);
 
         // Normalized() has already resolved the null, but these settings can also
         // arrive straight from a caller, so the default is restated rather than
@@ -344,11 +349,40 @@ public sealed class TrayApplicationController : IDisposable
     }
 
     /// <summary>
+    /// Whether the OS asks apps to be dark: Windows' app mode, macOS's appearance,
+    /// the desktop's colour-scheme preference on Linux.
+    /// </summary>
+    /// <remarks>
+    /// Avalonia's platform settings rather than <see cref="ITrayThemeProvider"/>.
+    /// That one reads the taskbar, and only on Windows; elsewhere it reports
+    /// Unknown, which would have read as "dark" for ever. Light when the platform
+    /// cannot tell, so an unanswerable question leaves the chosen theme alone
+    /// rather than inverting it.
+    /// </remarks>
+    private static bool AppsAreDark()
+        => Application.Current?.PlatformSettings?.GetColorValues().ThemeVariant == PlatformThemeVariant.Dark;
+
+    /// <summary>Re-applies the theme when the OS switches between light and dark.</summary>
+    /// <remarks>
+    /// Also raised for an accent colour change, which costs one re-apply of a few
+    /// brushes. Not assumed to arrive on the UI thread.
+    /// </remarks>
+    private void OnSystemColoursChanged(object? sender, PlatformColorValues values)
+        => Dispatcher.UIThread.Post(() =>
+        {
+            if (!_disposed)
+            {
+                ApplyTheme();
+            }
+        });
+
+    /// <summary>
     /// Redraws everything drawn against the taskbar the moment it changes colour.
     /// </summary>
     /// <remarks>
-    /// Both indicators and the "system" theme already read the provider on every
-    /// render; this only makes that render happen now instead of at the next poll.
+    /// Both indicators already read the provider on every render; this only makes
+    /// that render happen now instead of at the next poll. The windows' theme has
+    /// its own signal (<see cref="OnSystemColoursChanged"/>).
     /// The provider raises it off the UI thread.
     /// </remarks>
     private void OnTaskbarThemeChanged(object? sender, EventArgs e)
@@ -822,7 +856,7 @@ public sealed class TrayApplicationController : IDisposable
                 _services.GetRequiredService<Localizer>(),
                 _services.GetRequiredService<JsonLanguageStore>(),
                 _services.GetRequiredService<JsonThemeStore>(),
-                () => _services.GetRequiredService<ITrayThemeProvider>().Current != TrayBackground.Light,
+                AppsAreDark,
                 () => _settings,
                 ApplySettingsAsync,
                 _services.GetRequiredService<IHookManager>(),
@@ -1516,6 +1550,10 @@ public sealed class TrayApplicationController : IDisposable
         }
 
         _services.GetRequiredService<ITrayThemeProvider>().Changed -= OnTaskbarThemeChanged;
+        if (Application.Current?.PlatformSettings is { } platformSettings)
+        {
+            platformSettings.ColorValuesChanged -= OnSystemColoursChanged;
+        }
         _updateTimer?.Dispose();
         _updates.Dispose();
         _export?.Dispose();
