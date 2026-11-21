@@ -531,6 +531,12 @@
   <data name="Config_Theme_Help" xml:space="preserve">
     <value>Per afegir un tema, posa un fitxer JSON a {0} amb name, primary, background, text i alert. Apareixerà aquí després de reiniciar.</value>
   </data>
+  <data name="Config_Theme_FollowSystem" xml:space="preserve">
+    <value>Canviar a mode fosc amb el sistema</value>
+  </data>
+  <data name="Config_Theme_FollowSystem_Help" xml:space="preserve">
+    <value>Quan el sistema passa a mode fosc, el tema canvia a la seva versió fosca (Claude a Claude Dark), i torna en mode clar. Un tema sense versió fosca fa servir Light o Dark.</value>
+  </data>
   <data name="Config_Font" xml:space="preserve">
     <value>Tipus de lletra</value>
   </data>

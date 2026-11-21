@@ -531,6 +531,12 @@
   <data name="Config_Theme_Help" xml:space="preserve">
     <value>Para añadir un tema, pon un archivo JSON en {0} con name, primary, background, text y alert. Aparecerá aquí después de reiniciar.</value>
   </data>
+  <data name="Config_Theme_FollowSystem" xml:space="preserve">
+    <value>Cambiar a modo oscuro con el sistema</value>
+  </data>
+  <data name="Config_Theme_FollowSystem_Help" xml:space="preserve">
+    <value>Cuando el sistema pasa a modo oscuro, el tema cambia a su versión oscura (Claude a Claude Dark), y vuelve en modo claro. Un tema sin versión oscura usa Light o Dark.</value>
+  </data>
   <data name="Config_Font" xml:space="preserve">
     <value>Fuente</value>
   </data>

@@ -84,7 +84,7 @@ public sealed record Theme(
     /// Every primary here has to contrast with both a light and a dark
     /// background, which forces them all into the middle of the range - and in
     /// that middle, "is it dark?" and "which of black and white reads better on
-    /// it?" disagree for eight of the eleven built-ins. Only the measurement is
+    /// it?" disagree for eight of the original eleven built-ins. Only the measurement is
     /// right.
     /// </para>
     /// <para>

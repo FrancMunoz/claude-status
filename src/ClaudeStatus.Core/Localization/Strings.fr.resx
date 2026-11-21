@@ -531,6 +531,12 @@
   <data name="Config_Theme_Help" xml:space="preserve">
     <value>Pour ajouter un thème, placez un fichier JSON dans {0} avec name, primary, background, text et alert. Il apparaîtra ici après un redémarrage.</value>
   </data>
+  <data name="Config_Theme_FollowSystem" xml:space="preserve">
+    <value>Passer en mode sombre avec le système</value>
+  </data>
+  <data name="Config_Theme_FollowSystem_Help" xml:space="preserve">
+    <value>Quand le système passe en mode sombre, le thème bascule vers sa version sombre (Claude vers Claude Dark), puis revient en mode clair. Un thème sans version sombre utilise Light ou Dark.</value>
+  </data>
   <data name="Config_Font" xml:space="preserve">
     <value>Police</value>
   </data>

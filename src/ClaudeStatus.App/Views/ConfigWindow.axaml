@@ -241,6 +241,13 @@
                             <TextBlock Classes="caption" Text="{Binding ThemeHelp}" />
                         </StackPanel>
 
+                        <StackPanel>
+                            <CheckBox IsChecked="{Binding ThemeFollowsSystem}"
+                                      Content="{Binding L[Config_Theme_FollowSystem]}" />
+                            <TextBlock Classes="caption option-help"
+                                       Text="{Binding L[Config_Theme_FollowSystem_Help]}" />
+                        </StackPanel>
+
                         <StackPanel Spacing="4">
                             <TextBlock Classes="label" Text="{Binding L[Config_Font]}" />
                             <ComboBox ItemsSource="{Binding Fonts}"

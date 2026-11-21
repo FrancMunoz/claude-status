@@ -70,6 +70,17 @@ public static class ThemeCatalog
             Text: new Rgb(0x24, 0x21, 0x1D),
             Alert: new Rgb(0xB4, 0x2A, 0x25)),
 
+        // Claude after dark: the same coral, lifted for a dark ground, on the warm
+        // charcoal of Anthropic's own dark mode. The counterpart Claude switches to
+        // when the system goes dark (see Counterparts).
+        new Theme(
+            Id: "claude-dark",
+            Name: "Claude Dark",
+            Primary: new Rgb(0xE0, 0x82, 0x60),
+            Background: new Rgb(0x26, 0x26, 0x24),
+            Text: new Rgb(0xF0, 0xEE, 0xE6),
+            Alert: new Rgb(0xFF, 0x45, 0x6A)),
+
         // Warm dark, orange on near-black brown.
         new Theme(
             Id: "ember",
@@ -146,6 +157,45 @@ public static class ThemeCatalog
             Alert: new Rgb(0xC0, 0x33, 0x2B)),
     ];
 
+    /// <summary>
+    /// Each built-in theme's other half: the theme of the opposite brightness and
+    /// the same character, used when the theme follows the system's light or dark
+    /// setting.
+    /// </summary>
+    /// <remarks>
+    /// Listed once per pair; <see cref="CounterpartOf"/> reads it both ways. A
+    /// theme with no entry here - Ocean, Nebula, any theme from a file - has no
+    /// other half, and following the system falls back to <see cref="Light"/> or
+    /// <see cref="Dark"/> for it.
+    /// </remarks>
+    private static readonly (string Light, string Dark)[] Counterparts =
+    [
+        ("light", "dark"),
+        ("claude", "claude-dark"),
+        ("sakura", "orchid"),
+        ("solar", "ember"),
+        ("matcha", "aurora"),
+    ];
+
+    /// <summary>The id of a theme's opposite-brightness counterpart, or null if it has none.</summary>
+    public static string? CounterpartOf(string? id)
+    {
+        foreach ((string light, string dark) in Counterparts)
+        {
+            if (string.Equals(id, light, StringComparison.OrdinalIgnoreCase))
+            {
+                return dark;
+            }
+
+            if (string.Equals(id, dark, StringComparison.OrdinalIgnoreCase))
+            {
+                return light;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>Whether an id is shaped like one we would accept.</summary>
     /// <remarks>
     /// Bounded for the same reason as the language tag: this ends up in
@@ -164,27 +214,46 @@ public static class ThemeCatalog
     /// <param name="id">The user's choice, or <see cref="SystemId"/> / empty to follow the OS.</param>
     /// <param name="available">Every theme on offer, built-in plus any loaded from files.</param>
     /// <param name="systemIsDark">Whether the OS is currently in dark mode.</param>
+    /// <param name="followSystem">
+    /// Whether a chosen theme of the wrong brightness gives way to its counterpart
+    /// (<see cref="CounterpartOf"/>), or to Light/Dark when it has none, so the
+    /// windows go dark with the desktop.
+    /// </param>
     /// <remarks>
     /// A chosen theme that no longer exists - the user deleted its file - falls
     /// back to following the system rather than to a hardcoded default, so the app
     /// still looks right rather than merely looking consistent.
     /// </remarks>
-    public static Theme Resolve(string? id, IEnumerable<Theme> available, bool systemIsDark)
+    public static Theme Resolve(
+        string? id, IEnumerable<Theme> available, bool systemIsDark, bool followSystem = false)
     {
         ArgumentNullException.ThrowIfNull(available);
 
-        if (!string.IsNullOrEmpty(id)
-            && !string.Equals(id, SystemId, StringComparison.OrdinalIgnoreCase))
+        IReadOnlyList<Theme> themes = [.. available];
+        Theme fallback = systemIsDark ? Dark : Light;
+
+        if (string.IsNullOrEmpty(id)
+            || string.Equals(id, SystemId, StringComparison.OrdinalIgnoreCase)
+            || Find(themes, id) is not { } chosen)
         {
-            foreach (Theme theme in available)
-            {
-                if (string.Equals(theme.Id, id, StringComparison.OrdinalIgnoreCase))
-                {
-                    return theme;
-                }
-            }
+            return fallback;
         }
 
-        return systemIsDark ? Dark : Light;
+        if (!followSystem || chosen.IsDark == systemIsDark)
+        {
+            return chosen;
+        }
+
+        // The counterpart is looked up among the available themes, so a file that
+        // replaces a built-in (dark.json) replaces it here too. One that turned out
+        // the same brightness as the original is no counterpart at all.
+        return Find(themes, CounterpartOf(chosen.Id)) is { } other && other.IsDark == systemIsDark
+            ? other
+            : fallback;
     }
+
+    private static Theme? Find(IReadOnlyList<Theme> themes, string? id)
+        => id is null
+            ? null
+            : themes.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.OrdinalIgnoreCase));
 }

@@ -1,6 +1,6 @@
 # Theming ClaudeStatus
 
-Eleven themes ship with the app. Adding your own needs a text editor and no
+Twelve themes ship with the app. Adding your own needs a text editor and no
 rebuild — the same arrangement as translations.
 
 **Config → Theme** holds all of it: the theme, the interface font, and the popup's
@@ -15,6 +15,7 @@ preview.
 |---|---|---|
 | `light` / `dark` | Light, Dark | Neutral, blue accent |
 | `claude` | Claude | Ivory paper and coral, after Anthropic's own palette |
+| `claude-dark` | Claude Dark | The same coral on warm charcoal |
 | `ember` | Ember | Orange on near-black brown |
 | `ocean` | Ocean | Azure on deep navy |
 | `aurora` | Aurora | Teal-green on near-black; the brightest accent of the set |
@@ -31,6 +32,21 @@ system panel.
 **Follow the system** is one click away in the picker, and uses Light when the
 desktop is in light mode and Dark when it is in dark mode. It is a choice like
 any other and is recorded as one; it is not what you get by saying nothing.
+
+**Switch to dark mode with the system** (on by default, `themeIgnoresSystem: false`
+in `settings.json`) keeps your theme but swaps it for its other half when the
+desktop changes brightness: Claude ⇄ Claude Dark, Light ⇄ Dark, Sakura ⇄ Orchid,
+Solar ⇄ Ember, Matcha ⇄ Aurora. A theme with no other half (Ocean, Nebula, your
+own files) gives way to Light or Dark.
+
+Both this and **Follow the system** read the OS's *app* appearance through
+Avalonia (`PlatformSettings.GetColorValues()` / `ColorValuesChanged`): Windows'
+app mode, macOS's Light/Dark appearance, the desktop's colour-scheme preference
+on Linux. It is event-driven, so a switch applies at once. It is deliberately not
+the taskbar signal the widget and tray icon use (`ITrayThemeProvider`): that one
+exists only on Windows and describes the taskbar, which under Windows' "Custom"
+mode can differ from the apps. Where the platform cannot tell, it reads as light
+and the chosen theme is left alone.
 
 ## Adding your own
 

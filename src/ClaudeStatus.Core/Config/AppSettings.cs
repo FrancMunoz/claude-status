@@ -348,6 +348,26 @@ public sealed record AppSettings
     public string ThemeId { get; init; } = ThemeCatalog.DefaultId;
 
     /// <summary>
+    /// Whether the chosen theme stays as it is when the system switches between
+    /// light and dark. Stored inverted so the intended default - follow - is
+    /// <c>default</c>; see the warning on this type. Read it through
+    /// <see cref="ThemeFollowsSystem"/>.
+    /// </summary>
+    public bool ThemeIgnoresSystem { get; init; }
+
+    /// <summary>
+    /// Whether the windows go dark with the system: the chosen theme gives way to
+    /// its counterpart of the other brightness (Claude to Claude Dark), or to
+    /// Light/Dark when it has none. See <see cref="ThemeCatalog.Resolve"/>.
+    /// </summary>
+    /// <remarks>
+    /// On by default (decided 2026-11-20), the same signal the taskbar widget
+    /// already follows, so the widget and the windows change together.
+    /// </remarks>
+    [JsonIgnore]
+    public bool ThemeFollowsSystem => !ThemeIgnoresSystem;
+
+    /// <summary>
     /// The interface font family, or empty for the platform default.
     /// </summary>
     /// <remarks>

@@ -302,6 +302,10 @@ public partial class ConfigViewModel : ObservableObject
     /// </remarks>
     public ObservableCollection<SessionRowViewModel> Sessions { get; } = [];
 
+    /// <summary>Whether the theme switches to its dark or light counterpart with the system.</summary>
+    [ObservableProperty]
+    private bool _themeFollowsSystem = true;
+
     /// <summary>Whether there is a session to offer.</summary>
     [ObservableProperty]
     private bool _hasSessions;
@@ -381,6 +385,7 @@ public partial class ConfigViewModel : ObservableObject
             UseTaskbarWidget = settings.Indicator == IndicatorKind.TaskbarWidget;
             ShowFableInWidget = settings.ShowFableInWidget;
             WidgetFollowsSystem = settings.WidgetFollowsSystem;
+            ThemeFollowsSystem = settings.ThemeFollowsSystem;
             ThresholdPercent = settings.ThresholdPercent;
             PollIntervalSeconds = settings.Polling.BaseInterval.TotalSeconds;
             UseFakeProvider = settings.UseFakeProvider;
@@ -573,13 +578,15 @@ public partial class ConfigViewModel : ObservableObject
         }
 
         Theme theme = ThemeCatalog.Resolve(
-            SelectedTheme?.Id, _themeStore.All(), _systemIsDark());
+            SelectedTheme?.Id, _themeStore.All(), _systemIsDark(), ThemeFollowsSystem);
 
         ThemeApplier.Apply(
             application, theme, CurrentFontFamily(), OsdTransparencyPercent / 100d);
     }
 
     partial void OnSelectedThemeChanged(ThemeOption value) => PreviewTheme();
+
+    partial void OnThemeFollowsSystemChanged(bool value) => PreviewTheme();
 
     partial void OnOsdTransparencyPercentChanged(double value) => PreviewTheme();
 
@@ -724,6 +731,7 @@ public partial class ConfigViewModel : ObservableObject
                 Indicator = UseTaskbarWidget ? IndicatorKind.TaskbarWidget : IndicatorKind.TrayIcon,
                 ShowFableInWidget = ShowFableInWidget,
                 WidgetUsesThemedCard = !WidgetFollowsSystem,
+                ThemeIgnoresSystem = !ThemeFollowsSystem,
                 ThresholdPercent = ThresholdPercent,
                 DisableAutostart = !StartWithOperatingSystem,
                 DisableSessionWatch = !SessionWatch,

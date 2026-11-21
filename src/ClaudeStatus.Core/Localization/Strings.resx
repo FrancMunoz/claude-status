@@ -531,6 +531,12 @@
   <data name="Config_Theme_Help" xml:space="preserve">
     <value>To add a theme, put a JSON file in {0} with name, primary, background, text and alert. It appears here after a restart.</value>
   </data>
+  <data name="Config_Theme_FollowSystem" xml:space="preserve">
+    <value>Switch to dark mode with the system</value>
+  </data>
+  <data name="Config_Theme_FollowSystem_Help" xml:space="preserve">
+    <value>When the system goes dark, the theme switches to its dark counterpart (Claude to Claude Dark), and back again in light mode. A theme without one uses Light or Dark.</value>
+  </data>
   <data name="Config_Font" xml:space="preserve">
     <value>Font</value>
   </data>

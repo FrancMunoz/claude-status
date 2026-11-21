@@ -8,7 +8,7 @@ namespace ClaudeStatus.App.ViewModels;
 /// </summary>
 /// <remarks>
 /// Carries three swatch brushes so the dropdown can show what a theme looks like
-/// without applying it. Picking a theme by name alone means trying all eleven to
+/// without applying it. Picking a theme by name alone means trying all twelve to
 /// find the one you want.
 /// </remarks>
 /// <param name="Id">Stored in settings. Empty or <c>system</c> means follow the OS.</param>

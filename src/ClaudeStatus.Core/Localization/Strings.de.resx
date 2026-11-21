@@ -531,6 +531,12 @@
   <data name="Config_Theme_Help" xml:space="preserve">
     <value>Um ein Design hinzuzufügen, lege eine JSON-Datei mit name, primary, background, text und alert in {0} ab. Sie erscheint nach einem Neustart hier.</value>
   </data>
+  <data name="Config_Theme_FollowSystem" xml:space="preserve">
+    <value>Mit dem System in den dunklen Modus wechseln</value>
+  </data>
+  <data name="Config_Theme_FollowSystem_Help" xml:space="preserve">
+    <value>Wechselt das System in den dunklen Modus, wechselt das Design zu seinem dunklen Gegenstück (Claude zu Claude Dark) und im hellen Modus wieder zurück. Ein Design ohne Gegenstück verwendet Light oder Dark.</value>
+  </data>
   <data name="Config_Font" xml:space="preserve">
     <value>Schriftart</value>
   </data>
